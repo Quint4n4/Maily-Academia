@@ -114,14 +114,15 @@ const LessonView = () => {
             <span className="hidden sm:inline">Volver al curso</span>
           </button>
 
-          <div className="flex items-center gap-2 text-gray-300">
-            <span className="text-sm">{course.title}</span>
-            <ChevronRight className="w-4 h-4 text-gray-500" />
-            <span className="text-sm text-white">{module.title.replace(/Módulo \d+: /, '')}</span>
+          <div className="flex items-center gap-2 text-gray-300 hidden md:flex">
+            <span className="text-sm truncate max-w-[150px]">{course.title}</span>
+            <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <span className="text-sm text-white truncate max-w-[150px]">{module.title.replace(/Módulo \d+: /, '')}</span>
           </div>
 
-          <div className="text-gray-400 text-sm">
-            {currentIndex} / {totalLessons}
+          <div className="text-gray-400 text-sm flex-shrink-0">
+            <span className="hidden sm:inline">{currentIndex} / {totalLessons}</span>
+            <span className="sm:hidden">{currentIndex}/{totalLessons}</span>
           </div>
         </div>
       </div>
@@ -129,7 +130,7 @@ const LessonView = () => {
       <div className="max-w-7xl mx-auto">
         <div className="grid lg:grid-cols-3 gap-0">
           {/* Video player */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 order-2 lg:order-1">
             {/* Video container */}
             <div className="relative aspect-video bg-black">
               <iframe
@@ -175,50 +176,54 @@ const LessonView = () => {
             </div>
 
             {/* Controles del video */}
-            <div className="bg-gray-800 px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-4">
+            <div className="bg-gray-800 px-2 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <button
                   onClick={() => prevLesson && navigate(`/course/${course.id}/lesson/${module.id}/${prevLesson.id}`)}
                   disabled={!prevLesson}
-                  className="p-2 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="p-1.5 sm:p-2 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Lección anterior"
                 >
-                  <SkipBack className="w-5 h-5" />
+                  <SkipBack className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 <button
                   onClick={() => setIsPlaying(!isPlaying)}
-                  className="p-3 bg-maily text-white rounded-full hover:bg-maily-dark transition-colors"
+                  className="p-2 sm:p-3 bg-maily text-white rounded-full hover:bg-maily-dark transition-colors"
+                  aria-label={isPlaying ? "Pausar" : "Reproducir"}
                 >
-                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                  {isPlaying ? <Pause className="w-4 h-4 sm:w-5 sm:h-5" /> : <Play className="w-4 h-4 sm:w-5 sm:h-5" />}
                 </button>
                 <button
                   onClick={handleNextLesson}
-                  className="p-2 text-gray-400 hover:text-white transition-colors"
+                  className="p-1.5 sm:p-2 text-gray-400 hover:text-white transition-colors"
+                  aria-label="Siguiente lección"
                 >
-                  <SkipForward className="w-5 h-5" />
+                  <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <button
                   onClick={() => setIsMuted(!isMuted)}
-                  className="p-2 text-gray-400 hover:text-white transition-colors"
+                  className="p-1.5 sm:p-2 text-gray-400 hover:text-white transition-colors"
+                  aria-label={isMuted ? "Activar sonido" : "Silenciar"}
                 >
-                  {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                  {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
                 </button>
-                <button className="p-2 text-gray-400 hover:text-white transition-colors">
-                  <Maximize className="w-5 h-5" />
+                <button className="p-1.5 sm:p-2 text-gray-400 hover:text-white transition-colors" aria-label="Pantalla completa">
+                  <Maximize className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
 
             {/* Información de la lección */}
-            <div className="bg-gray-800 p-6">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div>
+            <div className="bg-gray-800 p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                <div className="flex-1 min-w-0">
                   <Badge variant="primary" className="mb-2">
                     Lección {currentIndex}
                   </Badge>
-                  <h1 className="text-2xl font-bold text-white">
+                  <h1 className="text-xl sm:text-2xl font-bold text-white">
                     {lesson.title}
                   </h1>
                 </div>
@@ -227,11 +232,12 @@ const LessonView = () => {
                     onClick={handleMarkComplete}
                     variant="accent"
                     icon={CheckCircle}
+                    className="w-full sm:w-auto"
                   >
                     Marcar completa
                   </Button>
                 ) : (
-                  <Badge variant="success" size="lg" icon={CheckCircle}>
+                  <Badge variant="success" size="lg" icon={CheckCircle} className="w-full sm:w-auto justify-center sm:justify-start">
                     Completada
                   </Badge>
                 )}
@@ -241,32 +247,32 @@ const LessonView = () => {
                 {lesson.description}
               </p>
 
-              <div className="flex items-center gap-6 text-gray-400">
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-gray-400">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
-                  <span>{lesson.duration}</span>
+                  <span className="text-sm sm:text-base">{lesson.duration}</span>
                 </div>
                 <button className="flex items-center gap-2 hover:text-white transition-colors">
                   <ThumbsUp className="w-4 h-4" />
-                  <span>Me gusta</span>
+                  <span className="text-sm sm:text-base">Me gusta</span>
                 </button>
                 <button className="flex items-center gap-2 hover:text-white transition-colors">
                   <Share2 className="w-4 h-4" />
-                  <span>Compartir</span>
+                  <span className="text-sm sm:text-base">Compartir</span>
                 </button>
               </div>
 
               {/* Navegación */}
-              <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-700">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mt-8 pt-6 border-t border-gray-700">
                 {prevLesson ? (
                   <button
                     onClick={() => navigate(`/course/${course.id}/lesson/${module.id}/${prevLesson.id}`)}
-                    className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                    className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-left"
                   >
-                    <ArrowLeft className="w-5 h-5" />
-                    <div className="text-left">
+                    <ArrowLeft className="w-5 h-5 flex-shrink-0" />
+                    <div className="min-w-0">
                       <p className="text-xs text-gray-500">Anterior</p>
-                      <p className="text-sm">{prevLesson.title}</p>
+                      <p className="text-sm truncate">{prevLesson.title}</p>
                     </div>
                   </button>
                 ) : (
@@ -277,15 +283,17 @@ const LessonView = () => {
                   onClick={handleNextLesson}
                   icon={ArrowRight}
                   iconPosition="right"
+                  className="w-full sm:w-auto"
                 >
-                  {nextLesson ? 'Siguiente lección' : 'Ir al Quiz'}
+                  <span className="hidden sm:inline">{nextLesson ? 'Siguiente lección' : 'Ir al Quiz'}</span>
+                  <span className="sm:hidden">{nextLesson ? 'Siguiente' : 'Quiz'}</span>
                 </Button>
               </div>
             </div>
           </div>
 
           {/* Sidebar - Lista de lecciones */}
-          <div className="bg-gray-800 border-l border-gray-700 overflow-y-auto max-h-[calc(100vh-64px)]">
+          <div className="bg-gray-800 border-l border-gray-700 overflow-y-auto max-h-[calc(100vh-64px)] hidden lg:block order-1 lg:order-2">
             <div className="p-4 border-b border-gray-700">
               <h3 className="font-semibold text-white">{module.title}</h3>
               <p className="text-sm text-gray-400 mt-1">

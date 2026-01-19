@@ -41,9 +41,9 @@ const CourseView = () => {
 
   if (!course) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Curso no encontrado</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Curso no encontrado</h2>
           <Button onClick={() => navigate('/dashboard')}>Volver al inicio</Button>
         </div>
       </div>
@@ -91,7 +91,7 @@ const CourseView = () => {
   const nextLesson = getNextLesson();
 
   return (
-    <div className="min-h-screen pb-12">
+    <div className="min-h-screen pb-12 bg-gray-50 dark:bg-gray-900">
       {/* Header del curso */}
       <div className="bg-gradient-to-br from-maily via-maily to-maily-dark text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -217,7 +217,7 @@ const CourseView = () => {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Lista de módulos */}
           <div className="lg:col-span-2 space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
               Contenido del curso
             </h2>
 
@@ -243,17 +243,17 @@ const CourseView = () => {
                     {/* Header del módulo */}
                     <button
                       onClick={() => isUnlocked && toggleModule(module.id)}
-                      className={`w-full p-4 flex items-center justify-between ${isUnlocked ? 'hover:bg-gray-50' : 'cursor-not-allowed'} transition-colors`}
+                      className={`w-full p-4 flex items-center justify-between ${isUnlocked ? 'hover:bg-gray-50 dark:hover:bg-gray-700' : 'cursor-not-allowed'} transition-colors`}
                       disabled={!isUnlocked}
                     >
                       <div className="flex items-center gap-4">
                         <div className={`
                           w-12 h-12 rounded-xl flex items-center justify-center
                           ${isComplete
-                            ? 'bg-green-100 text-green-600'
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                             : isUnlocked
-                              ? 'bg-maily-light text-maily'
-                              : 'bg-gray-100 text-gray-400'
+                              ? 'bg-blue-100 dark:bg-blue-900/30 text-maily dark:text-blue-400'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
                           }
                         `}>
                           {isComplete ? (
@@ -265,13 +265,13 @@ const CourseView = () => {
                           )}
                         </div>
                         <div className="text-left">
-                          <h3 className="font-semibold text-gray-900">
+                          <h3 className="font-semibold text-gray-900 dark:text-white">
                             {module.title}
                           </h3>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             {completedLessons} de {module.lessons.length} lecciones
                             {hasCert && (
-                              <span className="ml-2 text-yellow-600">
+                              <span className="ml-2 text-yellow-600 dark:text-yellow-400">
                                 • Certificado obtenido
                               </span>
                             )}
@@ -286,9 +286,9 @@ const CourseView = () => {
                         )}
                         {isUnlocked && (
                           isExpanded ? (
-                            <ChevronUp className="w-5 h-5 text-gray-400" />
+                            <ChevronUp className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                           ) : (
-                            <ChevronDown className="w-5 h-5 text-gray-400" />
+                            <ChevronDown className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                           )
                         )}
                       </div>
@@ -297,9 +297,9 @@ const CourseView = () => {
                     {/* Progress bar del módulo */}
                     {isUnlocked && (
                       <div className="px-4 pb-2">
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                           <motion.div
-                            className="h-full bg-maily rounded-full"
+                            className="h-full bg-maily dark:bg-blue-500 rounded-full"
                             initial={{ width: 0 }}
                             animate={{ width: `${(completedLessons / module.lessons.length) * 100}%` }}
                             transition={{ duration: 0.5 }}
@@ -317,7 +317,7 @@ const CourseView = () => {
                           exit={{ height: 0 }}
                           className="overflow-hidden"
                         >
-                          <div className="border-t border-gray-100">
+                          <div className="border-t border-gray-100 dark:border-gray-700">
                             {module.lessons.map((lesson, lessonIndex) => {
                               const isLessonCompleted = getLessonStatus(module.id, lesson.id);
 
@@ -325,13 +325,13 @@ const CourseView = () => {
                                 <button
                                   key={lesson.id}
                                   onClick={() => navigate(`/course/${course.id}/lesson/${module.id}/${lesson.id}`)}
-                                  className="w-full p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-b-0"
+                                  className="w-full p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-50 dark:border-gray-700 last:border-b-0"
                                 >
                                   <div className={`
                                     w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
                                     ${isLessonCompleted
-                                      ? 'bg-green-100 text-green-600'
-                                      : 'bg-gray-100 text-gray-400'
+                                      ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                                      : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
                                     }
                                   `}>
                                     {isLessonCompleted ? (
@@ -341,11 +341,11 @@ const CourseView = () => {
                                     )}
                                   </div>
                                   <div className="flex-1 text-left">
-                                    <p className={`font-medium ${isLessonCompleted ? 'text-gray-500' : 'text-gray-900'}`}>
+                                    <p className={`font-medium ${isLessonCompleted ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
                                       {lesson.title}
                                     </p>
                                   </div>
-                                  <span className="text-sm text-gray-400">
+                                  <span className="text-sm text-gray-400 dark:text-gray-500">
                                     {lesson.duration}
                                   </span>
                                 </button>
@@ -355,16 +355,16 @@ const CourseView = () => {
                             {/* Quiz del módulo */}
                             <button
                               onClick={() => navigate(`/course/${course.id}/quiz/${module.id}`)}
-                              className="w-full p-4 flex items-center gap-4 bg-maily-light/50 hover:bg-maily-light transition-colors"
+                              className="w-full p-4 flex items-center gap-4 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                             >
-                              <div className="w-8 h-8 rounded-full bg-maily text-white flex items-center justify-center flex-shrink-0">
+                              <div className="w-8 h-8 rounded-full bg-maily dark:bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
                                 <FileText className="w-4 h-4" />
                               </div>
                               <div className="flex-1 text-left">
-                                <p className="font-medium text-maily">
+                                <p className="font-medium text-maily dark:text-blue-400">
                                   Quiz: {module.title}
                                 </p>
-                                <p className="text-sm text-maily/70">
+                                <p className="text-sm text-maily/70 dark:text-blue-400/70">
                                   {module.quiz.questions.length} preguntas • Puntaje mínimo: {module.quiz.passingScore}%
                                 </p>
                               </div>
@@ -388,16 +388,16 @@ const CourseView = () => {
           <div className="hidden lg:block">
             <div className="sticky top-24">
               <Card>
-                <h3 className="font-semibold text-gray-900 mb-6">Tu progreso</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-6">Tu progreso</h3>
 
                 {/* Timeline vertical */}
                 <div className="relative">
                   {/* Línea de fondo */}
-                  <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-gray-200" />
+                  <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-700" />
 
                   {/* Línea de progreso */}
                   <motion.div
-                    className="absolute left-4 top-4 w-0.5 bg-maily"
+                    className="absolute left-4 top-4 w-0.5 bg-maily dark:bg-blue-500"
                     initial={{ height: 0 }}
                     animate={{
                       height: `${(courseProgress?.completedModules || 0) / course.modules.length * 100}%`
@@ -420,10 +420,10 @@ const CourseView = () => {
                                 w-8 h-8 rounded-full flex items-center justify-center
                                 transition-all duration-300
                                 ${isComplete
-                                  ? 'bg-maily text-white shadow-lg shadow-maily/30'
+                                  ? 'bg-maily dark:bg-blue-600 text-white shadow-lg shadow-maily/30'
                                   : isCurrent
-                                    ? 'bg-white border-2 border-maily text-maily'
-                                    : 'bg-white border-2 border-gray-200 text-gray-400'
+                                    ? 'bg-white dark:bg-gray-800 border-2 border-maily dark:border-blue-500 text-maily dark:text-blue-400'
+                                    : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'
                                 }
                               `}
                               animate={isCurrent ? { scale: [1, 1.1, 1] } : {}}
@@ -447,19 +447,19 @@ const CourseView = () => {
                             <h4 className={`
                               text-sm font-medium
                               ${isComplete
-                                ? 'text-maily'
+                                ? 'text-maily dark:text-blue-400'
                                 : isCurrent
-                                  ? 'text-gray-900'
-                                  : 'text-gray-400'
+                                  ? 'text-gray-900 dark:text-white'
+                                  : 'text-gray-400 dark:text-gray-500'
                               }
                             `}>
                               {module.title.replace(/Módulo \d+: /, '')}
                             </h4>
-                            <p className="text-xs text-gray-400 mt-0.5">
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                               {module.lessons.length} lecciones
                             </p>
                             {hasCert && (
-                              <div className="flex items-center gap-1 mt-1 text-yellow-600">
+                              <div className="flex items-center gap-1 mt-1 text-yellow-600 dark:text-yellow-400">
                                 <Award className="w-3 h-3" />
                                 <span className="text-xs">Certificado</span>
                               </div>
@@ -472,21 +472,21 @@ const CourseView = () => {
                 </div>
 
                 {/* Resumen */}
-                <div className="mt-8 pt-6 border-t border-gray-100">
+                <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
                   <div className="grid grid-cols-2 gap-4 text-center">
                     <div>
-                      <p className="text-2xl font-bold text-maily">
+                      <p className="text-2xl font-bold text-maily dark:text-blue-400">
                         {courseProgress?.totalLessonsCompleted || 0}
                       </p>
-                      <p className="text-xs text-gray-500">Lecciones vistas</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Lecciones vistas</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-yellow-500">
+                      <p className="text-2xl font-bold text-yellow-500 dark:text-yellow-400">
                         {course.modules.filter((m, i) =>
                           hasCertificate(course.id, m.id)
                         ).length}
                       </p>
-                      <p className="text-xs text-gray-500">Certificados</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Certificados</p>
                     </div>
                   </div>
                 </div>

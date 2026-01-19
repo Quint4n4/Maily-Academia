@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -8,22 +9,29 @@ export default {
     extend: {
       colors: {
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
         },
+        // Azul como color principal (reemplaza maily)
         maily: {
-          light: '#E8F4F8',
-          DEFAULT: '#4A90A4',
-          dark: '#2D5F6E',
-          accent: '#FF7B54',
+          light: '#dbeafe',
+          DEFAULT: '#2563eb',
+          dark: '#1e40af',
+          accent: '#f97316', // Naranja como acento
+        },
+        // Naranja como color de acento
+        orange: {
+          light: '#ffedd5',
+          DEFAULT: '#f97316',
+          dark: '#ea580c',
         }
       },
       fontFamily: {

@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProgressProvider } from './context/ProgressContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { MainLayout } from './components/layout';
 import {
   Auth,
@@ -19,10 +20,10 @@ const ProtectedRoute = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-maily border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Cargando...</p>
+          <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
         </div>
       </div>
     );
@@ -41,10 +42,10 @@ const PublicRoute = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-maily border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Cargando...</p>
+          <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
         </div>
       </div>
     );
@@ -111,13 +112,15 @@ function AppRoutes() {
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <ProgressProvider>
-          <AppRoutes />
-        </ProgressProvider>
-      </AuthProvider>
-    </Router>
+    <ThemeProvider>
+      <Router>
+        <AuthProvider>
+          <ProgressProvider>
+            <AppRoutes />
+          </ProgressProvider>
+        </AuthProvider>
+      </Router>
+    </ThemeProvider>
   );
 }
 

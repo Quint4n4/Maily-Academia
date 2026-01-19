@@ -44,9 +44,9 @@ const QuizView = () => {
 
   if (!course || !module || !quiz) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Quiz no encontrado</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Quiz no encontrado</h2>
           <Button onClick={() => navigate('/dashboard')}>Volver al inicio</Button>
         </div>
       </div>
@@ -116,7 +116,7 @@ const QuizView = () => {
   // Vista de resultados
   if (showResults && quizResult) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
         <div className="max-w-2xl mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -169,6 +169,7 @@ const QuizView = () => {
                       r="70"
                       fill="none"
                       stroke="#E2E8F0"
+                      className="dark:stroke-gray-700"
                       strokeWidth="12"
                     />
                     <motion.circle
@@ -186,24 +187,24 @@ const QuizView = () => {
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
-                      <span className="text-4xl font-bold text-gray-900">
+                      <span className="text-4xl font-bold text-gray-900 dark:text-white">
                         {quizResult.score}%
                       </span>
-                      <p className="text-sm text-gray-500">Puntuación</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Puntuación</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex justify-center gap-8 mt-6">
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-green-500">{quizResult.correctAnswers}</p>
-                    <p className="text-sm text-gray-500">Correctas</p>
+                    <p className="text-2xl font-bold text-green-500 dark:text-green-400">{quizResult.correctAnswers}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Correctas</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-red-500">
+                    <p className="text-2xl font-bold text-red-500 dark:text-red-400">
                       {quizResult.totalQuestions - quizResult.correctAnswers}
                     </p>
-                    <p className="text-sm text-gray-500">Incorrectas</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Incorrectas</p>
                   </div>
                 </div>
               </div>
@@ -214,17 +215,17 @@ const QuizView = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
-                  className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6"
+                  className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4 mb-6"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-yellow-100 rounded-lg">
-                      <Award className="w-6 h-6 text-yellow-600" />
+                    <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                      <Award className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
                     </div>
                     <div className="text-left">
-                      <p className="font-semibold text-gray-900">
+                      <p className="font-semibold text-gray-900 dark:text-white">
                         ¡Certificado desbloqueado!
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         Has obtenido tu certificado de "{module.title}"
                       </p>
                     </div>
@@ -264,13 +265,13 @@ const QuizView = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <button
             onClick={() => navigate(`/course/${course.id}`)}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
             <span>Salir del quiz</span>
@@ -284,9 +285,9 @@ const QuizView = () => {
         </div>
 
         {/* Progress bar */}
-        <div className="h-1 bg-gray-200">
+        <div className="h-1 bg-gray-200 dark:bg-gray-700">
           <motion.div
-            className="h-full bg-maily"
+            className="h-full bg-maily dark:bg-blue-500"
             initial={{ width: 0 }}
             animate={{ width: `${((currentQuestion + 1) / questions.length) * 100}%` }}
             transition={{ duration: 0.3 }}
@@ -303,12 +304,12 @@ const QuizView = () => {
             animate={{ opacity: 1, y: 0 }}
             className="mb-6"
           >
-            <Card className="bg-maily-light/50 border-maily/20">
+            <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
               <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-maily mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-maily dark:text-blue-400 mt-0.5" />
                 <div>
-                  <p className="font-medium text-gray-900">Quiz: {module.title}</p>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="font-medium text-gray-900 dark:text-white">Quiz: {module.title}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     Necesitas obtener al menos {quiz.passingScore}% para aprobar y obtener tu certificado.
                   </p>
                 </div>
@@ -328,10 +329,10 @@ const QuizView = () => {
           >
             <Card>
               <div className="mb-6">
-                <span className="text-sm text-maily font-medium">
+                <span className="text-sm text-maily dark:text-blue-400 font-medium">
                   Pregunta {currentQuestion + 1}
                 </span>
-                <h2 className="text-xl font-semibold text-gray-900 mt-2">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-2">
                   {currentQ.question}
                 </h2>
               </div>
@@ -348,8 +349,8 @@ const QuizView = () => {
                       className={`
                         w-full p-4 rounded-xl border-2 text-left transition-all
                         ${isSelected
-                          ? 'border-maily bg-maily-light'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          ? 'border-maily dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
                         }
                       `}
                       whileHover={{ scale: 1.01 }}
@@ -359,13 +360,13 @@ const QuizView = () => {
                         <div className={`
                           w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0
                           ${isSelected
-                            ? 'border-maily bg-maily text-white'
-                            : 'border-gray-300'
+                            ? 'border-maily dark:border-blue-500 bg-maily dark:bg-blue-600 text-white'
+                            : 'border-gray-300 dark:border-gray-600'
                           }
                         `}>
                           {isSelected && <CheckCircle className="w-4 h-4" />}
                         </div>
-                        <span className={isSelected ? 'text-maily font-medium' : 'text-gray-700'}>
+                        <span className={isSelected ? 'text-maily dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300'}>
                           {option}
                         </span>
                       </div>
@@ -397,10 +398,10 @@ const QuizView = () => {
                 className={`
                   w-8 h-8 rounded-full text-sm font-medium transition-all
                   ${currentQuestion === index
-                    ? 'bg-maily text-white'
+                    ? 'bg-maily dark:bg-blue-600 text-white'
                     : selectedAnswers[q.id] !== undefined
-                      ? 'bg-maily-light text-maily'
-                      : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-maily dark:text-blue-400'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
                   }
                 `}
               >
@@ -433,7 +434,7 @@ const QuizView = () => {
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center text-amber-600 mt-4 text-sm"
+            className="text-center text-amber-600 dark:text-amber-400 mt-4 text-sm"
           >
             Debes responder todas las preguntas antes de enviar
           </motion.p>

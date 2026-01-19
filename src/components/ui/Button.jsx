@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion';
 
 const variants = {
-  primary: 'bg-maily text-white hover:bg-maily-dark',
-  secondary: 'bg-white text-maily border-2 border-maily hover:bg-maily-light',
-  accent: 'bg-maily-accent text-white hover:bg-orange-600',
-  ghost: 'bg-transparent text-maily hover:bg-maily-light',
-  danger: 'bg-red-500 text-white hover:bg-red-600'
+  primary: 'bg-maily dark:bg-blue-600 text-white hover:bg-maily-dark dark:hover:bg-blue-700',
+  secondary: 'bg-white dark:bg-gray-800 text-maily dark:text-blue-400 border-2 border-maily dark:border-blue-600 hover:bg-maily-light dark:hover:bg-blue-900/30',
+  accent: 'bg-orange-500 dark:bg-orange-600 text-white hover:bg-orange-600 dark:hover:bg-orange-700',
+  ghost: 'bg-transparent text-maily dark:text-blue-400 hover:bg-maily-light dark:hover:bg-blue-900/30',
+  danger: 'bg-red-500 dark:bg-red-600 text-white hover:bg-red-600 dark:hover:bg-red-700'
 };
 
 const sizes = {

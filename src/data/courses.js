@@ -21,7 +21,7 @@ export const coursesData = [
             id: 1,
             title: "Bienvenida al curso",
             duration: "5:30",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Introducción al curso y objetivos de aprendizaje",
             completed: false
           },
@@ -29,7 +29,7 @@ export const coursesData = [
             id: 2,
             title: "Instalación del software",
             duration: "12:45",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Guía paso a paso para instalar Maily en tu computadora",
             completed: false
           },
@@ -37,7 +37,7 @@ export const coursesData = [
             id: 3,
             title: "Conociendo la interfaz",
             duration: "18:20",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Tour completo por la interfaz principal del software",
             completed: false
           },
@@ -45,7 +45,7 @@ export const coursesData = [
             id: 4,
             title: "Configuración inicial",
             duration: "10:15",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Personaliza tu entorno de trabajo según tus necesidades",
             completed: false
           }
@@ -100,7 +100,7 @@ export const coursesData = [
             id: 5,
             title: "Creando tu primer proyecto",
             duration: "15:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Aprende a crear y gestionar proyectos desde cero",
             completed: false
           },
@@ -108,7 +108,7 @@ export const coursesData = [
             id: 6,
             title: "Importación de datos",
             duration: "20:30",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Cómo importar información de diferentes fuentes",
             completed: false
           },
@@ -116,7 +116,7 @@ export const coursesData = [
             id: 7,
             title: "Navegación y búsqueda",
             duration: "12:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Técnicas para encontrar rápidamente lo que necesitas",
             completed: false
           },
@@ -124,7 +124,7 @@ export const coursesData = [
             id: 8,
             title: "Edición básica de registros",
             duration: "18:45",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Modifica y actualiza información de manera eficiente",
             completed: false
           }
@@ -179,7 +179,7 @@ export const coursesData = [
             id: 9,
             title: "Generación de reportes básicos",
             duration: "16:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Crea reportes estandarizados de forma rápida",
             completed: false
           },
@@ -187,7 +187,7 @@ export const coursesData = [
             id: 10,
             title: "Personalización de reportes",
             duration: "22:15",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Adapta los reportes a tus necesidades específicas",
             completed: false
           },
@@ -195,7 +195,7 @@ export const coursesData = [
             id: 11,
             title: "Exportación en diferentes formatos",
             duration: "14:30",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "PDF, Excel, y otros formatos de exportación",
             completed: false
           },
@@ -203,7 +203,7 @@ export const coursesData = [
             id: 12,
             title: "Compartir y colaborar",
             duration: "11:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Trabaja en equipo y comparte tu trabajo fácilmente",
             completed: false
           }
@@ -272,7 +272,7 @@ export const coursesData = [
             id: 1,
             title: "Introducción a las automatizaciones",
             duration: "10:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Qué son y cómo pueden ayudarte",
             completed: false
           },
@@ -280,7 +280,7 @@ export const coursesData = [
             id: 2,
             title: "Creando tu primera automatización",
             duration: "25:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Paso a paso para crear flujos automáticos",
             completed: false
           },
@@ -288,7 +288,7 @@ export const coursesData = [
             id: 3,
             title: "Triggers y condiciones",
             duration: "20:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Configura cuándo y cómo se ejecutan",
             completed: false
           },
@@ -296,7 +296,7 @@ export const coursesData = [
             id: 4,
             title: "Casos de uso prácticos",
             duration: "30:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Ejemplos reales de automatización",
             completed: false
           },
@@ -304,7 +304,7 @@ export const coursesData = [
             id: 5,
             title: "Solución de problemas comunes",
             duration: "15:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Debugging y optimización",
             completed: false
           }
@@ -359,7 +359,7 @@ export const coursesData = [
             id: 6,
             title: "Visión general de integraciones",
             duration: "12:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Herramientas compatibles con Maily",
             completed: false
           },
@@ -367,7 +367,7 @@ export const coursesData = [
             id: 7,
             title: "Integración con Excel",
             duration: "18:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Sincronización bidireccional",
             completed: false
           },
@@ -375,7 +375,7 @@ export const coursesData = [
             id: 8,
             title: "Integración con Google Workspace",
             duration: "20:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Calendar, Drive y más",
             completed: false
           },
@@ -383,7 +383,7 @@ export const coursesData = [
             id: 9,
             title: "APIs y webhooks",
             duration: "25:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Para desarrolladores y usuarios avanzados",
             completed: false
           },
@@ -391,7 +391,7 @@ export const coursesData = [
             id: 10,
             title: "Casos de integración empresarial",
             duration: "22:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Ejemplos de grandes implementaciones",
             completed: false
           }
@@ -446,7 +446,7 @@ export const coursesData = [
             id: 11,
             title: "Creación de dashboards",
             duration: "28:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Visualiza tus datos de forma efectiva",
             completed: false
           },
@@ -454,7 +454,7 @@ export const coursesData = [
             id: 12,
             title: "KPIs y métricas personalizadas",
             duration: "22:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Define lo que realmente importa medir",
             completed: false
           },
@@ -462,7 +462,7 @@ export const coursesData = [
             id: 13,
             title: "Filtros y segmentación avanzada",
             duration: "18:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Analiza datos específicos",
             completed: false
           },
@@ -470,7 +470,7 @@ export const coursesData = [
             id: 14,
             title: "Exportación de análisis",
             duration: "15:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Comparte insights con tu equipo",
             completed: false
           },
@@ -478,7 +478,7 @@ export const coursesData = [
             id: 15,
             title: "Mejores prácticas de análisis",
             duration: "20:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Consejos de expertos",
             completed: false
           }
@@ -547,7 +547,7 @@ export const coursesData = [
             id: 1,
             title: "Roles y permisos",
             duration: "20:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Configura quién puede hacer qué",
             completed: false
           },
@@ -555,7 +555,7 @@ export const coursesData = [
             id: 2,
             title: "Invitar miembros al equipo",
             duration: "10:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Proceso de onboarding de nuevos usuarios",
             completed: false
           },
@@ -563,7 +563,7 @@ export const coursesData = [
             id: 3,
             title: "Grupos de trabajo",
             duration: "15:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Organiza tu equipo en grupos",
             completed: false
           }
@@ -613,7 +613,7 @@ export const coursesData = [
             id: 4,
             title: "Edición colaborativa",
             duration: "18:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Múltiples usuarios editando al mismo tiempo",
             completed: false
           },
@@ -621,7 +621,7 @@ export const coursesData = [
             id: 5,
             title: "Comentarios y menciones",
             duration: "12:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Comunícate dentro del software",
             completed: false
           },
@@ -629,7 +629,7 @@ export const coursesData = [
             id: 6,
             title: "Historial de cambios",
             duration: "15:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Rastrea quién hizo qué y cuándo",
             completed: false
           }
@@ -674,7 +674,7 @@ export const coursesData = [
             id: 7,
             title: "Dashboard de actividad",
             duration: "20:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Visualiza la actividad de tu equipo",
             completed: false
           },
@@ -682,7 +682,7 @@ export const coursesData = [
             id: 8,
             title: "Reportes de productividad",
             duration: "18:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Métricas de desempeño",
             completed: false
           },
@@ -690,7 +690,7 @@ export const coursesData = [
             id: 9,
             title: "Exportación y presentación",
             duration: "12:00",
-            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            videoUrl: "https://www.youtube.com/embed/8mAITcNt710",
             description: "Comparte resultados con stakeholders",
             completed: false
           }

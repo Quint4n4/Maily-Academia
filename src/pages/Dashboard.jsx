@@ -125,7 +125,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen pb-12">
       {/* Header con saludo */}
-      <div className="bg-gradient-to-br from-maily via-maily to-maily-dark text-white">
+      <div className="bg-gradient-to-br from-blue-600 via-blue-600 to-blue-800 dark:from-blue-700 dark:via-blue-800 dark:to-blue-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -147,18 +147,18 @@ const Dashboard = () => {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8"
         >
           {statCards.map((stat, index) => (
             <motion.div key={index} variants={itemVariants}>
               <Card className="relative overflow-hidden">
-                <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-xl ${stat.lightColor}`}>
-                    <stat.icon className={`w-6 h-6 ${stat.color.replace('bg-', 'text-')}`} />
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <div className={`p-2 sm:p-3 rounded-xl ${stat.lightColor} flex-shrink-0`}>
+                    <stat.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.color.replace('bg-', 'text-')}`} />
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                    <p className="text-sm text-gray-500">{stat.label}</p>
+                  <div className="min-w-0">
+                    <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">{stat.label}</p>
                   </div>
                 </div>
                 <div className={`absolute -right-4 -bottom-4 w-20 h-20 ${stat.color} opacity-5 rounded-full`} />
@@ -179,12 +179,12 @@ const Dashboard = () => {
                 transition={{ delay: 0.3 }}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                     Continuar aprendiendo
                   </h2>
                   <Link
                     to="/courses"
-                    className="text-maily hover:text-maily-dark text-sm font-medium flex items-center gap-1"
+                    className="text-maily dark:text-blue-400 hover:text-maily-dark dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1"
                   >
                     Ver todos
                     <ChevronRight className="w-4 h-4" />
@@ -203,10 +203,10 @@ const Dashboard = () => {
                           <Badge variant="primary" size="sm" className="mb-2">
                             {course.level}
                           </Badge>
-                          <h3 className="font-semibold text-gray-900 truncate">
+                          <h3 className="font-semibold text-gray-900 dark:text-white truncate">
                             {course.title}
                           </h3>
-                          <p className="text-sm text-gray-500 mt-1">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             Módulo {course.progress.completedModules + 1} de {course.progress.totalModules}
                           </p>
                           <div className="mt-3">
@@ -217,7 +217,7 @@ const Dashboard = () => {
                             />
                           </div>
                         </div>
-                        <button className="self-center p-3 bg-maily text-white rounded-full hover:bg-maily-dark transition-colors">
+                        <button className="self-center p-3 bg-maily dark:bg-blue-600 text-white rounded-full hover:bg-maily-dark dark:hover:bg-blue-700 transition-colors">
                           <Play className="w-5 h-5" />
                         </button>
                       </Card>
@@ -234,11 +234,11 @@ const Dashboard = () => {
               transition={{ delay: 0.4 }}
             >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                   Explora nuestros cursos
                 </h2>
               </div>
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                 {coursesData.map((course, index) => {
                   const lessonsPerModule = {};
                   course.modules.forEach(m => {
@@ -262,9 +262,9 @@ const Dashboard = () => {
                               className="w-full h-40 object-cover"
                             />
                             {courseProgress.percentage > 0 && (
-                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200">
+                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700">
                                 <div
-                                  className="h-full bg-maily transition-all"
+                                  className="h-full bg-maily dark:bg-blue-500 transition-all"
                                   style={{ width: `${courseProgress.percentage}%` }}
                                 />
                               </div>
@@ -279,14 +279,14 @@ const Dashboard = () => {
                             </div>
                           </div>
                           <div className="p-4">
-                            <h3 className="font-semibold text-gray-900 line-clamp-1">
+                            <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1">
                               {course.title}
                             </h3>
-                            <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
                               {course.description}
                             </p>
-                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                              <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                              <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                                 <span className="flex items-center gap-1">
                                   <Clock className="w-4 h-4" />
                                   {course.duration}
@@ -320,9 +320,9 @@ const Dashboard = () => {
               transition={{ delay: 0.5 }}
             >
               <Card>
-                <h3 className="font-semibold text-gray-900 mb-4">Tu progreso general</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Tu progreso general</h3>
                 <div className="space-y-4">
-                  <div className="text-center p-6 bg-gradient-to-br from-maily-light to-white rounded-xl">
+                  <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-white dark:from-blue-900/20 dark:to-gray-800 rounded-xl">
                     <div className="relative w-24 h-24 mx-auto mb-3">
                       <svg className="w-full h-full transform -rotate-90">
                         <circle
@@ -331,6 +331,7 @@ const Dashboard = () => {
                           r="40"
                           fill="none"
                           stroke="#E2E8F0"
+                          className="dark:stroke-gray-700"
                           strokeWidth="8"
                         />
                         <circle
@@ -338,31 +339,32 @@ const Dashboard = () => {
                           cy="48"
                           r="40"
                           fill="none"
-                          stroke="#4A90A4"
+                          stroke="#2563eb"
+                          className="dark:stroke-blue-500"
                           strokeWidth="8"
                           strokeLinecap="round"
                           strokeDasharray={`${(stats.coursesStarted > 0 ? (stats.coursesCompleted / coursesData.length) : 0) * 251.2} 251.2`}
                         />
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-maily">
+                        <span className="text-2xl font-bold text-maily dark:text-blue-400">
                           {Math.round((stats.coursesCompleted / coursesData.length) * 100)}%
                         </span>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {stats.coursesCompleted} de {coursesData.length} cursos completados
                     </p>
                   </div>
 
                   {stats.streak > 0 && (
-                    <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
-                      <div className="p-2 bg-orange-100 rounded-lg">
-                        <Flame className="w-5 h-5 text-orange-500" />
+                    <div className="flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
+                      <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                        <Flame className="w-5 h-5 text-orange-500 dark:text-orange-400" />
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{stats.streak} días seguidos</p>
-                        <p className="text-xs text-gray-500">¡Sigue así!</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{stats.streak} días seguidos</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">¡Sigue así!</p>
                       </div>
                     </div>
                   )}
@@ -379,8 +381,8 @@ const Dashboard = () => {
               >
                 <Card>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-gray-900">Certificados recientes</h3>
-                    <Link to="/certificates" className="text-maily text-sm hover:text-maily-dark">
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Certificados recientes</h3>
+                    <Link to="/certificates" className="text-maily dark:text-blue-400 text-sm hover:text-maily-dark dark:hover:text-blue-300">
                       Ver todos
                     </Link>
                   </div>
@@ -388,16 +390,16 @@ const Dashboard = () => {
                     {progress.certificates.slice(-3).reverse().map((cert, index) => (
                       <div
                         key={cert.id}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"
+                        className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl"
                       >
-                        <div className="p-2 bg-yellow-100 rounded-lg">
-                          <Award className="w-4 h-4 text-yellow-600" />
+                        <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                          <Award className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                             {cert.moduleTitle}
                           </p>
-                          <p className="text-xs text-gray-500">{cert.courseTitle}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{cert.courseTitle}</p>
                         </div>
                       </div>
                     ))}
@@ -413,18 +415,18 @@ const Dashboard = () => {
               transition={{ delay: 0.7 }}
             >
               <Card>
-                <h3 className="font-semibold text-gray-900 mb-4">Nuestros instructores</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Nuestros instructores</h3>
                 <div className="space-y-3">
                   {[...new Set(coursesData.map(c => c.instructor))].map((instructor, index) => (
                     <div key={index} className="flex items-center gap-3">
                       <img
-                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(instructor)}&background=4A90A4&color=fff`}
+                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(instructor)}&background=2563eb&color=fff`}
                         alt={instructor}
                         className="w-10 h-10 rounded-full"
                       />
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{instructor}</p>
-                        <p className="text-xs text-gray-500">Instructor certificado</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">{instructor}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Instructor certificado</p>
                       </div>
                     </div>
                   ))}

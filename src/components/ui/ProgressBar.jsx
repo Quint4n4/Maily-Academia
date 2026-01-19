@@ -17,21 +17,21 @@ export const ProgressBar = ({
   };
 
   const colors = {
-    maily: 'bg-maily',
-    accent: 'bg-maily-accent',
-    green: 'bg-green-500',
-    blue: 'bg-blue-500'
+    maily: 'bg-maily dark:bg-blue-500',
+    accent: 'bg-orange-500 dark:bg-orange-600',
+    green: 'bg-green-500 dark:bg-green-600',
+    blue: 'bg-blue-500 dark:bg-blue-600'
   };
 
   return (
     <div className={`w-full ${className}`}>
       {showLabel && (
         <div className="flex justify-between items-center mb-1.5">
-          <span className="text-sm font-medium text-gray-600">Progreso</span>
-          <span className="text-sm font-semibold text-maily">{percentage}%</span>
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Progreso</span>
+          <span className="text-sm font-semibold text-maily dark:text-blue-400">{percentage}%</span>
         </div>
       )}
-      <div className={`w-full ${sizes[size]} bg-gray-200 rounded-full overflow-hidden`}>
+      <div className={`w-full ${sizes[size]} bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden`}>
         <motion.div
           className={`h-full ${colors[color]} rounded-full`}
           initial={{ width: 0 }}
@@ -54,11 +54,11 @@ export const VerticalProgress = ({
   return (
     <div className={`relative ${className}`}>
       {/* Línea de conexión */}
-      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200" />
+      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
 
       {/* Línea de progreso */}
       <motion.div
-        className="absolute left-4 top-0 w-0.5 bg-maily"
+        className="absolute left-4 top-0 w-0.5 bg-maily dark:bg-blue-500"
         initial={{ height: 0 }}
         animate={{
           height: `${(completedSteps.length / steps.length) * 100}%`
@@ -88,10 +88,10 @@ export const VerticalProgress = ({
                     w-8 h-8 rounded-full flex items-center justify-center
                     transition-all duration-300
                     ${isCompleted
-                      ? 'bg-maily text-white'
+                      ? 'bg-maily dark:bg-blue-600 text-white'
                       : isCurrent
-                        ? 'bg-maily-light border-2 border-maily text-maily'
-                        : 'bg-white border-2 border-gray-300 text-gray-400'
+                        ? 'bg-blue-100 dark:bg-blue-900/30 border-2 border-maily dark:border-blue-500 text-maily dark:text-blue-400'
+                        : 'bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500'
                     }
                   `}
                   whileHover={{ scale: 1.1 }}
@@ -111,7 +111,7 @@ export const VerticalProgress = ({
 
                 {/* Pulse para el paso actual */}
                 {isCurrent && (
-                  <div className="absolute inset-0 rounded-full bg-maily/30 animate-ping" />
+                  <div className="absolute inset-0 rounded-full bg-maily/30 dark:bg-blue-500/30 animate-ping" />
                 )}
               </div>
 
@@ -119,13 +119,13 @@ export const VerticalProgress = ({
               <div className="flex-1 pt-1">
                 <h4 className={`
                   font-medium transition-colors
-                  ${isCompleted ? 'text-maily' : isCurrent ? 'text-gray-900' : 'text-gray-500'}
-                  group-hover:text-maily
+                  ${isCompleted ? 'text-maily dark:text-blue-400' : isCurrent ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}
+                  group-hover:text-maily dark:group-hover:text-blue-400
                 `}>
                   {step.title}
                 </h4>
                 {step.duration && (
-                  <p className="text-sm text-gray-400 mt-0.5">{step.duration}</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">{step.duration}</p>
                 )}
               </div>
 
