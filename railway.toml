@@ -1,0 +1,10 @@
+# Configuración para desplegar Maily Academia en Railway (plan Hobby)
+# https://docs.railway.com/config-as-code
+
+[build]
+buildCommand = "npm run build"
+
+[deploy]
+startCommand = "npm run start"
+healthcheckPath = "/"
+healthcheckTimeout = 30

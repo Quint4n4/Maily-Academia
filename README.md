@@ -1,6 +1,10 @@
-# React + Vite
+# Maily Academia
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Plataforma de cursos (React + Vite). Lista para desplegar en **Railway** (plan Hobby).
+
+- **Desarrollo:** `npm run dev`
+- **Producción (build):** `npm run build`
+- **Despliegue en Railway:** ver [DEPLOY.md](./DEPLOY.md)
 
 Currently, two official plugins are available:
 

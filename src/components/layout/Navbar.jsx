@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Heart,
   Home,
   BookOpen,
   Award,
@@ -17,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import logoMaily from '../../../Logos/logomaily.png';
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -45,12 +45,14 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-maily to-maily-dark rounded-xl flex items-center justify-center shadow-lg shadow-maily/20">
-              <Heart className="w-5 h-5 text-white" />
-            </div>
+            <img
+              src={logoMaily}
+              alt="Maily Academia"
+              className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-maily/20"
+            />
             <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-gray-900 dark:text-white">Cursos Maily</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-0.5">Te Cuida</p>
+              <h1 className="text-lg font-bold text-gray-900 dark:text-white">Maily Academia</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-0.5">Plataforma de cursos</p>
             </div>
           </Link>
 

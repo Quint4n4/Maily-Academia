@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User, ArrowRight, Heart, BookOpen, Award, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import logoMaily from '../../Logos/logomaily.png';
 import { Button, Input } from '../components/ui';
 
 const Auth = () => {
@@ -112,12 +113,14 @@ const Auth = () => {
             transition={{ delay: 0.2 }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <Heart className="w-7 h-7" />
-              </div>
+              <img
+                src={logoMaily}
+                alt="Maily Academia"
+                className="w-12 h-12 rounded-xl object-contain bg-white/20 backdrop-blur-sm"
+              />
               <div>
-                <h1 className="text-2xl font-bold">Cursos Maily</h1>
-                <p className="text-white/70 text-sm">Te Cuida</p>
+                <h1 className="text-2xl font-bold">Maily Academia</h1>
+                <p className="text-white/70 text-sm">Plataforma de cursos</p>
               </div>
             </div>
           </motion.div>
@@ -163,7 +166,7 @@ const Auth = () => {
             transition={{ delay: 1 }}
             className="text-white/60 text-sm"
           >
-            © 2024 Maily Te Cuida. Todos los derechos reservados.
+            © 2024 Maily Academia. Todos los derechos reservados.
           </motion.div>
         </div>
       </div>
@@ -177,12 +180,14 @@ const Auth = () => {
         >
           {/* Logo móvil */}
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <div className="w-10 h-10 bg-maily dark:bg-blue-600 rounded-xl flex items-center justify-center">
-              <Heart className="w-6 h-6 text-white" />
-            </div>
+            <img
+              src={logoMaily}
+              alt="Maily Academia"
+              className="w-10 h-10 rounded-xl object-contain"
+            />
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Cursos Maily</h1>
-              <p className="text-gray-500 dark:text-gray-400 text-xs">Te Cuida</p>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Maily Academia</h1>
+              <p className="text-gray-500 dark:text-gray-400 text-xs">Plataforma de cursos</p>
             </div>
           </div>
 
