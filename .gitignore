@@ -1,0 +1,26 @@
+# Python / Django
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/**/*.pyo
+backend/.env
+backend/db.sqlite3
+backend/staticfiles/
+*.pyc
+*.pyo
+
+# Node / React
+cursos-maily/node_modules/
+cursos-maily/dist/
+cursos-maily/.env
+cursos-maily/.env.local
+cursos-maily/.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

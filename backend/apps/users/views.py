@@ -1,0 +1,336 @@
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
+from django.utils import timezone
+from rest_framework import generics, status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+from .models import PasswordResetToken
+from .permissions import IsAdmin
+from .serializers import (
+    RegisterSerializer,
+    MeSerializer,
+    UserSerializer,
+    InstructorCreateSerializer,
+    AdminUserSerializer,
+    ChangePasswordSerializer,
+)
+from .throttles import AuthRateThrottle
+
+User = get_user_model()
+
+
+# ---------------------------------------------------------------------------
+# Auth endpoints (public)
+# ---------------------------------------------------------------------------
+
+class SecureLoginView(TokenObtainPairView):
+    """Login con rate limiting y bloqueo de cuenta por intentos fallidos."""
+    throttle_classes = [AuthRateThrottle]
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        user = User.objects.filter(email=email).first()
+
+        if user:
+            # Verificar si la cuenta está bloqueada
+            if user.is_locked:
+                remaining = user.get_lockout_remaining_minutes()
+                return Response({
+                    'error': 'account_locked',
+                    'message': f'Cuenta bloqueada por demasiados intentos fallidos. Intenta de nuevo en {remaining} minutos o contacta al administrador.',
+                    'locked_until': user.locked_until.isoformat(),
+                    'remaining_minutes': remaining,
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            # Si el bloqueo expiró, desbloquear automáticamente
+            if user.locked_until and user.locked_until <= timezone.now():
+                user.reset_login_attempts()
+
+        # Intentar login normal
+        try:
+            response = super().post(request, *args, **kwargs)
+            # Login exitoso: resetear intentos
+            if user and user.is_active:
+                user.reset_login_attempts()
+            return response
+        except Exception as e:
+            # Login fallido: incrementar intentos si el usuario existe
+            if user and user.is_active:
+                user.increment_failed_attempts()
+                
+                # Recargar el usuario para obtener los valores actualizados
+                user.refresh_from_db()
+                
+                # Verificar si ahora está bloqueado
+                if user.is_locked:
+                    return Response({
+                        'error': 'account_locked',
+                        'message': f'Cuenta bloqueada por demasiados intentos fallidos. Intenta de nuevo en {user.get_lockout_remaining_minutes()} minutos o contacta al administrador.',
+                        'locked_until': user.locked_until.isoformat(),
+                        'remaining_minutes': user.get_lockout_remaining_minutes(),
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Informar intentos restantes
+                remaining_attempts = User.MAX_LOGIN_ATTEMPTS - user.failed_login_attempts
+                return Response({
+                    'detail': 'Correo o contraseña incorrectos.',
+                    'remaining_attempts': remaining_attempts,
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            
+            # Usuario no existe o no está activo
+            return Response({
+                'detail': 'Correo o contraseña incorrectos.',
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+
+class RegisterView(generics.CreateAPIView):
+    """POST /api/auth/register/ – Register a new student."""
+
+    serializer_class = RegisterSerializer
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            UserSerializer(user).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class MeView(generics.RetrieveUpdateAPIView):
+    """GET/PATCH /api/auth/me/ – View or update the current user's profile."""
+
+    serializer_class = MeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+
+# ---------------------------------------------------------------------------
+# Admin-only user management
+# ---------------------------------------------------------------------------
+
+class UserListView(generics.ListAPIView):
+    """GET /api/users/ – List all users (admin only)."""
+
+    queryset = User.objects.all()
+    serializer_class = AdminUserSerializer
+    permission_classes = [IsAdmin]
+    filterset_fields = ['role', 'is_active']
+    search_fields = ['email', 'first_name', 'last_name', 'username']
+
+
+class InstructorCreateView(generics.CreateAPIView):
+    """POST /api/users/instructors/ – Create a new instructor (admin only)."""
+
+    serializer_class = InstructorCreateSerializer
+    permission_classes = [IsAdmin]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            UserSerializer(user).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET/PATCH/DELETE /api/users/{id}/ – Manage a user (admin only).
+
+    DELETE performs a soft-delete by setting is_active=False.
+    """
+
+    queryset = User.objects.all()
+    serializer_class = AdminUserSerializer
+    permission_classes = [IsAdmin]
+
+    def perform_destroy(self, instance):
+        instance.is_active = False
+        instance.save()
+
+
+class AdminChangePasswordView(APIView):
+    """POST /api/users/{id}/change-password/ – Cambiar contraseña de usuario (admin only)."""
+    
+    permission_classes = [IsAdmin]
+
+    def post(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+        
+        return Response({
+            'message': 'Contraseña actualizada correctamente.',
+            'user_id': user.id,
+            'user_email': user.email,
+        }, status=status.HTTP_200_OK)
+
+
+class AdminUnlockAccountView(APIView):
+    """POST /api/users/{id}/unlock/ – Desbloquear cuenta de usuario (admin only)."""
+    
+    permission_classes = [IsAdmin]
+
+    def post(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        
+        if not user.is_locked and user.failed_login_attempts == 0:
+            return Response({
+                'message': 'La cuenta no está bloqueada.',
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        user.reset_login_attempts()
+        
+        return Response({
+            'message': 'Cuenta desbloqueada correctamente.',
+            'user_id': user.id,
+            'user_email': user.email,
+        }, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------------------
+# Password Reset (public)
+# ---------------------------------------------------------------------------
+
+class RequestPasswordResetView(APIView):
+    """POST /api/auth/password-reset/request/ – Solicitar recuperación de contraseña."""
+    
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]
+
+    def post(self, request):
+        email = request.data.get('email', '').strip().lower()
+        
+        if not email:
+            return Response({
+                'error': 'El correo electrónico es requerido.',
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Siempre responder con éxito para no revelar si el email existe
+        success_message = {
+            'message': 'Si el correo existe en nuestro sistema, recibirás un enlace de recuperación.',
+        }
+        
+        user = User.objects.filter(email=email, is_active=True).first()
+        
+        if not user:
+            return Response(success_message, status=status.HTTP_200_OK)
+        
+        # Invalidar tokens anteriores no usados
+        PasswordResetToken.objects.filter(user=user, used=False).update(used=True)
+        
+        # Crear nuevo token
+        token = PasswordResetToken.objects.create(user=user)
+        
+        # Construir URL de reset
+        reset_url = f"{settings.FRONTEND_URL}/reset-password/{token.token}"
+        
+        # Enviar email
+        subject = 'Recuperación de contraseña - Maily Academia'
+        message = f"""
+Hola {user.first_name or user.email},
+
+Recibimos una solicitud para restablecer tu contraseña en Maily Academia.
+
+Haz clic en el siguiente enlace para crear una nueva contraseña:
+{reset_url}
+
+Este enlace expirará en 1 hora.
+
+Si no solicitaste este cambio, puedes ignorar este correo.
+
+Saludos,
+El equipo de Maily Academia
+"""
+        
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            # Log del error pero no revelar al usuario
+            print(f"Error enviando email de recuperación: {e}")
+        
+        return Response(success_message, status=status.HTTP_200_OK)
+
+
+class ConfirmPasswordResetView(APIView):
+    """POST /api/auth/password-reset/confirm/ – Confirmar nueva contraseña."""
+    
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        token_str = request.data.get('token', '')
+        new_password = request.data.get('new_password', '')
+        confirm_password = request.data.get('confirm_password', '')
+        
+        # Validaciones
+        if not token_str:
+            return Response({
+                'error': 'El token es requerido.',
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not new_password:
+            return Response({
+                'error': 'La nueva contraseña es requerida.',
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if new_password != confirm_password:
+            return Response({
+                'error': 'Las contraseñas no coinciden.',
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if len(new_password) < 8:
+            return Response({
+                'error': 'La contraseña debe tener al menos 8 caracteres.',
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Buscar token
+        try:
+            token = PasswordResetToken.objects.get(token=token_str)
+        except PasswordResetToken.DoesNotExist:
+            return Response({
+                'error': 'Token inválido o expirado.',
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar validez
+        if not token.is_valid:
+            return Response({
+                'error': 'Token inválido o expirado.',
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Cambiar contraseña
+        user = token.user
+        user.set_password(new_password)
+        user.save()
+        
+        # Marcar token como usado
+        token.used = True
+        token.save()
+        
+        # Desbloquear cuenta si estaba bloqueada
+        if user.is_locked or user.failed_login_attempts > 0:
+            user.reset_login_attempts()
+        
+        return Response({
+            'message': 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.',
+        }, status=status.HTTP_200_OK)
