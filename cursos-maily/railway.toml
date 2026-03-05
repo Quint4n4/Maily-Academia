@@ -1,10 +1,13 @@
-# Configuración para desplegar Maily Academia en Railway (plan Hobby)
+# Configuración para desplegar el Frontend de Maily Academia en Railway
 # https://docs.railway.com/config-as-code
 
 [build]
-buildCommand = "npm run build"
+builder = "nixpacks"
+buildCommand = "npm install && npm run build"
 
 [deploy]
 startCommand = "npm run start"
 healthcheckPath = "/"
 healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
