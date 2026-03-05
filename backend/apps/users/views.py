@@ -98,11 +98,13 @@ class SecureLoginView(TokenObtainPairView):
                     section_slugs = sorted(set(section_slugs))
 
                     if isinstance(response.data, dict):
+                        # Superusers y staff se exponen como 'admin' para el frontend
+                        effective_role = 'admin' if (user.is_superuser or user.is_staff) else user.role
                         response.data['redirect_section'] = redirect_section
                         response.data['user'] = {
                             'id': user.id,
                             'email': user.email,
-                            'role': user.role,
+                            'role': effective_role,
                             'is_super_admin': getattr(user, 'is_super_admin', False),
                             'sections': section_slugs,
                         }

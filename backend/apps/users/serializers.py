@@ -182,6 +182,7 @@ class MeSerializer(serializers.ModelSerializer):
 
     profile = ProfileSerializer()
     instructor_section = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -190,6 +191,12 @@ class MeSerializer(serializers.ModelSerializer):
             'role', 'is_super_admin', 'date_joined', 'profile', 'instructor_section',
         ]
         read_only_fields = ['id', 'email', 'role', 'is_super_admin', 'date_joined']
+
+    def get_role(self, obj):
+        """Superusers y staff se exponen como 'admin' para el frontend."""
+        if obj.is_superuser or obj.is_staff:
+            return User.Role.ADMIN
+        return obj.role
 
     def get_instructor_section(self, obj):
         if obj.role != User.Role.INSTRUCTOR:
