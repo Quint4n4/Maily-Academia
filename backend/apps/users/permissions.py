@@ -2,10 +2,16 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
 class IsAdmin(BasePermission):
-    """Allow access only to admin users."""
+    """Allow access only to admin users (role admin, superuser or staff)."""
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == 'admin'
+        if not request.user.is_authenticated:
+            return False
+        return (
+            request.user.role == 'admin'
+            or request.user.is_superuser
+            or request.user.is_staff
+        )
 
 
 class IsSuperAdmin(BasePermission):
@@ -20,7 +26,9 @@ class IsSuperAdmin(BasePermission):
         user = getattr(request, 'user', None)
         if not user or not user.is_authenticated:
             return False
-        # Tratar a todos los admins globales como super-admin para efectos de permisos.
+        # Superusers y staff tienen acceso total
+        if user.is_superuser or user.is_staff:
+            return True
         if getattr(user, 'role', None) == 'admin':
             return True
         return getattr(user, 'is_super_admin', False)
@@ -44,14 +52,18 @@ class IsAdminOrInstructor(BasePermission):
     """Allow access to admin or instructor users."""
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in ('admin', 'instructor')
+        if not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser or request.user.is_staff:
+            return True
+        return request.user.role in ('admin', 'instructor')
 
 
 class IsInstructorOwner(BasePermission):
     """Allow instructors to manage only their own resources."""
 
     def has_object_permission(self, request, view, obj):
-        if request.user.role == 'admin':
+        if request.user.role == 'admin' or request.user.is_superuser or request.user.is_staff:
             return True
         return hasattr(obj, 'instructor') and obj.instructor == request.user
 
@@ -60,7 +72,7 @@ class IsOwnerOrAdmin(BasePermission):
     """Allow users to manage their own profile, or admins to manage any."""
 
     def has_object_permission(self, request, view, obj):
-        if request.user.role == 'admin':
+        if request.user.role == 'admin' or request.user.is_superuser or request.user.is_staff:
             return True
         if hasattr(obj, 'user'):
             return obj.user == request.user
