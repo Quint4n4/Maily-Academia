@@ -10,8 +10,9 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 
 from apps.users.models import Profile
-from apps.courses.models import Course, Module, Lesson
+from apps.courses.models import Category, Course, Module, Lesson
 from apps.quizzes.models import Quiz, Question
+from apps.sections.models import Section, SectionMembership
 
 User = get_user_model()
 
@@ -85,6 +86,7 @@ COURSES_DATA = [
         "duration": "4 horas",
         "level": "beginner",
         "rating": 4.8,
+        "section_slug": "maily-academia",
         "modules": [
             {
                 "title": "Módulo 1: Introducción y Configuración",
@@ -153,6 +155,7 @@ COURSES_DATA = [
         "duration": "6 horas",
         "level": "advanced",
         "rating": 4.9,
+        "section_slug": "maily-academia",
         "modules": [
             {
                 "title": "Módulo 1: Automatizaciones",
@@ -224,6 +227,7 @@ COURSES_DATA = [
         "duration": "3 horas",
         "level": "intermediate",
         "rating": 4.7,
+        "section_slug": "maily-academia",
         "modules": [
             {
                 "title": "Módulo 1: Gestión de Usuarios",
@@ -281,6 +285,86 @@ COURSES_DATA = [
             },
         ],
     },
+    {
+        "title": "Introducción a la Nutrición Clínica",
+        "description": "Conceptos básicos de nutrición clínica para profesionales de la salud.",
+        "thumbnail": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400&h=250&fit=crop",
+        "instructor_email": "carlos.rodriguez@maily.com",
+        "duration": "3 horas",
+        "level": "beginner",
+        "rating": 4.6,
+        "section_slug": "longevity-360",
+        "modules": [
+            {
+                "title": "Fundamentos de nutrición",
+                "description": "Base teórica de la nutrición clínica.",
+                "lessons": [
+                    {"title": "Macronutrientes esenciales", "duration": "14:00", "description": "Carbohidratos, proteínas y grasas."},
+                    {"title": "Micronutrientes clave", "duration": "12:30", "description": "Vitaminas y minerales fundamentales."},
+                ],
+            }
+        ],
+    },
+    {
+        "title": "Salud General y Estilos de Vida",
+        "description": "Buenas prácticas de salud general para pacientes y profesionales.",
+        "thumbnail": "https://images.unsplash.com/photo-1514996937319-344454492b37?w=400&h=250&fit=crop",
+        "instructor_email": "carlos.rodriguez@maily.com",
+        "duration": "4 horas",
+        "level": "intermediate",
+        "rating": 4.5,
+        "section_slug": "longevity-360",
+        "modules": [
+            {
+                "title": "Estilo de vida saludable",
+                "description": "Hábitos diarios para mejorar la salud.",
+                "lessons": [
+                    {"title": "Sueño y recuperación", "duration": "16:00", "description": "Importancia del sueño reparador."},
+                    {"title": "Actividad física", "duration": "18:00", "description": "Recomendaciones generales."},
+                ],
+            }
+        ],
+    },
+    {
+        "title": "Higiene y Bioseguridad en Clínica",
+        "description": "Protocolos básicos de higiene y bioseguridad para entornos clínicos.",
+        "thumbnail": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400&h=250&fit=crop",
+        "instructor_email": "ana.martinez@maily.com",
+        "duration": "2 horas",
+        "level": "beginner",
+        "rating": 4.4,
+        "section_slug": "corporativo-camsa",
+        "modules": [
+            {
+                "title": "Protocolos básicos",
+                "description": "Buenas prácticas de bioseguridad.",
+                "lessons": [
+                    {"title": "Lavado de manos clínico", "duration": "08:30", "description": "Técnica correcta paso a paso."},
+                    {"title": "Uso de equipo de protección personal", "duration": "10:15", "description": "Mascarillas, guantes y más."},
+                ],
+            }
+        ],
+    },
+    {
+        "title": "Onboarding Corporativo CAMSA",
+        "description": "Curso de inducción para nuevos colaboradores del corporativo CAMSA.",
+        "thumbnail": "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?w=400&h=250&fit=crop",
+        "instructor_email": "ana.martinez@maily.com",
+        "duration": "1.5 horas",
+        "level": "beginner",
+        "rating": 4.3,
+        "section_slug": "corporativo-camsa",
+        "modules": [
+            {
+                "title": "Bienvenida",
+                "description": "Conoce la cultura y valores de CAMSA.",
+                "lessons": [
+                    {"title": "Historia de CAMSA", "duration": "09:00", "description": "Resumen histórico de la organización."},
+                    {"title": "Valores y misión", "duration": "07:30", "description": "Principios que guían nuestro trabajo."},
+                ],
+            }
+        ],
+    },
 ]
 
 
@@ -303,6 +387,78 @@ class Command(BaseCommand):
             Module.objects.all().delete()
             Course.objects.all().delete()
             User.objects.filter(email__endswith='@maily.com').delete()
+
+        # ── Ensure base sections exist ──────────────────────────────────────
+        sections_by_slug = {}
+        base_sections = [
+            {
+                "slug": "maily-academia",
+                "name": "Maily Academia",
+                "description": "Formación especializada para usuarios del software Maily.",
+                "section_type": Section.SectionType.MAILY,
+                "require_credentials": True,
+                "allow_public_preview": True,
+            },
+            {
+                "slug": "longevity-360",
+                "name": "Longevity 360",
+                "description": "Academia abierta de salud con cursos gratuitos y de paga.",
+                "section_type": Section.SectionType.PUBLIC,
+                "require_credentials": False,
+                "allow_public_preview": False,
+            },
+            {
+                "slug": "corporativo-camsa",
+                "name": "Corporativo CAMSA",
+                "description": "Capacitación interna y contenidos exclusivos para el corporativo.",
+                "section_type": Section.SectionType.CORPORATE,
+                "require_credentials": True,
+                "allow_public_preview": False,
+            },
+        ]
+        for data in base_sections:
+            section, created = Section.objects.get_or_create(
+                slug=data["slug"],
+                defaults={
+                    "name": data["name"],
+                    "description": data["description"],
+                    "section_type": data["section_type"],
+                    "require_credentials": data["require_credentials"],
+                    "allow_public_preview": data["allow_public_preview"],
+                },
+            )
+            sections_by_slug[section.slug] = section
+            if created:
+                self.stdout.write(self.style.SUCCESS(f'  Created section: {section.slug}'))
+
+        # ── Ensure base health categories exist (Fase 3) ────────────────────
+        longevity_section = sections_by_slug.get("longevity-360")
+        base_categories = [
+            {"name": "Medicina General", "slug": "medicina-general", "icon": "stethoscope"},
+            {"name": "Enfermería", "slug": "enfermeria", "icon": "heart"},
+            {"name": "Odontología", "slug": "odontologia", "icon": "smile"},
+            {"name": "Nutrición", "slug": "nutricion", "icon": "apple"},
+            {"name": "Psicología", "slug": "psicologia", "icon": "brain"},
+            {"name": "Fisioterapia", "slug": "fisioterapia", "icon": "activity"},
+            {"name": "Farmacología", "slug": "farmacologia", "icon": "pill"},
+            {"name": "Tecnología Médica", "slug": "tecnologia-medica", "icon": "monitor"},
+            {"name": "Salud Pública", "slug": "salud-publica", "icon": "shield"},
+            {"name": "Administración Hospitalaria", "slug": "administracion-hospitalaria", "icon": "building"},
+        ]
+        for order, data in enumerate(base_categories):
+            category, created = Category.objects.get_or_create(
+                slug=data["slug"],
+                defaults={
+                    "name": data["name"],
+                    "description": "",
+                    "icon": data["icon"],
+                    "section": longevity_section,
+                    "order": order,
+                    "is_active": True,
+                },
+            )
+            if created:
+                self.stdout.write(self.style.SUCCESS(f'  Created category: {category.slug}'))
 
         # ── Create users ──────────────────────────────────────────────────
         users = {}
@@ -335,6 +491,36 @@ class Command(BaseCommand):
             users[email] = user
             self.stdout.write(self.style.SUCCESS(f'  Created {u_data["role"]}: {email}'))
 
+        # ── Create section memberships ─────────────────────────────────────
+        def ensure_membership(email, section_slug, role):
+            user = users.get(email)
+            section = sections_by_slug.get(section_slug)
+            if not user or not section:
+                return
+            membership, created = SectionMembership.objects.get_or_create(
+                user=user,
+                section=section,
+                defaults={"role": role, "is_active": True},
+            )
+            if created:
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f'  Added {role} membership: {email} -> {section.slug}',
+                    )
+                )
+
+        # Maily: instructor + student
+        ensure_membership("maria.garcia@maily.com", "maily-academia", SectionMembership.Role.INSTRUCTOR)
+        ensure_membership("estudiante1@maily.com", "maily-academia", SectionMembership.Role.STUDENT)
+
+        # Longevity 360: instructor + student
+        ensure_membership("carlos.rodriguez@maily.com", "longevity-360", SectionMembership.Role.INSTRUCTOR)
+        ensure_membership("estudiante2@maily.com", "longevity-360", SectionMembership.Role.STUDENT)
+
+        # Corporativo CAMSA: instructor + student
+        ensure_membership("ana.martinez@maily.com", "corporativo-camsa", SectionMembership.Role.INSTRUCTOR)
+        ensure_membership("estudiante1@maily.com", "corporativo-camsa", SectionMembership.Role.STUDENT)
+
         # ── Create courses ────────────────────────────────────────────────
         for c_data in COURSES_DATA:
             instructor = users[c_data['instructor_email']]
@@ -343,8 +529,14 @@ class Command(BaseCommand):
                 self.stdout.write(f'  Course already exists: {c_data["title"]}')
                 continue
 
+            section = None
+            section_slug = c_data.get("section_slug")
+            if section_slug:
+                section = sections_by_slug.get(section_slug) or Section.objects.filter(slug=section_slug).first()
+
             course = Course.objects.create(
                 instructor=instructor,
+                section=section,
                 title=c_data['title'],
                 description=c_data['description'],
                 thumbnail=c_data['thumbnail'],

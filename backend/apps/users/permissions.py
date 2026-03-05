@@ -8,6 +8,24 @@ class IsAdmin(BasePermission):
         return request.user.is_authenticated and request.user.role == 'admin'
 
 
+class IsSuperAdmin(BasePermission):
+    """
+    Allow access to platform administrators for super-admin protected actions.
+
+    Actualmente se considera "super admin" a cualquier usuario con rol global
+    `admin` (y opcionalmente con el flag `is_super_admin` activado).
+    """
+
+    def has_permission(self, request, view):
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            return False
+        # Tratar a todos los admins globales como super-admin para efectos de permisos.
+        if getattr(user, 'role', None) == 'admin':
+            return True
+        return getattr(user, 'is_super_admin', False)
+
+
 class IsInstructor(BasePermission):
     """Allow access only to instructor users."""
 

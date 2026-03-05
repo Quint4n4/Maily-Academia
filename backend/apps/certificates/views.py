@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 
 from apps.courses.models import Course, Lesson
 from apps.progress.models import LessonProgress
+from apps.progress.activity_logger import log_activity
 from apps.quizzes.models import FinalEvaluation, FinalEvaluationAttempt
 
 from .models import Certificate
@@ -98,6 +99,13 @@ class CertificateClaimView(APIView):
             pass
 
         certificate = Certificate.objects.create(user=request.user, course=course)
+        log_activity(
+            request.user,
+            'certificate_claimed',
+            'course',
+            course.id,
+            {'course_id': course.id},
+        )
         return Response(
             CertificateSerializer(certificate).data,
             status=status.HTTP_201_CREATED,

@@ -9,8 +9,10 @@ from rest_framework.views import APIView
 from apps.courses.models import Course, Lesson
 from apps.certificates.models import Certificate
 from apps.progress.models import LessonProgress
+from apps.progress.activity_logger import log_activity
 from apps.users.permissions import IsAdminOrInstructor, IsInstructor, IsStudent
 
+from .graders import grade_question
 from .models import (
     Quiz,
     Question,
@@ -85,15 +87,16 @@ class QuizAttemptView(generics.CreateAPIView):
         quiz = Quiz.objects.prefetch_related('questions').get(pk=self.kwargs['quiz_id'])
         submitted = serializer.validated_data['answers']
 
-        correct = 0
-        total = quiz.questions.count()
-
+        total_weight = 0.0
+        earned = 0.0
         for question in quiz.questions.all():
             q_id = str(question.id)
-            if q_id in submitted and submitted[q_id] == question.correct_answer:
-                correct += 1
+            student_answer = submitted.get(q_id)
+            result = grade_question(question, student_answer)
+            earned += result['score']
+            total_weight += 1.0
 
-        score = round((correct / total) * 100) if total > 0 else 0
+        score = round((earned / total_weight) * 100) if total_weight > 0 else 0
         passed = score >= quiz.passing_score
 
         attempt = QuizAttempt.objects.create(
@@ -102,6 +105,14 @@ class QuizAttemptView(generics.CreateAPIView):
             answers=submitted,
             score=score,
             passed=passed,
+        )
+
+        log_activity(
+            request.user,
+            'quiz_attempted',
+            'quiz',
+            quiz.id,
+            {'quiz_id': quiz.id, 'score': score, 'passed': passed},
         )
 
         return Response(

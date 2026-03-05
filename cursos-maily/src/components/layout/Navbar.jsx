@@ -19,15 +19,19 @@ import {
   FileText,
   Library,
   CheckCircle,
+  Video,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useSection } from '../../context/SectionContext';
 import qnaService from '../../services/qnaService';
-import logoMaily from '../../Logos/logomaily.png';
+import logoMaily from '../../../Logos/logomaily.png';
+import logoLongevity from '../../../Logos/Longevity360-03.png';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const { currentSection, availableSections, userSections, setCurrentSection } = useSection();
   const location = useLocation();
   const navigate = useNavigate();
   const [showProfile, setShowProfile] = useState(false);
@@ -64,11 +68,13 @@ const Navbar = () => {
           { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { to: '/admin/users', label: 'Usuarios', icon: Users },
           { to: '/admin/courses', label: 'Cursos', icon: BookOpen },
+          { to: '/admin/promo-videos', label: 'Videos Maily', icon: Video },
         ];
       case 'instructor':
         return [
           { to: '/instructor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { to: '/instructor/courses', label: 'Mis Cursos', icon: BookOpen },
+          { to: '/instructor/students', label: 'Mis Alumnos', icon: Users },
           { to: '/instructor/qna', label: 'Q&A', icon: MessageSquare },
           { to: '/instructor/evaluations', label: 'Evaluaciones', icon: CheckCircle },
           { to: '/instructor/blog', label: 'Blog', icon: FileText },
@@ -82,6 +88,30 @@ const Navbar = () => {
         ];
     }
   }, [user?.role]);
+
+  const activeSection = useMemo(() => {
+    if (!currentSection) return null;
+    return (
+      availableSections.find((s) => s.slug === currentSection) || {
+        slug: currentSection,
+        name: 'Sección actual',
+      }
+    );
+  }, [availableSections, currentSection]);
+
+  // Determina el logo a mostrar según el rol y la academia del usuario
+  const logoInfo = useMemo(() => {
+    if (user?.role === 'admin') return null;
+    if (user?.role === 'instructor') {
+      const slug = user?.instructorSection?.slug;
+      if (slug === 'maily-academia') return { src: logoMaily, alt: 'Maily Academia', showName: true };
+      if (slug === 'longevity-360') return { src: logoLongevity, alt: 'Longevity 360', showName: false };
+      return null;
+    }
+    // Estudiante: logo según la sección activa
+    if (currentSection === 'maily-academia') return { src: logoMaily, alt: 'Maily Academia', showName: true };
+    return { src: logoLongevity, alt: 'Longevity 360', showName: false };
+  }, [user, currentSection]);
 
   const isActive = (path) => location.pathname === path;
 
@@ -97,16 +127,22 @@ const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
+          {/* Logo según rol y academia */}
           <Link to={navItems[0]?.to || '/dashboard'} className="flex items-center gap-2">
-            <img
-              src={logoMaily}
-              alt="Maily Academia"
-              className="w-8 h-8 rounded-lg object-contain bg-white/70 dark:bg-white/10"
-            />
-            <span className="text-lg font-bold text-gray-900 dark:text-white hidden sm:block">
-              Maily Academia
-            </span>
+            {logoInfo ? (
+              <>
+                <img
+                  src={logoInfo.src}
+                  alt={logoInfo.alt}
+                  className="h-11 w-auto min-w-[2.75rem] rounded-lg object-contain bg-white/70 dark:bg-white/10"
+                />
+                {logoInfo.showName && (
+                  <span className="text-lg font-bold text-gray-900 dark:text-white hidden sm:block">
+                    {logoInfo.alt}
+                  </span>
+                )}
+              </>
+            ) : null}
           </Link>
 
           {/* Desktop nav links */}
@@ -140,6 +176,30 @@ const Navbar = () => {
 
           {/* Right section */}
           <div className="flex items-center gap-2">
+            {/* Selector simple de sección cuando el usuario tiene más de una */}
+            {user?.role === 'student' && Array.isArray(userSections) && userSections.length > 1 && (
+              <select
+                value={currentSection || ''}
+                onChange={(e) => {
+                  const slug = e.target.value;
+                  if (!slug) return;
+                  setCurrentSection(slug);
+                }}
+                className="hidden md:inline-block text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mr-1"
+              >
+                {userSections.map((s) => {
+                  const section =
+                    typeof s === 'string'
+                      ? availableSections.find((x) => x.slug === s) || { slug: s, name: s }
+                      : s;
+                  return (
+                    <option key={section.slug} value={section.slug}>
+                      {section.name || section.slug}
+                    </option>
+                  );
+                })}
+              </select>
+            )}
             {/* Theme toggle */}
             <button
               onClick={toggleTheme}
@@ -188,6 +248,15 @@ const Navbar = () => {
                     >
                       <User size={16} /> Mi perfil
                     </Link>
+                    {user?.role === 'student' && Array.isArray(userSections) && userSections.length > 1 && (
+                      <Link
+                        to="/choose-section"
+                        onClick={() => setShowProfile(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <LayoutDashboard size={16} /> Cambiar de sección
+                      </Link>
+                    )}
                     {user?.role === 'student' && (
                       <Link
                         to="/certificates"

@@ -20,14 +20,43 @@ class Quiz(models.Model):
 
 
 class Question(models.Model):
-    """A multiple-choice question within a quiz."""
+    """A question within a quiz; supports multiple types (multiple_choice, word_order, etc.)."""
+
+    class QuestionType(models.TextChoices):
+        MULTIPLE_CHOICE = 'multiple_choice', 'Opción múltiple'
+        TRUE_FALSE = 'true_false', 'Verdadero y falso'
+        WORD_SEARCH = 'word_search', 'Sopa de letras'
+        MATCHING = 'matching', 'Relacionar palabras'
+        # Tipos deshabilitados por ahora (se mantienen para datos existentes):
+        WORD_ORDER = 'word_order', 'Ordenar palabras'
+        CROSSWORD = 'crossword', 'Crucigrama'
+        FILL_BLANK = 'fill_blank', 'Llenar espacios'
 
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='questions')
     text = models.TextField('pregunta')
-    options = models.JSONField('opciones', help_text='Lista de opciones como array JSON')
+    question_type = models.CharField(
+        'tipo de pregunta',
+        max_length=20,
+        choices=QuestionType.choices,
+        default=QuestionType.MULTIPLE_CHOICE,
+    )
+    options = models.JSONField(
+        'opciones',
+        help_text='Lista de opciones (para multiple_choice). Array JSON.',
+        default=list,
+        blank=True,
+    )
     correct_answer = models.PositiveIntegerField(
         'índice de respuesta correcta',
-        help_text='Índice base-0 de la opción correcta',
+        help_text='Índice base-0 de la opción correcta (multiple_choice)',
+        null=True,
+        blank=True,
+    )
+    config = models.JSONField(
+        'configuración',
+        help_text='Config específica del tipo (word_order: items, correct_order; matching: pairs; etc.)',
+        default=dict,
+        blank=True,
     )
     order = models.PositiveIntegerField('orden', default=0)
 

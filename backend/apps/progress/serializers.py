@@ -42,6 +42,7 @@ class CourseProgressSerializer(serializers.Serializer):
     progress_percent = serializers.FloatField()
     quizzes_passed = serializers.IntegerField()
     total_quizzes = serializers.IntegerField()
+    passed_quiz_ids = serializers.ListField(child=serializers.IntegerField(), required=False, default=list)
     resume_at = serializers.DictField(required=False, allow_null=True)
     require_sequential_progress = serializers.BooleanField(required=False, default=False)
     completed_lesson_ids = serializers.ListField(child=serializers.IntegerField(), required=False, default=list)

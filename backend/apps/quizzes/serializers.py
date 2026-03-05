@@ -11,18 +11,60 @@ from .models import (
 )
 
 
+def _sanitize_config_for_student(qtype, config):
+    """Remove correct answers from config when sending to students."""
+    if not config or not isinstance(config, dict):
+        return config or {}
+    out = dict(config)
+    if qtype == 'word_order':
+        out.pop('correct_order', None)
+    if qtype == 'fill_blank':
+        blanks = out.get('blanks') or []
+        out['blanks'] = [{'id': b.get('id'), 'hint': b.get('hint')} for b in blanks]
+    return out
+
+
 class QuestionSerializer(serializers.ModelSerializer):
+    """For students: exposes question_type and config (correct answers stripped)."""
+
     class Meta:
         model = Question
-        fields = ['id', 'text', 'options', 'order']
+        fields = ['id', 'text', 'question_type', 'options', 'config', 'order']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        qtype = getattr(instance, 'question_type', None) or 'multiple_choice'
+        if 'config' in data and data['config']:
+            data['config'] = _sanitize_config_for_student(qtype, data['config'])
+        return data
+
 
 class QuestionAdminSerializer(serializers.ModelSerializer):
     """Includes correct_answer – only for instructors/admin."""
 
     class Meta:
         model = Question
-        fields = ['id', 'quiz', 'text', 'options', 'correct_answer', 'order']
+        fields = [
+            'id', 'quiz', 'text', 'question_type', 'options',
+            'correct_answer', 'config', 'order',
+        ]
         read_only_fields = ['id', 'quiz']
+
+    def create(self, validated_data):
+        config = validated_data.pop('config', None)
+        if config is None:
+            config = {}
+        if not isinstance(config, dict):
+            config = {}
+        return Question.objects.create(**validated_data, config=config)
+
+    def update(self, instance, validated_data):
+        if 'config' in validated_data:
+            config = validated_data.pop('config')
+            if not isinstance(config, dict):
+                config = getattr(instance, 'config', None) or {}
+            validated_data['config'] = config
+        return super().update(instance, validated_data)
 
 
 class QuizSerializer(serializers.ModelSerializer):
@@ -44,12 +86,16 @@ class QuizCreateSerializer(serializers.ModelSerializer):
 
 
 class QuizAttemptCreateSerializer(serializers.Serializer):
-    """Accepts student answers and computes the score."""
+    """Accepts student answers. Values can be int (multiple_choice), list (word_order, word_search), or dict (matching, fill_blank, crossword)."""
 
-    answers = serializers.DictField(
-        child=serializers.IntegerField(),
-        help_text='Objeto {question_id: selected_index}',
+    answers = serializers.JSONField(
+        help_text='Objeto {question_id: answer}. answer: int (multiple_choice), list (word_order/word_search), dict (matching/fill_blank/crossword)',
     )
+
+    def validate_answers(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError('answers debe ser un objeto con question_id como clave.')
+        return value
 
 
 class QuizAttemptResultSerializer(serializers.ModelSerializer):

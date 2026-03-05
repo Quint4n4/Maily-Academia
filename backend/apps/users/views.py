@@ -10,15 +10,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .models import PasswordResetToken
+from .models import PasswordResetToken, Profile, SurveyResponse
 from .permissions import IsAdmin
 from .serializers import (
     RegisterSerializer,
     MeSerializer,
     UserSerializer,
     InstructorCreateSerializer,
+    AdminStudentCreateSerializer,
     AdminUserSerializer,
     ChangePasswordSerializer,
+    SurveyResponseSerializer,
 )
 from .throttles import AuthRateThrottle
 
@@ -55,9 +57,59 @@ class SecureLoginView(TokenObtainPairView):
         # Intentar login normal
         try:
             response = super().post(request, *args, **kwargs)
-            # Login exitoso: resetear intentos
+            # Login exitoso: resetear intentos y enriquecer respuesta con info de secciones
             if user and user.is_active:
                 user.reset_login_attempts()
+
+                try:
+                    # Importar aquí para evitar dependencias circulares en tiempo de carga
+                    from apps.sections.models import Section, SectionMembership
+
+                    memberships = (
+                        SectionMembership.objects.select_related('section')
+                        .filter(user=user, is_active=True)
+                    )
+
+                    section_slugs = []
+                    has_corporate = False
+                    has_maily = False
+
+                    for membership in memberships:
+                        section = membership.section
+                        if not section or not section.is_active:
+                            continue
+                        section_slugs.append(section.slug)
+                        if section.section_type == Section.SectionType.CORPORATE:
+                            has_corporate = True
+                        elif section.section_type == Section.SectionType.MAILY:
+                            has_maily = True
+
+                    # Prioridad: corporativo > maily > público (Longevity 360)
+                    redirect_section = None
+                    if has_corporate:
+                        redirect_section = 'corporativo-camsa'
+                    elif has_maily:
+                        redirect_section = 'maily-academia'
+                    else:
+                        redirect_section = 'longevity-360'
+                        section_slugs.append('longevity-360')
+
+                    # Eliminar duplicados y ordenar para estabilidad
+                    section_slugs = sorted(set(section_slugs))
+
+                    if isinstance(response.data, dict):
+                        response.data['redirect_section'] = redirect_section
+                        response.data['user'] = {
+                            'id': user.id,
+                            'email': user.email,
+                            'role': user.role,
+                            'is_super_admin': getattr(user, 'is_super_admin', False),
+                            'sections': section_slugs,
+                        }
+                except Exception:
+                    # Si algo falla al calcular secciones, no romper el login
+                    pass
+
             return response
         except Exception as e:
             # Login fallido: incrementar intentos si el usuario existe
@@ -116,6 +168,53 @@ class MeView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
+class SurveyView(APIView):
+    """
+    GET  /api/auth/survey/  – obtener encuesta del usuario autenticado.
+    POST /api/auth/survey/  – crear/actualizar encuesta y marcar perfil como completado.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            survey = SurveyResponse.objects.get(user=request.user)
+        except SurveyResponse.DoesNotExist:
+            return Response(
+                {'detail': 'La encuesta no ha sido completada.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = SurveyResponseSerializer(survey)
+        return Response(serializer.data)
+
+    def post(self, request):
+        try:
+            instance = SurveyResponse.objects.get(user=request.user)
+            partial = True
+        except SurveyResponse.DoesNotExist:
+            instance = None
+            partial = False
+
+        serializer = SurveyResponseSerializer(
+            instance=instance,
+            data=request.data,
+            partial=partial,
+        )
+        serializer.is_valid(raise_exception=True)
+        survey = serializer.save(user=request.user)
+
+        # Marcar el perfil como que ya completó la encuesta y sincronizar ocupación
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        if survey.occupation_type and profile.occupation_type != survey.occupation_type:
+            profile.occupation_type = survey.occupation_type
+        if not profile.has_completed_survey:
+            profile.has_completed_survey = True
+        profile.save(update_fields=['occupation_type', 'has_completed_survey'])
+
+        status_code = status.HTTP_200_OK if instance else status.HTTP_201_CREATED
+        return Response(SurveyResponseSerializer(survey).data, status=status_code)
+
+
 # ---------------------------------------------------------------------------
 # Admin-only user management
 # ---------------------------------------------------------------------------
@@ -142,6 +241,22 @@ class InstructorCreateView(generics.CreateAPIView):
         user = serializer.save()
         return Response(
             UserSerializer(user).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class StudentCreateView(generics.CreateAPIView):
+    """POST /api/users/students/ – Create a new student and assign sections (admin only)."""
+
+    serializer_class = AdminStudentCreateSerializer
+    permission_classes = [IsAdmin]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            AdminUserSerializer(user, context={'request': request}).data,
             status=status.HTTP_201_CREATED,
         )
 

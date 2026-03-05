@@ -21,6 +21,8 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [redirectSection, setRedirectSection] = useState(null);
+  const [userSections, setUserSections] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchUser = useCallback(async () => {
@@ -37,11 +39,20 @@ export const AuthProvider = ({ children }) => {
         lastName,
         name: displayName,
         role: userData.role,
+        isSuperAdmin: !!userData.is_super_admin,
         dateJoined: userData.date_joined,
         avatar: userData.profile?.avatar
           || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=4A90A4&color=fff`,
         bio: userData.profile?.bio || '',
         phone: userData.profile?.phone || '',
+        country: userData.profile?.country || '',
+        state: userData.profile?.state || '',
+        city: userData.profile?.city || '',
+        dateOfBirth: userData.profile?.date_of_birth || null,
+        occupationType: userData.profile?.occupation_type || '',
+        hasCompletedSurvey: !!userData.profile?.has_completed_survey,
+        age: userData.profile?.age ?? null,
+        instructorSection: userData.instructor_section || null,
       });
     } catch {
       clearTokens();
@@ -71,9 +82,17 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      await authService.login(email, password);
+      const data = await authService.login(email, password);
+
+      // Leer opcionalmente redirect_section y secciones devueltas por el backend
+      const nextRedirectSection = data?.redirect_section || null;
+      const nextSections = Array.isArray(data?.user?.sections) ? data.user.sections : [];
+
+      setRedirectSection(nextRedirectSection);
+      setUserSections(nextSections);
+
       await fetchUser();
-      return { success: true };
+      return { success: true, redirectSection: nextRedirectSection, sections: nextSections };
     } catch (error) {
       const data = error.response?.data;
       
@@ -141,12 +160,23 @@ export const AuthProvider = ({ children }) => {
         username: updated.username,
         bio: updated.profile?.bio || '',
         phone: updated.profile?.phone || '',
+        country: updated.profile?.country || '',
+        state: updated.profile?.state || '',
+        city: updated.profile?.city || '',
+        dateOfBirth: updated.profile?.date_of_birth || null,
+        occupationType: updated.profile?.occupation_type || '',
+        hasCompletedSurvey: !!updated.profile?.has_completed_survey,
+        age: updated.profile?.age ?? prev?.age ?? null,
         avatar: updated.profile?.avatar ?? prev?.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=4A90A4&color=fff`,
       }));
       return { success: true };
     } catch (error) {
       return { success: false, error: 'Error al actualizar perfil' };
     }
+  };
+
+  const markSurveyCompleted = () => {
+    setUser((prev) => (prev ? { ...prev, hasCompletedSurvey: true } : prev));
   };
 
   const getDashboardPath = () => {
@@ -161,12 +191,15 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{
       user,
+      redirectSection,
+      userSections,
       isLoading,
       isAuthenticated: !!user,
       login,
       register,
       logout,
       updateProfile,
+      markSurveyCompleted,
       getDashboardPath,
     }}>
       {children}

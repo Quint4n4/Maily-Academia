@@ -11,15 +11,15 @@ class ProfileInline(admin.StackedInline):
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ['email', 'username', 'first_name', 'last_name', 'role', 'is_active']
-    list_filter = ['role', 'is_active', 'date_joined']
+    list_display = ['email', 'username', 'first_name', 'last_name', 'role', 'is_super_admin', 'is_active']
+    list_filter = ['role', 'is_super_admin', 'is_active', 'date_joined']
     search_fields = ['email', 'username', 'first_name', 'last_name']
     ordering = ['-date_joined']
     inlines = [ProfileInline]
 
     fieldsets = BaseUserAdmin.fieldsets + (
-        ('Rol', {'fields': ('role',)}),
+        ('Rol', {'fields': ('role', 'is_super_admin')}),
     )
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
-        ('Rol', {'fields': ('role',)}),
+        ('Rol', {'fields': ('role', 'is_super_admin')}),
     )

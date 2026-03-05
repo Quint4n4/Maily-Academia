@@ -12,6 +12,7 @@ from apps.courses.models import Course, Lesson
 from apps.users.permissions import IsAdmin, IsAdminOrInstructor
 
 from .models import Enrollment, LessonProgress, Purchase
+from .activity_logger import log_activity
 from .serializers import (
     EnrollmentSerializer,
     LessonProgressSerializer,
@@ -60,6 +61,13 @@ class EnrollView(generics.CreateAPIView):
                 {'detail': 'Ya estás inscrito en este curso.'},
                 status=status.HTTP_200_OK,
             )
+        log_activity(
+            request.user,
+            'course_enrolled',
+            'course',
+            course_id,
+            {'course_title': course.title},
+        )
         return Response(
             EnrollmentSerializer(enrollment).data,
             status=status.HTTP_201_CREATED,
@@ -118,6 +126,13 @@ class PurchaseView(APIView):
             user=request.user,
             course=course,
         )
+        log_activity(
+            request.user,
+            'course_enrolled',
+            'course',
+            course.id,
+            {'course_title': course.title, 'via': 'purchase'},
+        )
         return Response(
             {
                 'success': True,
@@ -159,6 +174,13 @@ class LessonCompleteView(APIView):
             progress.completed = True
             progress.save()
 
+        log_activity(
+            request.user,
+            'lesson_completed',
+            'lesson',
+            lesson_id,
+            {'course_id': course.id, 'lesson_title': lesson.title},
+        )
         return Response(LessonProgressSerializer(progress).data)
 
 
@@ -218,10 +240,13 @@ class CourseProgressView(APIView):
         ).count()
 
         total_quizzes = course.modules.filter(quiz__isnull=False).count()
-        quizzes_passed = request.user.quiz_attempts.filter(
-            quiz__module__course=course,
-            passed=True,
-        ).values('quiz').distinct().count()
+        passed_quiz_ids = list(
+            request.user.quiz_attempts.filter(
+                quiz__module__course=course,
+                passed=True,
+            ).values_list('quiz', flat=True).distinct()
+        )
+        quizzes_passed = len(passed_quiz_ids)
 
         progress_percent = round((completed_lessons / total_lessons) * 100, 1) if total_lessons > 0 else 0
 
@@ -262,6 +287,7 @@ class CourseProgressView(APIView):
             'progress_percent': progress_percent,
             'quizzes_passed': quizzes_passed,
             'total_quizzes': total_quizzes,
+            'passed_quiz_ids': passed_quiz_ids,
             'resume_at': resume_at,
             'require_sequential_progress': getattr(course, 'require_sequential_progress', False),
             'completed_lesson_ids': completed_lesson_ids,

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, ChevronLeft, Award, RotateCcw } from 'lucide-react';
-import { Card, Button, Badge, ProgressBar } from '../components/ui';
+import { Card, Button, ProgressBar } from '../components/ui';
+import QuizRenderer from '../components/quiz/QuizRenderer';
 import { useProgress } from '../context/ProgressContext';
 
 const QuizView = () => {
@@ -28,17 +29,16 @@ const QuizView = () => {
     load();
   }, [moduleId]);
 
-  const handleSelectAnswer = (questionId, answerIndex) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: answerIndex }));
+  const handleAnswerChange = (questionId, value) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
   const handleSubmit = async () => {
     if (!quiz) return;
     setSubmitting(true);
-    // Backend expects {question_id: selected_index} as a dict with string keys
     const formatted = {};
-    Object.entries(answers).forEach(([qId, aIdx]) => {
-      formatted[String(qId)] = aIdx;
+    Object.entries(answers).forEach(([qId, val]) => {
+      formatted[String(qId)] = val;
     });
     const res = await completeQuiz(quiz.id, formatted);
     setResult(res);
@@ -76,6 +76,13 @@ const QuizView = () => {
               <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 ${result.passed ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
                 {result.passed ? <CheckCircle size={40} className="text-green-600" /> : <XCircle size={40} className="text-red-500" />}
               </div>
+              {result.passed && (
+                <div className="flex justify-center mb-3">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 text-sm font-medium">
+                    <CheckCircle size={16} /> Quiz completado
+                  </span>
+                </div>
+              )}
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 {result.passed ? '¡Felicidades!' : 'No aprobado'}
               </h2>
@@ -127,28 +134,12 @@ const QuizView = () => {
           <motion.div key={q.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
             <Card className="mb-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">{q.text}</h2>
-              <div className="space-y-3">
-                {(q.options || []).map((opt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSelectAnswer(q.id, i)}
-                    className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                      answers[q.id] === i
-                        ? 'border-maily bg-maily/5 text-maily'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-700 dark:text-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
-                        answers[q.id] === i ? 'border-maily bg-maily text-white' : 'border-gray-300 dark:border-gray-600'
-                      }`}>
-                        {String.fromCharCode(65 + i)}
-                      </div>
-                      <span className="text-sm font-medium">{typeof opt === 'string' ? opt : opt.text}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              <QuizRenderer
+                question={q}
+                value={answers[q.id]}
+                onChange={(value) => handleAnswerChange(q.id, value)}
+                disabled={false}
+              />
             </Card>
           </motion.div>
         )}
@@ -158,7 +149,10 @@ const QuizView = () => {
             Anterior
           </Button>
           {currentQuestion < questions.length - 1 ? (
-            <Button disabled={answers[q?.id] === undefined} onClick={() => setCurrentQuestion((p) => p + 1)}>
+            <Button
+              disabled={answers[q?.id] === undefined && (q?.question_type === 'multiple_choice' || !q?.question_type)}
+              onClick={() => setCurrentQuestion((p) => p + 1)}
+            >
               Siguiente
             </Button>
           ) : (

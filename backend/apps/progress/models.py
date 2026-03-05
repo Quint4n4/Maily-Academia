@@ -79,3 +79,30 @@ class LessonProgress(models.Model):
 
     def __str__(self):
         return f'{self.user.email} – {self.lesson.title} ({"✓" if self.completed else "✗"})'
+
+
+class UserActivity(models.Model):
+    """Registro de acciones del usuario para tracking y analytics (Fase 7)."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='activities',
+    )
+    action = models.CharField('acción', max_length=50)
+    resource_type = models.CharField('tipo de recurso', max_length=50)
+    resource_id = models.PositiveIntegerField('ID del recurso', null=True, blank=True)
+    metadata = models.JSONField('metadata', default=dict, blank=True)
+    created_at = models.DateTimeField('fecha', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'actividad de usuario'
+        verbose_name_plural = 'actividades de usuario'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['action', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.email} – {self.action} @ {self.created_at}'

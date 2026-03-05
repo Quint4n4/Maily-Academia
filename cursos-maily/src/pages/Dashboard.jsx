@@ -1,34 +1,53 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, Clock, Award, TrendingUp, Play, ChevronRight, Flame } from 'lucide-react';
+import { BookOpen, Clock, Award, TrendingUp, Play, ChevronRight, Flame, Video } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProgress } from '../context/ProgressContext';
+import { useSection } from '../context/SectionContext';
 import { Card, ProgressBar, Badge } from '../components/ui';
 import courseService from '../services/courseService';
+import logoMaily from '../../Logos/logomaily.png';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { currentSection } = useSection();
   const { loadDashboard, loadCertificates } = useProgress();
   const [dashData, setDashData] = useState(null);
   const [allCourses, setAllCourses] = useState([]);
+  const [recommendedCourses, setRecommendedCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!currentSection) return;
     const load = async () => {
       try {
         const [dash, coursesRes] = await Promise.all([
           loadDashboard(),
-          courseService.list(),
+          courseService.listBySection(currentSection),
         ]);
         setDashData(dash);
-        setAllCourses((coursesRes.results || coursesRes));
+        const courses = coursesRes.results || coursesRes || [];
+        setAllCourses(Array.isArray(courses) ? courses : []);
+
+        if (user?.role === 'student') {
+          try {
+            const recRes = await courseService.getRecommended(currentSection);
+            setRecommendedCourses((recRes.results || recRes) ?? []);
+          } catch {
+            setRecommendedCourses([]);
+          }
+        } else {
+          setRecommendedCourses([]);
+        }
         await loadCertificates();
-      } catch { /* empty */ }
+      } catch {
+        setRecommendedCourses([]);
+      }
       setLoading(false);
     };
     load();
-  }, []);
+  }, [user?.role, currentSection]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -98,43 +117,132 @@ const Dashboard = () => {
 
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            {/* Courses in progress */}
-            {coursesInProgress.length > 0 && (
+            {user?.role === 'student' && !user?.hasCompletedSurvey && (
               <section>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Continuar aprendiendo</h2>
-                  <Link to="/my-courses" className="text-maily text-sm font-medium flex items-center gap-1">
-                    Mis cursos <ChevronRight className="w-4 h-4" />
+                <Card className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-dashed border-maily/40 bg-maily/5">
+                  <div>
+                    <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+                      Personaliza tus recomendaciones
+                    </h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      Responde una encuesta de menos de 2 minutos y te mostraremos cursos recomendados
+                      según tus intereses.
+                    </p>
+                  </div>
+                  <Link
+                    to="/survey"
+                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-lg bg-maily text-white hover:bg-maily-dark transition-colors"
+                  >
+                    Responder encuesta
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Link>
+                </Card>
+              </section>
+            )}
+            {/* Bloque promocional Maily Academia — solo visible para usuarios de Longevity 360 */}
+            {user?.role === 'student' && currentSection === 'longevity-360' && (
+              <section className="rounded-2xl overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 dark:from-blue-800 dark:via-blue-900 dark:to-blue-950 text-white p-6 sm:p-8">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={logoMaily}
+                      alt="Maily Academia"
+                      className="h-12 sm:h-14 w-auto object-contain drop-shadow-md bg-white/10 rounded-xl p-1.5"
+                    />
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-bold">Maily Academia</h2>
+                      <p className="text-blue-100 dark:text-blue-200 text-sm mt-0.5">
+                        Domina el software Maily con cursos especializados de la academia oficial
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    to="/maily-academia/presentacion"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white text-blue-700 font-semibold hover:bg-blue-50 transition-colors shadow-lg flex-shrink-0"
+                  >
+                    <Video className="w-5 h-5" />
+                    Conocer Maily Academia
                   </Link>
                 </div>
-                <div className="space-y-4">
-                  {coursesInProgress.slice(0, 3).map((cp) => {
-                    const course = allCourses.find((c) => c.id === cp.course_id);
-                    const resumeUrl = cp.resume_at
-                      ? `/course/${cp.course_id}/lesson/${cp.resume_at.module_id}/${cp.resume_at.lesson_id}`
-                      : `/course/${cp.course_id}`;
-                    return (
-                      <Link key={cp.course_id} to={resumeUrl}>
-                        <Card hover className="flex gap-4">
-                          {course?.thumbnail && (
-                            <img src={course.thumbnail} alt="" className="w-32 aspect-video object-cover rounded-xl flex-shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-gray-900 dark:text-white truncate">{cp.course_title}</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                              {cp.completed_lessons} de {cp.total_lessons} lecciones
-                            </p>
-                            <div className="mt-3">
-                              <ProgressBar value={cp.progress_percent} showLabel={false} size="sm" />
+              </section>
+            )}
+
+            {/* Recommended courses */}
+            {user?.role === 'student' && recommendedCourses.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Recomendados para ti
+                  </h2>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {recommendedCourses.slice(0, 6).map((course, i) => (
+                    <motion.div
+                      key={course.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.05 * i }}
+                    >
+                      <Link to={`/course/${course.id}`}>
+                        <Card hover padding={false} className="overflow-hidden">
+                          <div className="relative aspect-video">
+                            <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
+                            <div className="absolute top-3 left-3">
+                              <Badge
+                                variant={
+                                  course.level === 'beginner'
+                                    ? 'success'
+                                    : course.level === 'intermediate'
+                                      ? 'warning'
+                                      : 'danger'
+                                }
+                                size="sm"
+                              >
+                                {course.level === 'beginner'
+                                  ? 'Principiante'
+                                  : course.level === 'intermediate'
+                                    ? 'Intermedio'
+                                    : 'Avanzado'}
+                              </Badge>
                             </div>
                           </div>
-                          <button className="self-center p-3 bg-maily text-white rounded-full" aria-label="Reanudar">
-                            <Play className="w-5 h-5" />
-                          </button>
+                          <div className="p-4">
+                            <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1">
+                              {course.title}
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                              {course.description}
+                            </p>
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                              <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-4 h-4" />
+                                  {course.duration}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <BookOpen className="w-4 h-4" />
+                                  {course.total_lessons} lecciones
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`text-sm font-semibold ${
+                                    (!course.price || Number(course.price) === 0)
+                                      ? 'text-green-600 dark:text-green-400'
+                                      : 'text-maily'
+                                  }`}
+                                >
+                                  {(!course.price || Number(course.price) === 0)
+                                    ? 'Gratis'
+                                    : `$${Number(course.price).toFixed(2)}`}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
                         </Card>
                       </Link>
-                    );
-                  })}
+                    </motion.div>
+                  ))}
                 </div>
               </section>
             )}
@@ -180,6 +288,43 @@ const Dashboard = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Continuar aprendiendo - columna derecha */}
+            {coursesInProgress.length > 0 && (
+              <Card>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Continuar aprendiendo</h3>
+                <div className="space-y-3">
+                  {coursesInProgress.slice(0, 4).map((cp) => {
+                    const course = allCourses.find((c) => c.id === cp.course_id);
+                    const resumeUrl = cp.resume_at
+                      ? `/course/${cp.course_id}/lesson/${cp.resume_at.module_id}/${cp.resume_at.lesson_id}`
+                      : `/course/${cp.course_id}`;
+                    return (
+                      <Link key={cp.course_id} to={resumeUrl}>
+                        <div className="flex gap-3 p-2 -mx-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                          {course?.thumbnail && (
+                            <img src={course.thumbnail} alt="" className="w-16 h-12 object-cover rounded-lg flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-gray-900 dark:text-white text-sm truncate">{cp.course_title}</h4>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              {cp.completed_lessons}/{cp.total_lessons} lecciones
+                            </p>
+                            <ProgressBar value={cp.progress_percent} showLabel={false} size="sm" className="mt-2" />
+                          </div>
+                          <span className="self-center p-2 bg-maily text-white rounded-full flex-shrink-0" aria-label="Reanudar">
+                            <Play className="w-4 h-4" />
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+                <Link to="/my-courses" className="mt-3 block text-center text-sm text-maily font-medium hover:underline">
+                  Ver mis cursos
+                </Link>
+              </Card>
+            )}
+
             <Card>
               <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Tu progreso general</h3>
               <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-white dark:from-blue-900/20 dark:to-gray-800 rounded-xl">

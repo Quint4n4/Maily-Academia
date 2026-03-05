@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, Clock, Users, ChevronDown, ChevronRight, Play, Lock, Award, DollarSign, CheckCircle } from 'lucide-react';
+import { BookOpen, Clock, Users, ChevronDown, ChevronRight, Play, Lock, Award, DollarSign, CheckCircle, Paperclip } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/ui';
 import VideoPreview from '../components/VideoPreview';
 import PaymentModal from '../components/PaymentModal';
@@ -168,6 +168,9 @@ const CourseView = () => {
               <span className="flex items-center gap-1"><Users size={16} />{course.instructor_name}</span>
               <span className="flex items-center gap-1"><Clock size={16} />{course.duration}</span>
               <span className="flex items-center gap-1"><BookOpen size={16} />{course.total_lessons} lecciones</span>
+              {course.materials_count != null && course.materials_count > 0 && (
+                <span className="flex items-center gap-1"><Paperclip size={16} />{course.materials_count} material{course.materials_count !== 1 ? 'es' : ''}</span>
+              )}
               <span className="flex items-center gap-1"><DollarSign size={16} />
                 {isFree ? 'Gratis' : `$${Number(course.price).toFixed(2)}`}
               </span>
@@ -268,8 +271,18 @@ const CourseView = () => {
                       to={`/course/${courseId}/quiz/${mod.id}`}
                       className="flex items-center gap-3 px-5 py-3 bg-maily/5 hover:bg-maily/10 transition-colors"
                     >
-                      <Award size={16} className="text-maily" />
-                      <span className="text-sm font-medium text-maily">Quiz del módulo</span>
+                      {progress?.passed_quiz_ids?.includes(mod.quiz.id) ? (
+                        <>
+                          <CheckCircle size={16} className="text-green-600 dark:text-green-400 flex-shrink-0" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">Quiz del módulo</span>
+                          <Badge variant="success" size="sm" className="ml-auto">Quiz completado</Badge>
+                        </>
+                      ) : (
+                        <>
+                          <Award size={16} className="text-maily flex-shrink-0" />
+                          <span className="text-sm font-medium text-maily">Quiz del módulo</span>
+                        </>
+                      )}
                     </Link>
                   )}
                 </div>

@@ -39,8 +39,16 @@ class QuestionCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         from apps.courses.models import Lesson
+        from apps.progress.activity_logger import log_activity
         lesson = Lesson.objects.get(pk=self.kwargs['lesson_id'])
-        serializer.save(user=self.request.user, lesson=lesson)
+        question = serializer.save(user=self.request.user, lesson=lesson)
+        log_activity(
+            self.request.user,
+            'question_asked',
+            'question',
+            question.id,
+            {'lesson_id': lesson.id},
+        )
 
 
 class AnswerCreateView(generics.CreateAPIView):

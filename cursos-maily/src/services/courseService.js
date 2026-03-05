@@ -6,6 +6,17 @@ export const courseService = {
     return data;
   },
 
+  async getRecommended(sectionSlug = null) {
+    const params = sectionSlug ? { section: sectionSlug } : {};
+    const { data } = await api.get('/courses/recommended/', { params });
+    return data;
+  },
+
+  async listBySection(sectionSlug, params = {}) {
+    const { data } = await api.get(`/sections/${sectionSlug}/courses/`, { params });
+    return data;
+  },
+
   async getById(id) {
     const { data } = await api.get(`/courses/${id}/`);
     return data;

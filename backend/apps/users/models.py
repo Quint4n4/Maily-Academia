@@ -1,5 +1,5 @@
 import uuid
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -35,6 +35,12 @@ class User(AbstractUser):
         null=True,
     )
     
+    # Superadministrador: solo él puede otorgar/revocar acceso a sección Corporativo
+    is_super_admin = models.BooleanField(
+        'superadministrador',
+        default=False,
+    )
+
     # Campos para seguridad anti-DDoS
     failed_login_attempts = models.PositiveIntegerField(
         'intentos fallidos',
@@ -70,6 +76,10 @@ class User(AbstractUser):
         return self.role == self.Role.STUDENT
 
     @property
+    def is_super_admin_user(self):
+        return getattr(self, 'is_super_admin', False)
+
+    @property
     def is_locked(self):
         """Verifica si la cuenta está actualmente bloqueada."""
         from django.utils import timezone
@@ -103,10 +113,30 @@ class User(AbstractUser):
 class Profile(models.Model):
     """Extended profile information for any user."""
 
+    class OccupationType(models.TextChoices):
+        STUDENT = 'student', 'Estudiante'
+        WORKER = 'worker', 'Trabajador'
+        OTHER = 'other', 'Otro'
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     bio = models.TextField('biografía', blank=True, default='')
     phone = models.CharField('teléfono', max_length=20, blank=True, default='')
     avatar = models.ImageField('avatar', upload_to='avatars/', blank=True, null=True)
+    country = models.CharField('país', max_length=100, blank=True, default='')
+    state = models.CharField('estado/provincia', max_length=100, blank=True, default='')
+    city = models.CharField('ciudad', max_length=100, blank=True, default='')
+    date_of_birth = models.DateField('fecha de nacimiento', null=True, blank=True)
+    occupation_type = models.CharField(
+        'tipo de ocupación',
+        max_length=20,
+        choices=OccupationType.choices,
+        blank=True,
+        default='',
+    )
+    has_completed_survey = models.BooleanField(
+        'ha completado encuesta de intereses',
+        default=False,
+    )
 
     class Meta:
         verbose_name = 'perfil'
@@ -114,6 +144,58 @@ class Profile(models.Model):
 
     def __str__(self):
         return f'Perfil de {self.user.email}'
+
+    @property
+    def age(self):
+        if not self.date_of_birth:
+            return None
+        today = date.today()
+        born = self.date_of_birth
+        return today.year - born.year - (
+            (today.month, today.day) < (born.month, born.day)
+        )
+
+
+class SurveyResponse(models.Model):
+    """Initial interests survey for personalized recommendations."""
+
+    class OccupationType(models.TextChoices):
+        STUDENT = 'student', 'Estudiante'
+        WORKER = 'worker', 'Trabajador'
+        OTHER = 'other', 'Otro'
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='survey_response',
+        verbose_name='usuario',
+    )
+    occupation_type = models.CharField(
+        'tipo de ocupación',
+        max_length=20,
+        choices=OccupationType.choices,
+    )
+    interests = models.JSONField(
+        'intereses',
+        default=list,
+        help_text='Lista de slugs de categorías de interés.',
+    )
+    other_interests = models.TextField(
+        'otros intereses',
+        blank=True,
+        default='',
+    )
+    completed_at = models.DateTimeField(
+        'completado en',
+        auto_now_add=True,
+    )
+
+    class Meta:
+        verbose_name = 'encuesta de intereses'
+        verbose_name_plural = 'encuestas de intereses'
+
+    def __str__(self):
+        return f'Encuesta de {self.user.email}'
 
 
 class PasswordResetToken(models.Model):

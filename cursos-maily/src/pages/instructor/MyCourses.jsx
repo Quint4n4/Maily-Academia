@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, BookOpen, Edit, Eye, EyeOff, Settings, Clock, Search } from 'lucide-react';
+import { Plus, BookOpen, Edit, Eye, EyeOff, Settings, Clock, Search, Building2, Info } from 'lucide-react';
 import { Card, Button, Input, Modal, Badge } from '../../components/ui';
 import ImageCropModal from '../../components/ImageCropModal';
 import { useAuth } from '../../context/AuthContext';
@@ -152,13 +152,30 @@ const MyCourses = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Mis Cursos</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">{filteredCourses.length} cursos</p>
         </div>
         <Button onClick={openCreate} icon={<Plus size={18} />}>Nuevo Curso</Button>
       </div>
+
+      {/* Banner de academia asignada */}
+      {user.instructorSection ? (
+        <div className="flex items-center gap-3 mb-6 px-4 py-3 rounded-xl bg-maily/10 dark:bg-maily/20 border border-maily/30 text-maily dark:text-maily-300">
+          <Building2 size={18} className="shrink-0" />
+          <p className="text-sm font-medium">
+            Tus cursos se publican en <span className="font-bold">{user.instructorSection.name}</span>. Al crear un nuevo curso se asignará automáticamente a esta academia.
+          </p>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 mb-6 px-4 py-3 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 text-yellow-700 dark:text-yellow-400">
+          <Info size={18} className="shrink-0" />
+          <p className="text-sm font-medium">
+            No tienes una academia asignada. Contacta al administrador para que te asigne a una academia antes de crear cursos.
+          </p>
+        </div>
+      )}
 
       {/* Filters */}
       <Card className="p-4 mb-6">
@@ -193,21 +210,29 @@ const MyCourses = () => {
         {filteredCourses.map((c, i) => (
           <motion.div key={c.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <Card padding={false} className="overflow-hidden h-full flex flex-col">
-              <div className="relative aspect-video">
-                <img
-                  src={c.thumbnail || 'https://placehold.co/400x192?text=Curso'}
-                  alt={c.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute top-3 left-3 flex gap-2">
-                  <Badge variant={c.level === 'beginner' ? 'success' : c.level === 'intermediate' ? 'warning' : 'danger'} size="sm">
-                    {LEVEL_LABELS[c.level] || c.level}
-                  </Badge>
-                  <Badge variant={c.status === 'published' ? 'primary' : 'secondary'} size="sm">
-                    {c.status === 'published' ? 'Publicado' : 'Borrador'}
-                  </Badge>
+                <div className="relative aspect-video">
+                  <img
+                    src={c.thumbnail || 'https://placehold.co/400x192?text=Curso'}
+                    alt={c.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
+                    <Badge variant={c.level === 'beginner' ? 'success' : c.level === 'intermediate' ? 'warning' : 'danger'} size="sm">
+                      {LEVEL_LABELS[c.level] || c.level}
+                    </Badge>
+                    <Badge variant={c.status === 'published' ? 'primary' : 'secondary'} size="sm">
+                      {c.status === 'published' ? 'Publicado' : 'Borrador'}
+                    </Badge>
+                  </div>
+                  {c.section_slug && (
+                    <div className="absolute bottom-2 right-2">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-black/60 text-white backdrop-blur-sm">
+                        <Building2 size={11} />
+                        {c.section_name || c.section_slug}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              </div>
               <div className="p-4 flex-1 flex flex-col">
                 <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1">{c.title}</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Tú</p>
@@ -226,6 +251,7 @@ const MyCourses = () => {
                 <p className="text-xs text-gray-400 mt-1">{c.students_count ?? 0} estudiantes</p>
                 <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                   <Button size="sm" variant="primary" onClick={() => navigate(`/instructor/courses/${c.id}/edit`)} icon={<Settings size={14} />}>Contenido</Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigate(`/instructor/courses/${c.id}/analytics`)}>Analytics</Button>
                   <Button size="sm" variant="ghost" onClick={() => openEdit(c)} icon={<Edit size={14} />}>Editar</Button>
                   <Button size="sm" variant="secondary" onClick={() => handleTogglePublish(c)} icon={c.status === 'published' ? <EyeOff size={14} /> : <Eye size={14} />}>
                     {c.status === 'published' ? 'Despublicar' : 'Publicar'}

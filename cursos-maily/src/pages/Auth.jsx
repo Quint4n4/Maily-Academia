@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User, ArrowRight, Heart, BookOpen, Award, Sparkles, Phone, AlertTriangle } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Phone, AlertTriangle, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import logoMaily from '../../Logos/logomaily.png';
+import logoLongevity from '../../Logos/Longevity360-03.png';
 import { Button, Input } from '../components/ui';
+import { COUNTRIES, STATES_BY_COUNTRY, getCities } from '../data/locations';
 
 // Validation constants (align with backend)
 const PASSWORD_MIN_LENGTH = 10;
@@ -25,16 +27,61 @@ const Auth = () => {
     phone: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    country: '',
+    state: '',
+    city: '',
+    dateOfBirth: '',
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [generalError, setGeneralError] = useState('');
   const [isAccountLocked, setIsAccountLocked] = useState(false);
   const [lockoutInfo, setLockoutInfo] = useState(null);
+  const [openCountry, setOpenCountry] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const [openCity, setOpenCity] = useState(false);
+  const countryRef = useRef(null);
+  const stateRef = useRef(null);
+  const cityRef = useRef(null);
 
   const { login, register, getDashboardPath } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (countryRef.current?.contains(e.target)) return;
+      if (stateRef.current?.contains(e.target)) return;
+      if (cityRef.current?.contains(e.target)) return;
+      setOpenCountry(false);
+      setOpenState(false);
+      setOpenCity(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const currentCountryId = COUNTRIES.find((c) => c.name === formData.country)?.id;
+  const stateOptions = currentCountryId ? (STATES_BY_COUNTRY[currentCountryId] || []) : [];
+  const cityOptions = currentCountryId && formData.state ? getCities(currentCountryId, formData.state) : [];
+  const showStateOther = currentCountryId && stateOptions.length === 0;
+  const showCityOther = (currentCountryId && formData.state && cityOptions.length === 0) || (currentCountryId && formData.state && formData.city && !cityOptions.includes(formData.city));
+
+  const handleCountrySelect = (name) => {
+    setFormData((prev) => ({ ...prev, country: name, state: '', city: '' }));
+    setErrors((prev) => ({ ...prev, state: '', city: '' }));
+    setOpenCountry(false);
+  };
+  const handleStateSelect = (name) => {
+    setFormData((prev) => ({ ...prev, state: name, city: '' }));
+    setErrors((prev) => ({ ...prev, city: '' }));
+    setOpenState(false);
+  };
+  const handleCitySelect = (name) => {
+    setFormData((prev) => ({ ...prev, city: name }));
+    setErrors((prev) => ({ ...prev, city: '' }));
+    setOpenCity(false);
+  };
 
   // Generar username automáticamente desde nombre y apellido
   const generatedUsername = useMemo(() => {
@@ -67,6 +114,19 @@ const Auth = () => {
       const phone = formData.phone.trim();
       if (!phone) newErrors.phone = 'El teléfono es requerido';
       else if (!PHONE_PATTERN.test(phone)) newErrors.phone = 'El teléfono debe tener exactamente 10 dígitos';
+
+      const country = formData.country.trim();
+      if (!country) newErrors.country = 'El país es requerido';
+
+      if (formData.dateOfBirth) {
+        const today = new Date();
+        const dob = new Date(formData.dateOfBirth);
+        if (Number.isNaN(dob.getTime())) {
+          newErrors.dateOfBirth = 'Fecha de nacimiento inválida';
+        } else if (dob > today) {
+          newErrors.dateOfBirth = 'La fecha de nacimiento no puede ser futura';
+        }
+      }
     }
     if (!formData.email.trim()) {
       newErrors.email = 'El correo es requerido';
@@ -96,6 +156,15 @@ const Auth = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const getSectionDashboardPath = (redirectSection) => {
+    if (redirectSection === 'corporativo-camsa') return '/corporativo/dashboard';
+    if (redirectSection === 'maily-academia') return '/maily/dashboard';
+    // Para estudiantes sin sección explícita o con Longevity, usar Longevity 360
+    if (redirectSection === 'longevity-360' || redirectSection == null) return '/longevity/dashboard';
+    // Fallback defensivo: alias legacy
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setGeneralError('');
@@ -107,8 +176,23 @@ const Auth = () => {
     if (isLogin) {
       const result = await login(formData.email, formData.password);
       if (result.success) {
-        // getDashboardPath needs the user to be set, so small delay
-        setTimeout(() => navigate(getDashboardPath()), 100);
+        // Si tiene varias secciones, mostrar selector de sección (solo aplica a estudiantes con múltiples accesos)
+        if (result.sections?.length > 1) {
+          setTimeout(() => navigate('/choose-section', { state: { sections: result.sections }, replace: true }), 100);
+          return;
+        }
+        // Una vez establecido el usuario, decidimos el dashboard según:
+        // - Rol admin/instructor → rutas existentes
+        // - Rol student → redirección por sección si viene desde backend
+        setTimeout(() => {
+          const basePath = getDashboardPath();
+          if (basePath === '/dashboard') {
+            const target = getSectionDashboardPath(result.redirectSection);
+            navigate(target || '/dashboard', { replace: true });
+          } else {
+            navigate(basePath, { replace: true });
+          }
+        }, 100);
       } else if (result.isLocked) {
         setIsAccountLocked(true);
         setLockoutInfo({
@@ -127,9 +211,13 @@ const Auth = () => {
         phone: formData.phone,
         password: formData.password,
         passwordConfirm: formData.confirmPassword,
+        country: formData.country,
+        state: formData.state,
+        city: formData.city,
+        dateOfBirth: formData.dateOfBirth,
       });
       if (result.success) {
-        setTimeout(() => navigate(getDashboardPath()), 100);
+        setTimeout(() => navigate('/survey'), 100);
       } else {
         setGeneralError(result.error);
       }
@@ -143,75 +231,44 @@ const Auth = () => {
     if (name === 'phone') {
       const numericValue = value.replace(/\D/g, '').slice(0, 10);
       setFormData(prev => ({ ...prev, [name]: numericValue }));
+    } else if (name === 'dateOfBirth') {
+      setFormData(prev => ({ ...prev, [name]: value }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
-  const features = [
-    { icon: BookOpen, text: 'Cursos interactivos', color: 'text-blue-500' },
-    { icon: Award, text: 'Certificados oficiales', color: 'text-yellow-500' },
-    { icon: Sparkles, text: 'Contenido actualizado', color: 'text-purple-500' },
-    { icon: Heart, text: 'Soporte continuo', color: 'text-red-500' }
-  ];
-
   return (
-    <div className="min-h-screen flex">
-      {/* Left panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 dark:from-blue-700 dark:to-blue-900 p-12 relative overflow-hidden">
-        <div className="absolute top-20 left-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-80 h-80 bg-white/5 rounded-full blur-3xl" />
-        <div className="relative z-10 flex flex-col justify-between h-full text-white">
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <div className="flex items-center gap-3">
-              <img src={logoMaily} alt="Maily Academia" className="w-12 h-12 rounded-xl object-contain bg-white/20 backdrop-blur-sm" />
-              <div>
-                <h1 className="text-2xl font-bold">Maily Academia</h1>
-                <p className="text-white/70 text-sm">Plataforma de cursos</p>
-              </div>
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-slate-900">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-maily/5 via-transparent to-transparent dark:from-maily/10 pointer-events-none" />
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative z-10 w-full min-h-screen flex flex-col justify-center bg-white dark:bg-gray-800/95 backdrop-blur-sm shadow-xl border-0 border-gray-100 dark:border-gray-700 p-6 sm:p-12 md:p-16 overflow-y-auto"
+      >
+        <div className="w-full max-w-md mx-auto">
+          {/* Logos + nombre */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="flex items-center justify-center gap-4 sm:gap-6 mb-4">
+              <img src={logoMaily} alt="Maily Academia" className="h-12 w-auto object-contain drop-shadow-sm" />
+              <span className="text-gray-300 dark:text-gray-600 text-xl">+</span>
+              <img src={logoLongevity} alt="Longevity 360" className="h-12 w-auto object-contain drop-shadow-sm" />
             </div>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }} className="space-y-6">
-            <h2 className="text-4xl font-bold leading-tight">
-              Aprende a dominar<br />el software que<br />
-              <span className="text-orange-400">transforma tu trabajo</span>
-            </h2>
-            <p className="text-white/80 text-lg max-w-md">
-              Cursos diseñados para que aprendas a tu ritmo con seguimiento personalizado y certificaciones.
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white text-center">
+              CORPORATIVO ACADEMY
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Una plataforma, todas tus formaciones
             </p>
-            <div className="grid grid-cols-2 gap-4 pt-4">
-              {features.map((feature, index) => (
-                <motion.div key={index} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 + index * 0.1 }}
-                  className="flex items-center gap-3 bg-white/10 rounded-xl p-3 backdrop-blur-sm">
-                  <feature.icon className={`w-5 h-5 ${feature.color}`} />
-                  <span className="text-sm font-medium">{feature.text}</span>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }} className="text-white/60 text-sm">
-            &copy; 2024 Maily Academia. Todos los derechos reservados.
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Right panel - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <img src={logoMaily} alt="Maily Academia" className="w-10 h-10 rounded-xl object-contain" />
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Maily Academia</h1>
-              <p className="text-gray-500 dark:text-gray-400 text-xs">Plataforma de cursos</p>
-            </div>
           </div>
 
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {isLogin ? 'Bienvenido de vuelta' : 'Crea tu cuenta'}
             </h2>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">
+            <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
               {isLogin ? 'Ingresa tus credenciales para continuar' : 'Comienza tu viaje de aprendizaje'}
             </p>
           </div>
@@ -282,6 +339,194 @@ const Auth = () => {
                       Solo números, exactamente 10 dígitos.
                     </p>
                   </div>
+                  <div className="relative" ref={countryRef}>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      País
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => { setOpenCountry((v) => !v); setOpenState(false); setOpenCity(false); }}
+                      className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm border transition-all text-left ${
+                        errors.country ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'
+                      } bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 hover:border-maily/50`}
+                    >
+                      <span className="flex items-center gap-2 truncate">
+                        {formData.country ? (
+                          <>
+                            <span>{COUNTRIES.find((c) => c.name === formData.country)?.flag}</span>
+                            <span>{formData.country}</span>
+                          </>
+                        ) : (
+                          <span className="text-gray-500 dark:text-gray-400">Selecciona tu país</span>
+                        )}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform ${openCountry ? 'rotate-180' : ''}`} />
+                    </button>
+                    <AnimatePresence>
+                      {openCountry && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          className="absolute z-20 left-0 right-0 mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg max-h-48 overflow-y-auto"
+                        >
+                          {COUNTRIES.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => handleCountrySelect(c.name)}
+                              className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left border-b border-gray-100 dark:border-gray-800 last:border-0 ${
+                                formData.country === c.name ? 'bg-maily/10 text-maily' : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                              }`}
+                            >
+                              <span>{c.flag}</span>
+                              <span>{c.name}</span>
+                              {formData.country === c.name && <span className="ml-auto">✓</span>}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    {errors.country && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.country}</p>
+                    )}
+                  </div>
+                  {(stateOptions.length > 0 || showStateOther) && (
+                    <div>
+                      {stateOptions.length > 0 ? (
+                        <div className="relative" ref={stateRef}>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Estado / Provincia
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => { setOpenState((v) => !v); setOpenCountry(false); setOpenCity(false); }}
+                            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 hover:border-maily/50"
+                          >
+                            <span className="truncate">
+                              {formData.state || 'Selecciona estado o provincia'}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform ${openState ? 'rotate-180' : ''}`} />
+                          </button>
+                          <AnimatePresence>
+                            {openState && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -4 }}
+                                className="absolute z-20 left-0 right-0 mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg max-h-48 overflow-y-auto"
+                              >
+                                {stateOptions.map((stateName) => (
+                                  <button
+                                    key={stateName}
+                                    type="button"
+                                    onClick={() => handleStateSelect(stateName)}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left border-b border-gray-100 dark:border-gray-800 last:border-0 ${
+                                      formData.state === stateName ? 'bg-maily/10 text-maily' : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                                    }`}
+                                  >
+                                    <span>{formData.state === stateName ? '☑' : '☐'}</span>
+                                    <span>{stateName}</span>
+                                  </button>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                          {errors.state && (
+                            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.state}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <Input
+                          label="Estado / Provincia"
+                          name="state"
+                          placeholder="Tu estado o provincia"
+                          value={formData.state}
+                          onChange={handleInputChange}
+                          error={errors.state}
+                        />
+                      )}
+                    </div>
+                  )}
+                  {(cityOptions.length > 0 || (formData.state && (showCityOther || formData.city))) && (
+                    <div>
+                      {cityOptions.length > 0 ? (
+                        <div className="relative" ref={cityRef}>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Ciudad
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => { setOpenCity((v) => !v); setOpenCountry(false); setOpenState(false); }}
+                            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 hover:border-maily/50"
+                          >
+                            <span className="truncate">
+                              {formData.city || 'Selecciona ciudad'}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform ${openCity ? 'rotate-180' : ''}`} />
+                          </button>
+                          <AnimatePresence>
+                            {openCity && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -4 }}
+                                className="absolute z-20 left-0 right-0 mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg max-h-48 overflow-y-auto"
+                              >
+                                {cityOptions.map((cityName) => (
+                                  <button
+                                    key={cityName}
+                                    type="button"
+                                    onClick={() => handleCitySelect(cityName)}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left border-b border-gray-100 dark:border-gray-800 last:border-0 ${
+                                      formData.city === cityName ? 'bg-maily/10 text-maily' : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                                    }`}
+                                  >
+                                    <span>{formData.city === cityName ? '☑' : '☐'}</span>
+                                    <span>{cityName}</span>
+                                  </button>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Si tu ciudad no aparece, escríbela abajo.
+                          </p>
+                          <Input
+                            label=""
+                            name="city"
+                            placeholder="O escribe tu ciudad"
+                            value={cityOptions.includes(formData.city) ? '' : formData.city}
+                            onChange={handleInputChange}
+                            className="mt-2"
+                            error={errors.city}
+                          />
+                        </div>
+                      ) : (
+                        <Input
+                          label="Ciudad"
+                          name="city"
+                          placeholder="Tu ciudad"
+                          value={formData.city}
+                          onChange={handleInputChange}
+                          error={errors.city}
+                        />
+                      )}
+                    </div>
+                  )}
+                    <div>
+                      <Input
+                        label="Fecha de nacimiento"
+                        name="dateOfBirth"
+                        type="date"
+                        value={formData.dateOfBirth}
+                        onChange={handleInputChange}
+                        error={errors.dateOfBirth}
+                      />
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Solo se usa para adaptar mejor tu experiencia. No se comparte con otros usuarios.
+                      </p>
+                    </div>
                   {generatedUsername && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -329,8 +574,12 @@ const Auth = () => {
               {isLogin ? 'Iniciar sesión' : 'Crear cuenta'}
             </Button>
           </form>
+
+          <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
+            © {new Date().getFullYear()} Corporativo Academy
+          </p>
+        </div>
         </motion.div>
-      </div>
     </div>
   );
 };

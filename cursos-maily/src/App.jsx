@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SectionContextProvider, useSection } from './context/SectionContext';
 import { ProgressProvider } from './context/ProgressContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { MainLayout } from './components/layout';
@@ -12,21 +13,34 @@ import {
   Certificates,
   Profile,
   CoursesList,
-  MyCourses
+  MyCourses,
+  MailyDashboard,
+  LongevityDashboard,
+  CorporativoDashboard,
+  MailyCourses,
+  LongevityCourses,
+  CorporativoCourses,
+  Survey,
 } from './pages';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import FinalEvaluationView from './pages/FinalEvaluationView';
 import CertificateVerify from './pages/CertificateVerify';
+import MailyPresentacion from './pages/MailyPresentacion';
+import ChooseSection from './pages/ChooseSection';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import CourseManagement from './pages/admin/CourseManagement';
+import PromoVideosManagement from './pages/admin/PromoVideosManagement';
 import InstructorDashboard from './pages/instructor/InstructorDashboard';
 import InstructorMyCourses from './pages/instructor/MyCourses';
 import QnAPanel from './pages/instructor/QnAPanel';
 import BlogManagement from './pages/instructor/BlogManagement';
 import CourseBuilder from './pages/instructor/CourseBuilder';
 import InstructorEvaluationsPanel from './pages/instructor/InstructorEvaluationsPanel';
+import StudentManagement from './pages/instructor/StudentManagement';
+import StudentDetail from './pages/instructor/StudentDetail';
+import CourseAnalytics from './pages/instructor/CourseAnalytics';
 
 // Loading spinner
 const LoadingScreen = () => (
@@ -48,9 +62,16 @@ const ProtectedRoute = ({ children }) => {
 
 // Public route – redirects to dashboard if already authenticated
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated, isLoading, getDashboardPath } = useAuth();
+  const { isAuthenticated, isLoading, getDashboardPath, user } = useAuth();
+  const { getSectionDashboardPath } = useSection();
   if (isLoading) return <LoadingScreen />;
-  if (isAuthenticated) return <Navigate to={getDashboardPath()} replace />;
+  if (isAuthenticated) {
+    const target =
+      user?.role === 'student'
+        ? getSectionDashboardPath(user.role)
+        : getDashboardPath();
+    return <Navigate to={target} replace />;
+  }
   return children;
 };
 
@@ -63,10 +84,20 @@ const RoleRoute = ({ roles, children }) => {
   return children;
 };
 
+// Super-admin only (en la práctica, cualquier admin global)
+const SuperAdminRoute = ({ children }) => {
+  const { user, getDashboardPath } = useAuth();
+  // Reutilizamos el rol `admin` global; no es necesario marcar un flag especial.
+  if (!user || user.role !== 'admin') {
+    return <Navigate to={getDashboardPath()} replace />;
+  }
+  return children;
+};
+
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public – Login / Register */}
+      {/* Public – Login (sin landing) */}
       <Route
         path="/"
         element={
@@ -75,9 +106,11 @@ function AppRoutes() {
           </PublicRoute>
         }
       />
+      <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/auth" element={<Navigate to="/" replace />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
+      <Route path="/choose-section" element={<ProtectedRoute><ChooseSection /></ProtectedRoute>} />
 
       {/* ── Admin routes ─────────────────────────────────────────── */}
       <Route
@@ -92,6 +125,7 @@ function AppRoutes() {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/courses" element={<CourseManagement />} />
+        <Route path="/admin/promo-videos" element={<SuperAdminRoute><PromoVideosManagement /></SuperAdminRoute>} />
       </Route>
 
       {/* ── Instructor routes ────────────────────────────────────── */}
@@ -106,6 +140,9 @@ function AppRoutes() {
       >
         <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
         <Route path="/instructor/courses" element={<InstructorMyCourses />} />
+        <Route path="/instructor/students" element={<StudentManagement />} />
+        <Route path="/instructor/students/:id" element={<StudentDetail />} />
+        <Route path="/instructor/courses/:courseId/analytics" element={<CourseAnalytics />} />
         <Route path="/instructor/qna" element={<QnAPanel />} />
         <Route path="/instructor/evaluations" element={<InstructorEvaluationsPanel />} />
         <Route path="/instructor/blog" element={<BlogManagement />} />
@@ -133,11 +170,22 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
+        {/* Alias legacy */}
         <Route path="/dashboard" element={<Dashboard />} />
+        {/* Dashboards por sección (por ahora reutilizan Dashboard base) */}
+        <Route path="/maily/dashboard" element={<MailyDashboard />} />
+        <Route path="/longevity/dashboard" element={<LongevityDashboard />} />
+        <Route path="/corporativo/dashboard" element={<CorporativoDashboard />} />
         <Route path="/my-courses" element={<MyCourses />} />
         <Route path="/courses" element={<CoursesList />} />
+        {/* Rutas seccionales de cursos (estructura inicial) */}
+        <Route path="/maily/courses" element={<MailyCourses />} />
+        <Route path="/longevity/courses" element={<LongevityCourses />} />
+        <Route path="/corporativo/courses" element={<CorporativoCourses />} />
         <Route path="/course/:courseId" element={<CourseView />} />
         <Route path="/certificates" element={<Certificates />} />
+        <Route path="/survey" element={<Survey />} />
+        <Route path="/maily-academia/presentacion" element={<MailyPresentacion />} />
       </Route>
 
       {/* ── Shared routes (all roles, with layout) ───────────────── */}
@@ -191,9 +239,11 @@ function App() {
     <ThemeProvider>
       <Router>
         <AuthProvider>
-          <ProgressProvider>
-            <AppRoutes />
-          </ProgressProvider>
+          <SectionContextProvider>
+            <ProgressProvider>
+              <AppRoutes />
+            </ProgressProvider>
+          </SectionContextProvider>
         </AuthProvider>
       </Router>
     </ThemeProvider>

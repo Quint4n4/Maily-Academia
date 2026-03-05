@@ -2,9 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, CheckCircle, BookOpen, MessageSquare, Send, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, BookOpen, MessageSquare, Send, Lock, Paperclip, Download, FileText, File, Image } from 'lucide-react';
 import { Button, Card, Badge } from '../components/ui';
 import courseService from '../services/courseService';
+import materialService from '../services/materialService';
 import { useProgress } from '../context/ProgressContext';
 import qnaService from '../services/qnaService';
 import progressService from '../services/progressService';
@@ -32,6 +33,10 @@ const LessonView = () => {
   const [newQuestion, setNewQuestion] = useState({ title: '', body: '' });
   const [askingQuestion, setAskingQuestion] = useState(false);
 
+  // Material de apoyo (Fase 4)
+  const [lessonMaterials, setLessonMaterials] = useState([]);
+  const [downloadingId, setDownloadingId] = useState(null);
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -56,6 +61,10 @@ const LessonView = () => {
           const qRes = await qnaService.getQuestions(lessonId);
           setQuestions(qRes.results || qRes);
         } catch { /* empty */ }
+        try {
+          const mats = await materialService.list(courseId, { lesson: lessonId });
+          setLessonMaterials(Array.isArray(mats) ? mats : mats.results || []);
+        } catch { setLessonMaterials([]); }
       } catch { /* empty */ }
       setLoading(false);
     };
@@ -96,6 +105,38 @@ const LessonView = () => {
     const prevLesson = allLessons[idx - 1];
     return completedIds.includes(prevLesson.id);
   }, [isEnrolled, requireSequential, completedIds, course?.modules, lessonId]);
+
+  const handleDownloadMaterial = useCallback(async (material) => {
+    setDownloadingId(material.id);
+    try {
+      const blob = await materialService.download(material.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = material.original_filename || material.title || 'material';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch { /* empty */ }
+    setDownloadingId(null);
+  }, []);
+
+  const getMaterialIcon = (fileType) => {
+    const t = (fileType || '').toLowerCase();
+    if (t === 'pdf') return <FileText size={18} className="text-red-500" />;
+    if (t === 'pptx' || t === 'ppt') return <FileText size={18} className="text-orange-500" />;
+    if (t === 'docx' || t === 'doc') return <FileText size={18} className="text-blue-500" />;
+    if (t === 'image') return <Image size={18} className="text-purple-500" />;
+    return <File size={18} className="text-gray-500" />;
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes == null || bytes === 0) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   const saveVideoPosition = useCallback(async (seconds) => {
     if (seconds == null && playerRef.current?.getCurrentTime) {
@@ -247,6 +288,40 @@ const LessonView = () => {
             {currentLesson.content && (
               <Card className="prose dark:prose-invert max-w-none">
                 <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentLesson.content) }} />
+              </Card>
+            )}
+
+            {/* Material de apoyo */}
+            {isEnrolled && lessonMaterials.length > 0 && (
+              <Card className="p-4">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                  <Paperclip size={18} className="text-maily" /> Material de apoyo
+                </h3>
+                <ul className="space-y-2">
+                  {lessonMaterials.map((mat) => (
+                    <li
+                      key={mat.id}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
+                    >
+                      {getMaterialIcon(mat.file_type)}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{mat.title}</p>
+                        {formatFileSize(mat.file_size) && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{formatFileSize(mat.file_size)}</p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleDownloadMaterial(mat)}
+                        disabled={downloadingId === mat.id}
+                        icon={downloadingId === mat.id ? null : <Download size={14} />}
+                      >
+                        {downloadingId === mat.id ? 'Descargando...' : 'Descargar'}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
               </Card>
             )}
 

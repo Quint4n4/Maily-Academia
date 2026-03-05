@@ -1,0 +1,13 @@
+# Configuración del servicio Backend para Railway (plan Hobby)
+# https://docs.railway.com/config-as-code
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "sh start.sh"
+healthcheckPath = "/api/schema/"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

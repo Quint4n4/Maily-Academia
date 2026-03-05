@@ -4,13 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft, Plus, Trash2, ChevronUp, ChevronDown,
   BookOpen, PlayCircle, Save, Eye, EyeOff, Edit,
-  CheckCircle, AlertTriangle, Video, FileText,
+  CheckCircle, AlertTriangle, Video, FileText, Paperclip, FileSpreadsheet, Image, File,
 } from 'lucide-react';
 import { Card, Button, Input, Badge, Modal } from '../../components/ui';
 import ImageCropModal from '../../components/ImageCropModal';
 import VideoPreview from '../../components/VideoPreview';
 import courseService from '../../services/courseService';
 import quizService from '../../services/quizService';
+import materialService from '../../services/materialService';
 import { uploadCourseThumbnail } from '../../services/uploadService';
 import evaluationService from '../../services/evaluationService';
 
@@ -20,6 +21,13 @@ const VIDEO_PROVIDERS = [
   { value: 'cloudflare', label: 'Cloudflare Stream' },
   { value: 'mux', label: 'Mux' },
   { value: 's3', label: 'AWS S3' },
+];
+
+const QUESTION_TYPES = [
+  { value: 'multiple_choice', label: 'Opción múltiple' },
+  { value: 'true_false', label: 'Verdadero y falso' },
+  { value: 'matching', label: 'Relacionar palabras' },
+  { value: 'word_search', label: 'Sopa de letras' },
 ];
 
 const CourseBuilder = () => {
@@ -46,7 +54,13 @@ const CourseBuilder = () => {
   const [quizForm, setQuizForm] = useState({ title: '', passing_score: 70 });
   const [questions, setQuestions] = useState([]);
   const [editingQuestion, setEditingQuestion] = useState(null);
-  const [questionForm, setQuestionForm] = useState({ text: '', options: ['', '', '', ''], correct_answer: 0 });
+  const [questionForm, setQuestionForm] = useState({
+    text: '',
+    question_type: 'multiple_choice',
+    options: ['', '', '', ''],
+    correct_answer: 0,
+    config: {},
+  });
 
   // Final evaluation state
   const [finalEval, setFinalEval] = useState(null);
@@ -64,6 +78,20 @@ const CourseBuilder = () => {
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
   const [thumbnailUploadError, setThumbnailUploadError] = useState('');
   const [cropImageFile, setCropImageFile] = useState(null);
+
+  // Material de apoyo (Fase 4)
+  const [materialsList, setMaterialsList] = useState([]);
+  const [materialsLoading, setMaterialsLoading] = useState(false);
+  const [materialUploadForm, setMaterialUploadForm] = useState({
+    title: '',
+    description: '',
+    file: null,
+    module_id: '',
+    lesson_id: '',
+    order: 0,
+  });
+  const [uploadingMaterial, setUploadingMaterial] = useState(false);
+  const [materialError, setMaterialError] = useState('');
 
   const loadCourse = useCallback(async () => {
     try {
@@ -106,6 +134,22 @@ const CourseBuilder = () => {
   }, [courseId]);
 
   useEffect(() => { loadCourse(); }, [loadCourse]);
+
+  const loadMaterials = useCallback(async () => {
+    if (!courseId) return;
+    setMaterialsLoading(true);
+    try {
+      const data = await materialService.list(courseId);
+      setMaterialsList(Array.isArray(data) ? data : data.results || []);
+    } catch {
+      setMaterialsList([]);
+    }
+    setMaterialsLoading(false);
+  }, [courseId]);
+
+  useEffect(() => {
+    if (selectedType === 'materials') loadMaterials();
+  }, [selectedType, loadMaterials]);
 
   // --- Validation ---
   const validateCourse = (data) => {
@@ -383,18 +427,47 @@ const CourseBuilder = () => {
     setSaving(false);
   };
 
+  const buildQuestionPayload = () => {
+    const { text, question_type, options, correct_answer, config } = questionForm;
+    const payload = { text, question_type: question_type || 'multiple_choice', order: questions.length + 1 };
+    if (question_type === 'multiple_choice') {
+      payload.options = (options || []).filter((o) => (o && o.trim()));
+      payload.correct_answer = correct_answer ?? 0;
+      payload.config = {};
+    } else if (question_type === 'true_false') {
+      payload.options = ['Verdadero', 'Falso'];
+      payload.correct_answer = correct_answer === 1 ? 1 : 0;
+      payload.config = {};
+    } else {
+      const rawConfig = config || {};
+      payload.options = [];
+      payload.correct_answer = null;
+      // Asegurar que config se guarde correctamente por tipo
+      if (question_type === 'word_search') {
+        const words = rawConfig.words_to_find ?? rawConfig.words;
+        const splitOne = (s) => String(s).split(/[/,\s]+/).map((x) => x.trim()).filter(Boolean);
+        const words_to_find = Array.isArray(words)
+          ? words.flatMap((w) => splitOne(w))
+          : typeof words === 'string'
+            ? splitOne(words.replace(/\n/g, ' '))
+            : [];
+        payload.config = { ...rawConfig, words_to_find, words: words_to_find };
+      } else {
+        payload.config = rawConfig;
+      }
+    }
+    return payload;
+  };
+
   const addQuestion = async () => {
     if (!quiz) return;
     setSaving(true);
     try {
-      const q = await quizService.addQuestion(quiz.id, {
-        text: questionForm.text,
-        options: questionForm.options.filter((o) => o.trim()),
-        correct_answer: questionForm.correct_answer,
-        order: questions.length + 1,
-      });
+      const payload = buildQuestionPayload();
+      payload.order = questions.length + 1;
+      const q = await quizService.addQuestion(quiz.id, payload);
       setQuestions((prev) => [...prev, q]);
-      setQuestionForm({ text: '', options: ['', '', '', ''], correct_answer: 0 });
+      setQuestionForm({ text: '', question_type: 'multiple_choice', options: ['', '', '', ''], correct_answer: 0, config: {} });
       setEditingQuestion(null);
       showSaved('Pregunta agregada');
     } catch { /* empty */ }
@@ -404,11 +477,9 @@ const CourseBuilder = () => {
   const saveQuestion = async (questionId) => {
     setSaving(true);
     try {
-      const updated = await quizService.updateQuestion(questionId, {
-        text: questionForm.text,
-        options: questionForm.options.filter((o) => o.trim()),
-        correct_answer: questionForm.correct_answer,
-      });
+      const payload = buildQuestionPayload();
+      delete payload.order;
+      const updated = await quizService.updateQuestion(questionId, payload);
       setQuestions((prev) => prev.map((q) => (q.id === questionId ? updated : q)));
       setEditingQuestion(null);
       showSaved('Pregunta actualizada');
@@ -429,10 +500,14 @@ const CourseBuilder = () => {
 
   const startEditQuestion = (q) => {
     setEditingQuestion(q.id);
+    const qtype = q.question_type || 'multiple_choice';
+    const options = qtype === 'true_false' ? ['Verdadero', 'Falso'] : [...(q.options || []), '', '', '', ''].slice(0, 4);
     setQuestionForm({
       text: q.text,
-      options: [...(q.options || []), '', '', '', ''].slice(0, 4),
-      correct_answer: q.correct_answer,
+      question_type: qtype,
+      options,
+      correct_answer: q.correct_answer ?? 0,
+      config: q.config && typeof q.config === 'object' ? { ...q.config } : {},
     });
   };
 
@@ -494,6 +569,59 @@ const CourseBuilder = () => {
       options: [...(q.options || []), '', '', '', ''].slice(0, 4),
       correct_answer: q.correct_answer,
     });
+  };
+
+  // --- Material de apoyo ---
+  const handleUploadMaterial = async () => {
+    const { title, file, module_id, lesson_id, order } = materialUploadForm;
+    if (!title.trim() || !file) {
+      setMaterialError('Título y archivo son obligatorios.');
+      return;
+    }
+    setMaterialError('');
+    setUploadingMaterial(true);
+    try {
+      const formData = new FormData();
+      formData.append('title', materialUploadForm.title.trim());
+      if (materialUploadForm.description) formData.append('description', materialUploadForm.description);
+      formData.append('file', file);
+      if (module_id) formData.append('module', module_id);
+      if (lesson_id) formData.append('lesson', lesson_id);
+      formData.append('order', Number(order) || 0);
+      await materialService.upload(courseId, formData);
+      setMaterialUploadForm({ title: '', description: '', file: null, module_id: '', lesson_id: '', order: materialsList.length });
+      showSaved('Material subido');
+      await loadMaterials();
+    } catch (err) {
+      setMaterialError(err.response?.data?.file?.[0] || err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Error al subir.');
+    }
+    setUploadingMaterial(false);
+  };
+
+  const handleDeleteMaterial = async (materialId) => {
+    if (!window.confirm('¿Eliminar este material?')) return;
+    try {
+      await materialService.remove(materialId);
+      showSaved('Material eliminado');
+      await loadMaterials();
+    } catch { /* empty */ }
+  };
+
+  const getMaterialIcon = (fileType) => {
+    const t = (fileType || '').toLowerCase();
+    if (t === 'pdf') return <FileText size={18} className="text-red-500" />;
+    if (t === 'pptx' || t === 'ppt') return <FileText size={18} className="text-orange-500" />;
+    if (t === 'docx' || t === 'doc') return <FileText size={18} className="text-blue-500" />;
+    if (t === 'xlsx' || t === 'xls') return <FileSpreadsheet size={18} className="text-green-600" />;
+    if (t === 'image') return <Image size={18} className="text-purple-500" />;
+    return <File size={18} className="text-gray-500" />;
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes == null || bytes === 0) return '—';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   // --- Render ---
@@ -578,6 +706,21 @@ const CourseBuilder = () => {
                 <div>
                   <p className="font-medium text-sm">Información del curso</p>
                   <p className="text-xs opacity-70">Título, descripción, nivel</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setSelectedType('materials')}
+                className={`w-full text-left p-3 rounded-xl transition-colors flex items-center gap-3 ${
+                  selectedType === 'materials'
+                    ? 'bg-maily/10 border-2 border-maily text-maily'
+                    : 'bg-white dark:bg-gray-800 border-2 border-transparent hover:border-gray-200 dark:hover:border-gray-700'
+                }`}
+              >
+                <Paperclip size={18} />
+                <div>
+                  <p className="font-medium text-sm">Material de apoyo</p>
+                  <p className="text-xs opacity-70">PDFs, presentaciones, documentos</p>
                 </div>
               </button>
 
@@ -1170,7 +1313,32 @@ const CourseBuilder = () => {
                                       onChange={(e) => setQuestionForm({ ...questionForm, text: e.target.value })}
                                     />
                                   </div>
-                                  {questionForm.options.map((opt, oi) => (
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Tipo de pregunta</label>
+                                    <select
+                                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+                                      value={questionForm.question_type || 'multiple_choice'}
+                                      onChange={(e) => {
+                                        const qt = e.target.value;
+                                        setQuestionForm((prev) => {
+                                          const updates = {
+                                            question_type: qt,
+                                            config: qt === 'multiple_choice' || qt === 'true_false' ? {} : (prev.config || {}),
+                                          };
+                                          if (qt === 'true_false') {
+                                            updates.options = ['Verdadero', 'Falso'];
+                                            updates.correct_answer = 0;
+                                          }
+                                          return { ...prev, ...updates };
+                                        });
+                                      }}
+                                    >
+                                      {QUESTION_TYPES.map((t) => (
+                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  {questionForm.question_type === 'multiple_choice' && questionForm.options.map((opt, oi) => (
                                     <div key={oi} className="flex items-center gap-2">
                                       <button
                                         type="button"
@@ -1195,7 +1363,64 @@ const CourseBuilder = () => {
                                       />
                                     </div>
                                   ))}
-                                  <p className="text-xs text-gray-400">Haz clic en la letra para marcar la respuesta correcta</p>
+                                  {questionForm.question_type === 'true_false' && (
+                                    <div className="space-y-2">
+                                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">La respuesta correcta es:</label>
+                                      <div className="flex gap-4">
+                                        {['Verdadero', 'Falso'].map((label, idx) => (
+                                          <label key={idx} className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                              type="radio"
+                                              name="true_false"
+                                              checked={(questionForm.correct_answer ?? 0) === idx}
+                                              onChange={() => setQuestionForm((prev) => ({ ...prev, correct_answer: idx }))}
+                                              className="text-maily"
+                                            />
+                                            <span className="text-sm text-gray-900 dark:text-white">{label}</span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {questionForm.question_type === 'word_search' && (
+                                    <div className="space-y-2">
+                                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Palabras a encontrar (una por línea)</label>
+                                      <textarea
+                                        rows={3}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm"
+                                        placeholder="CELULA\nMITOSIS\nADN"
+                                        value={(questionForm.config?.words_to_find || questionForm.config?.words || []).join('\n')}
+                                        onChange={(e) => {
+                                          const words_to_find = e.target.value
+                                            .split(/[\n/]+/)
+                                            .flatMap((s) => s.split(',').map((x) => x.trim()))
+                                            .filter(Boolean);
+                                          setQuestionForm((prev) => ({ ...prev, config: { ...prev.config, words_to_find } }));
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                  {questionForm.question_type === 'matching' && (
+                                    <div className="space-y-2">
+                                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Pares (izquierda | derecha, uno por línea)</label>
+                                      <textarea
+                                        rows={5}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm"
+                                        placeholder="Corazón | Bombea sangre al cuerpo\nPulmones | Intercambio de gases"
+                                        value={(questionForm.config?.pairs || []).map((p) => `${p.left || ''}|${p.right || ''}`).join('\n')}
+                                        onChange={(e) => {
+                                          const pairs = e.target.value.split('\n').map((line, idx) => {
+                                            const [left, right] = line.split('|').map((s) => s.trim());
+                                            return { id: idx + 1, left: left || '', right: right || '' };
+                                          }).filter((p) => p.left || p.right);
+                                          setQuestionForm((prev) => ({ ...prev, config: { ...prev.config, pairs } }));
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                  {questionForm.question_type === 'multiple_choice' && (
+                                    <p className="text-xs text-gray-400">Haz clic en la letra para marcar la respuesta correcta</p>
+                                  )}
                                   <div className="flex justify-end gap-2">
                                     <Button variant="ghost" size="sm" onClick={() => setEditingQuestion(null)}>Cancelar</Button>
                                     <Button size="sm" onClick={() => saveQuestion(q.id)} loading={saving} icon={<Save size={12} />}>Guardar</Button>
@@ -1205,25 +1430,42 @@ const CourseBuilder = () => {
                                 /* View mode */
                                 <div className="flex items-start justify-between">
                                   <div>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                                      {qi + 1}. {q.text}
-                                    </p>
-                                    <div className="space-y-1">
-                                      {(q.options || []).map((opt, oi) => (
-                                        <p key={oi} className={`text-xs flex items-center gap-2 ${
-                                          q.correct_answer === oi
-                                            ? 'text-green-600 dark:text-green-400 font-medium'
-                                            : 'text-gray-500 dark:text-gray-400'
-                                        }`}>
-                                          <span className={`w-4 h-4 rounded-full border text-[10px] flex items-center justify-center ${
-                                            q.correct_answer === oi ? 'border-green-500 bg-green-500 text-white' : 'border-gray-300'
-                                          }`}>
-                                            {String.fromCharCode(65 + oi)}
-                                          </span>
-                                          {opt}
-                                        </p>
-                                      ))}
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {qi + 1}. {q.text}
+                                      </p>
+                                      <Badge variant="secondary" size="sm">
+                                        {QUESTION_TYPES.find((t) => t.value === (q.question_type || 'multiple_choice'))?.label || 'Opción múltiple'}
+                                      </Badge>
                                     </div>
+                                    {q.question_type === 'multiple_choice' && (
+                                      <div className="space-y-1">
+                                        {(q.options || []).map((opt, oi) => (
+                                          <p key={oi} className={`text-xs flex items-center gap-2 ${
+                                            q.correct_answer === oi
+                                              ? 'text-green-600 dark:text-green-400 font-medium'
+                                              : 'text-gray-500 dark:text-gray-400'
+                                          }`}>
+                                            <span className={`w-4 h-4 rounded-full border text-[10px] flex items-center justify-center ${
+                                              q.correct_answer === oi ? 'border-green-500 bg-green-500 text-white' : 'border-gray-300'
+                                            }`}>
+                                              {String.fromCharCode(65 + oi)}
+                                            </span>
+                                            {opt}
+                                          </p>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {q.question_type === 'true_false' && (
+                                      <p className="text-xs text-green-600 dark:text-green-400 font-medium">
+                                        Respuesta correcta: {(q.correct_answer === 1 ? 'Falso' : 'Verdadero')}
+                                      </p>
+                                    )}
+                                    {q.question_type !== 'multiple_choice' && q.question_type !== 'true_false' && q.config && (
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        Config: {q.question_type}
+                                      </p>
+                                    )}
                                   </div>
                                   <div className="flex gap-1">
                                     <button onClick={() => startEditQuestion(q)} className="p-1 text-gray-400 hover:text-maily rounded">
@@ -1252,7 +1494,27 @@ const CourseBuilder = () => {
                                 placeholder="Escribe la pregunta..."
                               />
                             </div>
-                            {questionForm.options.map((opt, oi) => (
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Tipo de pregunta</label>
+                              <select
+                                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+                                value={questionForm.question_type || 'multiple_choice'}
+                                onChange={(e) => {
+                                  const qt = e.target.value;
+                                  const updates = { question_type: qt, config: {} };
+                                  if (qt === 'true_false') {
+                                    updates.options = ['Verdadero', 'Falso'];
+                                    updates.correct_answer = 0;
+                                  }
+                                  setQuestionForm((prev) => ({ ...prev, ...updates }));
+                                }}
+                              >
+                                {QUESTION_TYPES.map((t) => (
+                                  <option key={t.value} value={t.value}>{t.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            {questionForm.question_type === 'multiple_choice' && questionForm.options.map((opt, oi) => (
                               <div key={oi} className="flex items-center gap-2">
                                 <button
                                   type="button"
@@ -1277,7 +1539,64 @@ const CourseBuilder = () => {
                                 />
                               </div>
                             ))}
-                            <p className="text-xs text-gray-400">Haz clic en la letra para marcar la respuesta correcta</p>
+                            {questionForm.question_type === 'true_false' && (
+                              <div className="space-y-2">
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">La respuesta correcta es:</label>
+                                <div className="flex gap-4">
+                                  {['Verdadero', 'Falso'].map((label, idx) => (
+                                    <label key={idx} className="flex items-center gap-2 cursor-pointer">
+                                      <input
+                                        type="radio"
+                                        name="true_false_new"
+                                        checked={(questionForm.correct_answer ?? 0) === idx}
+                                        onChange={() => setQuestionForm((prev) => ({ ...prev, correct_answer: idx }))}
+                                        className="text-maily"
+                                      />
+                                      <span className="text-sm text-gray-900 dark:text-white">{label}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {questionForm.question_type === 'word_search' && (
+                              <div className="space-y-2">
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Palabras a encontrar (una por línea)</label>
+                                <textarea
+                                  rows={3}
+                                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm"
+                                  placeholder="CELULA\nMITOSIS\nADN"
+                                  value={(questionForm.config?.words_to_find || questionForm.config?.words || []).join('\n')}
+                                  onChange={(e) => {
+                                    const words_to_find = e.target.value
+                                      .split(/[\n/]+/)
+                                      .flatMap((s) => s.split(',').map((x) => x.trim()))
+                                      .filter(Boolean);
+                                    setQuestionForm((prev) => ({ ...prev, config: { ...prev.config, words_to_find } }));
+                                  }}
+                                />
+                              </div>
+                            )}
+                            {questionForm.question_type === 'matching' && (
+                              <div className="space-y-2">
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Pares (izquierda | derecha, uno por línea)</label>
+                                <textarea
+                                  rows={5}
+                                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm"
+                                  placeholder="Corazón | Bombea sangre\nPulmones | Intercambio de gases"
+                                  value={(questionForm.config?.pairs || []).map((p) => `${p.left || ''}|${p.right || ''}`).join('\n')}
+                                  onChange={(e) => {
+                                    const pairs = e.target.value.split('\n').map((line, idx) => {
+                                      const [left, right] = line.split('|').map((s) => s.trim());
+                                      return { id: idx + 1, left: left || '', right: right || '' };
+                                    }).filter((p) => p.left || p.right);
+                                    setQuestionForm((prev) => ({ ...prev, config: { ...prev.config, pairs } }));
+                                  }}
+                                />
+                              </div>
+                            )}
+                            {questionForm.question_type === 'multiple_choice' && (
+                              <p className="text-xs text-gray-400">Haz clic en la letra para marcar la respuesta correcta</p>
+                            )}
                             <div className="flex justify-end gap-2">
                               <Button variant="ghost" size="sm" onClick={() => setEditingQuestion(null)}>Cancelar</Button>
                               <Button size="sm" onClick={addQuestion} loading={saving} disabled={!questionForm.text.trim()} icon={<Plus size={12} />}>
@@ -1289,7 +1608,7 @@ const CourseBuilder = () => {
                           <button
                             onClick={() => {
                               setEditingQuestion('new');
-                              setQuestionForm({ text: '', options: ['', '', '', ''], correct_answer: 0 });
+                              setQuestionForm({ text: '', question_type: 'multiple_choice', options: ['', '', '', ''], correct_answer: 0, config: {} });
                             }}
                             className="mt-3 w-full flex items-center justify-center gap-2 p-2 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-sm text-gray-500 dark:text-gray-400 hover:border-maily hover:text-maily transition-colors"
                           >
@@ -1368,6 +1687,136 @@ const CourseBuilder = () => {
                       </Button>
                       <Button onClick={saveLesson} loading={saving} icon={<Save size={16} />}>
                         Guardar lección
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Material de apoyo */}
+            {selectedType === 'materials' && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key="materials">
+                <Card className="p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <Paperclip size={18} /> Material de apoyo
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                    Sube PDFs, presentaciones o documentos para que los alumnos los descarguen. Puedes asociar cada archivo al curso, a un módulo o a una lección.
+                  </p>
+
+                  {/* Lista de materiales */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Materiales subidos</h3>
+                    {materialsLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <div className="w-4 h-4 border-2 border-maily border-t-transparent rounded-full animate-spin" />
+                        Cargando...
+                      </div>
+                    ) : materialsList.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Aún no hay materiales. Sube el primero abajo.</p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {materialsList.map((mat) => (
+                          <li
+                            key={mat.id}
+                            className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
+                          >
+                            {getMaterialIcon(mat.file_type)}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{mat.title}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {formatFileSize(mat.file_size)}
+                                {mat.module_title && ` · ${mat.module_title}`}
+                                {mat.lesson_title && ` → ${mat.lesson_title}`}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteMaterial(mat.id)}
+                              className="p-1.5 text-gray-400 hover:text-red-500 rounded transition-colors"
+                              title="Eliminar"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Formulario de subida */}
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Subir material</h3>
+                    <div className="space-y-4">
+                      <Input
+                        label="Título"
+                        placeholder="Ej: Guía del módulo 1"
+                        value={materialUploadForm.title}
+                        onChange={(e) => setMaterialUploadForm((prev) => ({ ...prev, title: e.target.value }))}
+                      />
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción (opcional)</label>
+                        <textarea
+                          rows={2}
+                          className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                          placeholder="Breve descripción del archivo"
+                          value={materialUploadForm.description}
+                          onChange={(e) => setMaterialUploadForm((prev) => ({ ...prev, description: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Archivo (PDF, PPT, DOC, XLS, imágenes — máx. 50 MB)</label>
+                        <input
+                          type="file"
+                          accept=".pdf,.pptx,.ppt,.docx,.doc,.xlsx,.xls,.png,.jpg,.jpeg"
+                          className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-maily file:text-white hover:file:bg-maily/90"
+                          onChange={(e) => setMaterialUploadForm((prev) => ({ ...prev, file: e.target.files?.[0] || null }))}
+                        />
+                        {materialUploadForm.file && (
+                          <p className="text-xs text-gray-500 mt-1">{materialUploadForm.file.name}</p>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Módulo (opcional)</label>
+                          <select
+                            className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                            value={materialUploadForm.module_id}
+                            onChange={(e) => setMaterialUploadForm((prev) => ({ ...prev, module_id: e.target.value, lesson_id: '' }))}
+                          >
+                            <option value="">Todo el curso</option>
+                            {(course?.modules || []).map((m) => (
+                              <option key={m.id} value={m.id}>{m.title}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lección (opcional)</label>
+                          <select
+                            className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                            value={materialUploadForm.lesson_id}
+                            onChange={(e) => setMaterialUploadForm((prev) => ({ ...prev, lesson_id: e.target.value }))}
+                          >
+                            <option value="">—</option>
+                            {materialUploadForm.module_id &&
+                              (() => {
+                                const mod = (course?.modules || []).find((m) => String(m.id) === String(materialUploadForm.module_id));
+                                return (mod?.lessons || []).map((l) => (
+                                  <option key={l.id} value={l.id}>{l.title}</option>
+                                ));
+                              })()}
+                          </select>
+                        </div>
+                      </div>
+                      {materialError && <p className="text-sm text-red-500">{materialError}</p>}
+                      <Button
+                        onClick={handleUploadMaterial}
+                        loading={uploadingMaterial}
+                        disabled={!materialUploadForm.title.trim() || !materialUploadForm.file}
+                        icon={<Plus size={16} />}
+                      >
+                        Subir material
                       </Button>
                     </div>
                   </div>

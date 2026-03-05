@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Course, Module, Lesson
+
+from .models import Category, Course, CourseMaterial, Module, Lesson
 
 
 class ModuleInline(admin.TabularInline):
@@ -12,10 +13,18 @@ class LessonInline(admin.TabularInline):
     extra = 0
 
 
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'slug', 'section', 'parent', 'order', 'is_active', 'created_at']
+    list_filter = ['section', 'is_active']
+    search_fields = ['name', 'slug', 'description']
+    prepopulated_fields = {'slug': ('name',)}
+
+
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ['title', 'instructor', 'level', 'status', 'price', 'created_at']
-    list_filter = ['level', 'status', 'created_at']
+    list_display = ['title', 'instructor', 'level', 'status', 'price', 'created_at', 'category']
+    list_filter = ['level', 'status', 'created_at', 'category']
     search_fields = ['title', 'description']
     inlines = [ModuleInline]
 
@@ -31,3 +40,11 @@ class ModuleAdmin(admin.ModelAdmin):
 class LessonAdmin(admin.ModelAdmin):
     list_display = ['title', 'module', 'video_provider', 'duration', 'order']
     list_filter = ['video_provider']
+
+
+@admin.register(CourseMaterial)
+class CourseMaterialAdmin(admin.ModelAdmin):
+    list_display = ['title', 'course', 'module', 'lesson', 'file_type', 'file_size', 'download_count', 'created_at']
+    list_filter = ['file_type', 'course']
+    search_fields = ['title', 'original_filename']
+    raw_id_fields = ['course', 'module', 'lesson', 'uploaded_by']
