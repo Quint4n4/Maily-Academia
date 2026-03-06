@@ -232,15 +232,19 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Maily Academia <noreply@mailyacademia.com>')
 # Resend (API HTTP): usar cuando SMTP esté bloqueado, ej. en Railway
-RESEND_API_KEY = config('RESEND_API_KEY', default='')
+RESEND_API_KEY = config('RESEND_API_KEY', default='').strip()
 RESEND_FROM_EMAIL = config('RESEND_FROM_EMAIL', default='')
 
-# Backend: prioridad Resend (HTTP) > SMTP > console
+# Backend: en Railway (DATABASE_URL) SMTP suele dar "Network unreachable" → usar Resend o console
+_in_railway = bool(os.environ.get('DATABASE_URL'))
 _email_backend = config('EMAIL_BACKEND', default='')
 if _email_backend:
     EMAIL_BACKEND = _email_backend
 elif RESEND_API_KEY:
     EMAIL_BACKEND = 'config.email_backends.ResendEmailBackend'
+elif _in_railway:
+    # En Railway no usar SMTP; sin Resend los correos solo se ven en logs
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 elif EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 else:
