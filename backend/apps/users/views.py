@@ -4,6 +4,8 @@ from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.utils import timezone
+import logging
+import threading
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -377,19 +379,23 @@ Saludos,
 El equipo de Maily Academia
 """
         
-        try:
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-                fail_silently=False,
-            )
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).exception(
-                "Error enviando email de recuperación de contraseña: %s", e
-            )
+        def _send_reset_email():
+            try:
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                logging.getLogger(__name__).exception(
+                    "Error enviando email de recuperación de contraseña: %s", e
+                )
+        
+        # Enviar en segundo plano para no bloquear el worker (evita timeout con SMTP lento)
+        thread = threading.Thread(target=_send_reset_email, daemon=True)
+        thread.start()
         
         return Response(success_message, status=status.HTTP_200_OK)
 
