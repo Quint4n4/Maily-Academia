@@ -245,6 +245,12 @@ elif RESEND_API_KEY:
 elif _in_railway:
     # En Railway no usar SMTP; sin Resend los correos solo se ven en logs
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    if not RESEND_API_KEY:
+        import logging
+        logging.getLogger('config.settings').warning(
+            'RESEND_API_KEY no está configurada: los correos se imprimen en logs y no se envían. '
+            'Añade RESEND_API_KEY en Railway (Variables) y redeploya.'
+        )
 elif EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 else:
