@@ -231,10 +231,16 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Maily Academia <noreply@mailyacademia.com>')
-# Si hay usuario y contraseña SMTP, usar envío real; si no, console (solo logs)
+# Resend (API HTTP): usar cuando SMTP esté bloqueado, ej. en Railway
+RESEND_API_KEY = config('RESEND_API_KEY', default='')
+RESEND_FROM_EMAIL = config('RESEND_FROM_EMAIL', default='')
+
+# Backend: prioridad Resend (HTTP) > SMTP > console
 _email_backend = config('EMAIL_BACKEND', default='')
 if _email_backend:
     EMAIL_BACKEND = _email_backend
+elif RESEND_API_KEY:
+    EMAIL_BACKEND = 'config.email_backends.ResendEmailBackend'
 elif EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 else:
