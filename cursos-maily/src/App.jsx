@@ -42,6 +42,16 @@ import StudentManagement from './pages/instructor/StudentManagement';
 import StudentDetail from './pages/instructor/StudentDetail';
 import CourseAnalytics from './pages/instructor/CourseAnalytics';
 
+// Redirige estudiantes de /dashboard a su dashboard por sección
+const StudentDashboardRedirect = ({ children }) => {
+  const { user } = useAuth();
+  const { currentSection } = useSection();
+  if (user?.role !== 'student') return children;
+  const slug = currentSection || 'longevity-360';
+  const path = slug === 'corporativo-camsa' ? '/corporativo/dashboard' : slug === 'maily-academia' ? '/maily/dashboard' : '/longevity/dashboard';
+  return <Navigate to={path} replace />;
+};
+
 // Loading spinner
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -170,8 +180,15 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        {/* Alias legacy */}
-        <Route path="/dashboard" element={<Dashboard />} />
+        {/* /dashboard redirige a la sección correcta para estudiantes */}
+        <Route
+          path="/dashboard"
+          element={
+            <StudentDashboardRedirect>
+              <Dashboard />
+            </StudentDashboardRedirect>
+          }
+        />
         {/* Dashboards por sección (por ahora reutilizan Dashboard base) */}
         <Route path="/maily/dashboard" element={<MailyDashboard />} />
         <Route path="/longevity/dashboard" element={<LongevityDashboard />} />

@@ -84,7 +84,10 @@ class SecureLoginView(TokenObtainPairView):
                         elif section.section_type == Section.SectionType.MAILY:
                             has_maily = True
 
-                    # Prioridad: corporativo > maily > público (Longevity 360)
+                    # Longevity 360 es público: todos los estudiantes tienen acceso
+                    section_slugs.append('longevity-360')
+
+                    # Prioridad para redirect: corporativo > maily > público (Longevity 360)
                     redirect_section = None
                     if has_corporate:
                         redirect_section = 'corporativo-camsa'
@@ -92,7 +95,6 @@ class SecureLoginView(TokenObtainPairView):
                         redirect_section = 'maily-academia'
                     else:
                         redirect_section = 'longevity-360'
-                        section_slugs.append('longevity-360')
 
                     # Eliminar duplicados y ordenar para estabilidad
                     section_slugs = sorted(set(section_slugs))

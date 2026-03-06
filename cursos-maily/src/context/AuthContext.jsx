@@ -122,10 +122,12 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       await authService.register(userData);
-      // Auto-login after registration
-      await authService.login(userData.email, userData.password);
+      // Auto-login after registration (registro público = solo Longevity 360)
+      const loginData = await authService.login(userData.email, userData.password);
+      setRedirectSection(loginData?.redirect_section || 'longevity-360');
+      setUserSections(Array.isArray(loginData?.user?.sections) ? loginData.user.sections : ['longevity-360']);
       await fetchUser();
-      return { success: true };
+      return { success: true, redirectSection: loginData?.redirect_section || 'longevity-360', sections: loginData?.user?.sections || ['longevity-360'] };
     } catch (error) {
       const data = error.response?.data;
       let message = 'Error al registrar';

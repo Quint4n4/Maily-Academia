@@ -217,6 +217,11 @@ const Auth = () => {
         dateOfBirth: formData.dateOfBirth,
       });
       if (result.success) {
+        // Si tiene varias academias, mostrar selector (ej. si admin le dio acceso previo)
+        if (result.sections?.length > 1) {
+          setTimeout(() => navigate('/choose-section', { state: { sections: result.sections }, replace: true }), 100);
+          return;
+        }
         setTimeout(() => navigate('/survey'), 100);
       } else {
         setGeneralError(result.error);
