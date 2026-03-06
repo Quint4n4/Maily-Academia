@@ -386,8 +386,10 @@ El equipo de Maily Academia
                 fail_silently=False,
             )
         except Exception as e:
-            # Log del error pero no revelar al usuario
-            print(f"Error enviando email de recuperación: {e}")
+            import logging
+            logging.getLogger(__name__).exception(
+                "Error enviando email de recuperación de contraseña: %s", e
+            )
         
         return Response(success_message, status=status.HTTP_200_OK)
 

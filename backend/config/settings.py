@@ -225,13 +225,20 @@ CLOUDINARY_URL = _cloudinary_url
 # ---------------------------------------------------------------------------
 # Email configuration (para recuperación de contraseña)
 # ---------------------------------------------------------------------------
-EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Maily Academia <noreply@mailyacademia.com>')
+# Si hay usuario y contraseña SMTP, usar envío real; si no, console (solo logs)
+_email_backend = config('EMAIL_BACKEND', default='')
+if _email_backend:
+    EMAIL_BACKEND = _email_backend
+elif EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Frontend URL para enlaces de recuperación de contraseña
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
