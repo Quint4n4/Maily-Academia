@@ -232,8 +232,9 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Maily Academia <noreply@mailyacademia.com>')
 # Resend (API HTTP): usar cuando SMTP esté bloqueado, ej. en Railway
-RESEND_API_KEY = config('RESEND_API_KEY', default='').strip()
-RESEND_FROM_EMAIL = config('RESEND_FROM_EMAIL', default='')
+# Leer de os.environ primero (Railway inyecta ahí); fallback a decouple
+RESEND_API_KEY = (os.environ.get('RESEND_API_KEY') or config('RESEND_API_KEY', default='') or '').strip()
+RESEND_FROM_EMAIL = (os.environ.get('RESEND_FROM_EMAIL') or config('RESEND_FROM_EMAIL', default='') or '').strip()
 
 # Backend: en Railway (DATABASE_URL) SMTP suele dar "Network unreachable" → usar Resend o console
 _in_railway = bool(os.environ.get('DATABASE_URL'))
@@ -245,12 +246,11 @@ elif RESEND_API_KEY:
 elif _in_railway:
     # En Railway no usar SMTP; sin Resend los correos solo se ven en logs
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    if not RESEND_API_KEY:
-        import logging
-        logging.getLogger('config.settings').warning(
-            'RESEND_API_KEY no está configurada: los correos se imprimen en logs y no se envían. '
-            'Añade RESEND_API_KEY en Railway (Variables) y redeploya.'
-        )
+    import logging
+    logging.getLogger('config.settings').warning(
+        'RESEND_API_KEY no está configurada: los correos se imprimen en logs. '
+        'Railway → servicio Maily-Academia → Variables → RESEND_API_KEY = re_xxx (y Redeploy).'
+    )
 elif EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 else:
