@@ -73,13 +73,19 @@ class CourseListCreateView(generics.ListCreateAPIView):
             students_count=Count('enrollments'),
             materials_count=Count('materials', distinct=True),
         )
-        if not self.request.user.is_authenticated or self.request.user.role == 'student':
+        user = self.request.user
+        if not user.is_authenticated or user.role == 'student':
             qs = qs.filter(status='published')
-        elif self.request.user.role == 'instructor':
-            section_ids = _instructor_section_ids(self.request.user)
+        elif user.role == 'instructor':
+            section_ids = _instructor_section_ids(user)
             qs = qs.filter(
-                Q(status='published') | (Q(instructor=self.request.user) & (Q(section__isnull=True) | Q(section_id__in=section_ids)))
+                Q(status='published') | (Q(instructor=user) & (Q(section__isnull=True) | Q(section_id__in=section_ids)))
             )
+        else:
+            # Admin: aplicar filtro de estado explícitamente si se proporciona
+            status_param = self.request.query_params.get('status')
+            if status_param:
+                qs = qs.filter(status=status_param)
 
         # Filtros adicionales por categoría y tags (Fase 3)
         category_slug = self.request.query_params.get('category')
@@ -93,7 +99,7 @@ class CourseListCreateView(generics.ListCreateAPIView):
                 qs = qs.filter(tags__contains=tags)
         return qs
 
-    filterset_fields = ['level', 'status', 'instructor']
+    filterset_fields = ['level', 'instructor']
     search_fields = ['title', 'description']
     ordering_fields = ['created_at', 'rating', 'title']
 
