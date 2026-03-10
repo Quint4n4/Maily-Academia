@@ -5,6 +5,7 @@ import { Mail, Lock, User, ArrowRight, Phone, AlertTriangle, ChevronDown } from 
 import { useAuth } from '../context/AuthContext';
 import logoMaily from '../../Logos/logomaily.png';
 import logoLongevity from '../../Logos/Longevity360-03.png';
+import logoCorporativo from '../../Logos/logocorporativo.png';
 import { Button, Input } from '../components/ui';
 import { COUNTRIES, STATES_BY_COUNTRY, getCities } from '../data/locations';
 
@@ -254,19 +255,23 @@ const Auth = () => {
         className="relative z-10 w-full min-h-screen flex flex-col justify-center bg-white dark:bg-gray-800/95 backdrop-blur-sm shadow-xl border-0 border-gray-100 dark:border-gray-700 p-6 sm:p-12 md:p-16 overflow-y-auto"
       >
         <div className="w-full max-w-md mx-auto">
-          {/* Logos + nombre */}
+          {/* Título principal + logos */}
           <div className="flex flex-col items-center mb-8">
-            <div className="flex items-center justify-center gap-4 sm:gap-6 mb-4">
-              <img src={logoMaily} alt="Maily Academia" className="h-12 w-auto object-contain drop-shadow-sm" />
-              <span className="text-gray-300 dark:text-gray-600 text-xl">+</span>
-              <img src={logoLongevity} alt="Longevity 360" className="h-12 w-auto object-contain drop-shadow-sm" />
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white text-center">
-              CORPORATIVO ACADEMY
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white text-center leading-tight">
+              Mundo CAMSA
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Una plataforma, todas tus formaciones
+            <p className="text-base sm:text-lg font-medium text-gray-500 dark:text-gray-400 mt-1 tracking-wide">
+              Academia
             </p>
+            <div className="flex items-center justify-center gap-4 sm:gap-6 mt-5">
+              <img src={logoMaily} alt="Maily Academia" className="h-9 w-auto object-contain drop-shadow-sm" />
+              <span className="text-gray-300 dark:text-gray-600">·</span>
+              <img src={logoLongevity} alt="Longevity 360" className="h-9 w-auto object-contain drop-shadow-sm" />
+              <span className="text-gray-300 dark:text-gray-600">·</span>
+              <div className="bg-black rounded-lg p-1 flex-shrink-0">
+                <img src={logoCorporativo} alt="Corporativo CAMSA" className="h-7 w-auto object-contain max-w-[90px]" />
+              </div>
+            </div>
           </div>
 
           <div className="text-center mb-6">
@@ -581,7 +586,7 @@ const Auth = () => {
           </form>
 
           <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
-            © {new Date().getFullYear()} Corporativo Academy
+            © {new Date().getFullYear()} Mundo CAMSA Academia
           </p>
         </div>
         </motion.div>

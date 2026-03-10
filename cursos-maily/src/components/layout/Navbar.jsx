@@ -11,8 +11,6 @@ import {
   Sun,
   Menu,
   X,
-  Bell,
-  Search,
   Users,
   LayoutDashboard,
   MessageSquare,
@@ -20,6 +18,8 @@ import {
   Library,
   CheckCircle,
   Video,
+  ChevronDown,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -27,6 +27,19 @@ import { useSection } from '../../context/SectionContext';
 import qnaService from '../../services/qnaService';
 import logoMaily from '../../../Logos/logomaily.png';
 import logoLongevity from '../../../Logos/Longevity360-03.png';
+import logoCorporativo from '../../../Logos/logocorporativo.png';
+
+const SECTION_DASHBOARD = {
+  'maily-academia': '/maily/dashboard',
+  'longevity-360': '/longevity/dashboard',
+  'corporativo-camsa': '/corporativo/dashboard',
+};
+
+const SECTION_LOGOS = {
+  'maily-academia': { src: logoMaily, bg: false },
+  'longevity-360': { src: logoLongevity, bg: false },
+  'corporativo-camsa': { src: logoCorporativo, bg: true },
+};
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -36,8 +49,10 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [showProfile, setShowProfile] = useState(false);
   const [showMobile, setShowMobile] = useState(false);
+  const [showSectionSwitch, setShowSectionSwitch] = useState(false);
   const [qnaPendingCount, setQnaPendingCount] = useState(0);
   const profileRef = useRef(null);
+  const sectionSwitchRef = useRef(null);
 
   // Instructor: fetch Q&A pending count for badge (on mount and when navigating to refresh after answering)
   useEffect(() => {
@@ -49,11 +64,14 @@ const Navbar = () => {
     return () => { cancelled = true; };
   }, [user?.role, location.pathname]);
 
-  // Close profile dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
         setShowProfile(false);
+      }
+      if (sectionSwitchRef.current && !sectionSwitchRef.current.contains(e.target)) {
+        setShowSectionSwitch(false);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -104,14 +122,30 @@ const Navbar = () => {
     if (user?.role === 'admin') return null;
     if (user?.role === 'instructor') {
       const slug = user?.instructorSection?.slug;
-      if (slug === 'maily-academia') return { src: logoMaily, alt: 'Maily Academia', showName: true };
-      if (slug === 'longevity-360') return { src: logoLongevity, alt: 'Longevity 360', showName: false };
+      if (slug === 'maily-academia') return { src: logoMaily, alt: 'Maily Academia', showName: true, bg: false };
+      if (slug === 'longevity-360') return { src: logoLongevity, alt: 'Longevity 360', showName: false, bg: false };
       return null;
     }
     // Estudiante: logo según la sección activa
-    if (currentSection === 'maily-academia') return { src: logoMaily, alt: 'Maily Academia', showName: true };
-    return { src: logoLongevity, alt: 'Longevity 360', showName: false };
+    if (currentSection === 'maily-academia') return { src: logoMaily, alt: 'Maily Academia', showName: true, bg: false };
+    if (currentSection === 'corporativo-camsa') return { src: logoCorporativo, alt: 'Corporativo CAMSA', showName: false, bg: true };
+    return { src: logoLongevity, alt: 'Longevity 360', showName: false, bg: false };
   }, [user, currentSection]);
+
+  // Secciones disponibles para cambiar (excluye la actual)
+  const switchableSections = useMemo(() => {
+    if (user?.role !== 'student' || !Array.isArray(userSections) || userSections.length <= 1) return [];
+    return userSections
+      .map((s) => (typeof s === 'string' ? availableSections.find((x) => x.slug === s) || { slug: s, name: s } : s))
+      .filter((s) => s.slug !== currentSection);
+  }, [user?.role, userSections, currentSection, availableSections]);
+
+  const handleSectionSwitch = (slug) => {
+    setCurrentSection(slug);
+    setShowSectionSwitch(false);
+    const path = SECTION_DASHBOARD[slug] || '/longevity/dashboard';
+    navigate(path, { replace: true });
+  };
 
   const isActive = (path) => location.pathname === path;
 
@@ -131,11 +165,13 @@ const Navbar = () => {
           <Link to={navItems[0]?.to || '/dashboard'} className="flex items-center gap-2">
             {logoInfo ? (
               <>
-                <img
-                  src={logoInfo.src}
-                  alt={logoInfo.alt}
-                  className="h-11 w-auto min-w-[2.75rem] rounded-lg object-contain bg-white/70 dark:bg-white/10"
-                />
+                <div className={`rounded-lg overflow-hidden flex-shrink-0 ${logoInfo.bg ? 'bg-black p-1' : 'bg-white/70 dark:bg-white/10'}`}>
+                  <img
+                    src={logoInfo.src}
+                    alt={logoInfo.alt}
+                    className="h-9 w-auto object-contain"
+                  />
+                </div>
                 {logoInfo.showName && (
                   <span className="text-lg font-bold text-gray-900 dark:text-white hidden sm:block">
                     {logoInfo.alt}
@@ -176,29 +212,49 @@ const Navbar = () => {
 
           {/* Right section */}
           <div className="flex items-center gap-2">
-            {/* Selector simple de sección cuando el usuario tiene más de una */}
-            {user?.role === 'student' && Array.isArray(userSections) && userSections.length > 1 && (
-              <select
-                value={currentSection || ''}
-                onChange={(e) => {
-                  const slug = e.target.value;
-                  if (!slug) return;
-                  setCurrentSection(slug);
-                }}
-                className="hidden md:inline-block text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mr-1"
-              >
-                {userSections.map((s) => {
-                  const section =
-                    typeof s === 'string'
-                      ? availableSections.find((x) => x.slug === s) || { slug: s, name: s }
-                      : s;
-                  return (
-                    <option key={section.slug} value={section.slug}>
-                      {section.name || section.slug}
-                    </option>
-                  );
-                })}
-              </select>
+            {/* Switcher de academia para alumnos con múltiples secciones */}
+            {switchableSections.length > 0 && (
+              <div className="relative hidden md:block" ref={sectionSwitchRef}>
+                <button
+                  onClick={() => setShowSectionSwitch((v) => !v)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:border-maily transition-colors"
+                >
+                  <ArrowLeftRight size={14} />
+                  <span className="hidden sm:inline">Cambiar academia</span>
+                  <ChevronDown size={14} className={`transition-transform ${showSectionSwitch ? 'rotate-180' : ''}`} />
+                </button>
+                <AnimatePresence>
+                  {showSectionSwitch && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 6 }}
+                      className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50"
+                    >
+                      <p className="px-3 pb-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                        Ir a otra academia
+                      </p>
+                      {switchableSections.map((s) => {
+                        const logoData = SECTION_LOGOS[s.slug];
+                        return (
+                          <button
+                            key={s.slug}
+                            onClick={() => handleSectionSwitch(s.slug)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                          >
+                            {logoData ? (
+                              <div className={`flex-shrink-0 rounded-md overflow-hidden ${logoData.bg ? 'bg-black p-1' : ''}`}>
+                                <img src={logoData.src} alt={s.name} className="h-7 w-auto object-contain max-w-[80px]" />
+                              </div>
+                            ) : null}
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{s.name || s.slug}</span>
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             )}
             {/* Theme toggle */}
             <button
@@ -248,14 +304,31 @@ const Navbar = () => {
                     >
                       <User size={16} /> Mi perfil
                     </Link>
-                    {user?.role === 'student' && Array.isArray(userSections) && userSections.length > 1 && (
-                      <Link
-                        to="/choose-section"
-                        onClick={() => setShowProfile(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      >
-                        <LayoutDashboard size={16} /> Cambiar de sección
-                      </Link>
+                    {switchableSections.length > 0 && (
+                      <>
+                        <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+                        <p className="px-4 pt-1 pb-0.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                          Cambiar academia
+                        </p>
+                        {switchableSections.map((s) => {
+                          const logoData = SECTION_LOGOS[s.slug];
+                          return (
+                            <button
+                              key={s.slug}
+                              onClick={() => { setShowProfile(false); handleSectionSwitch(s.slug); }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-left"
+                            >
+                              {logoData ? (
+                                <div className={`flex-shrink-0 rounded overflow-hidden ${logoData.bg ? 'bg-black p-0.5' : ''}`}>
+                                  <img src={logoData.src} alt={s.name} className="h-5 w-auto object-contain max-w-[60px]" />
+                                </div>
+                              ) : <ArrowLeftRight size={16} />}
+                              <span>{s.name || s.slug}</span>
+                            </button>
+                          );
+                        })}
+                        <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+                      </>
                     )}
                     {user?.role === 'student' && (
                       <Link

@@ -8,6 +8,7 @@ import { useSection } from '../context/SectionContext';
 import { Card, ProgressBar, Badge } from '../components/ui';
 import courseService from '../services/courseService';
 import logoMaily from '../../Logos/logomaily.png';
+import logoCorporativo from '../../Logos/logocorporativo.png';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -163,6 +164,29 @@ const Dashboard = () => {
                     <Video className="w-5 h-5" />
                     Conocer Maily Academia
                   </Link>
+                </div>
+              </section>
+            )}
+
+            {/* Bloque Corporativo CAMSA — solo visible para usuarios de la sección corporativa */}
+            {user?.role === 'student' && currentSection === 'corporativo-camsa' && (
+              <section className="rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white p-6 sm:p-8 border border-yellow-600/30">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-black rounded-xl p-2 flex-shrink-0">
+                      <img
+                        src={logoCorporativo}
+                        alt="Corporativo CAMSA"
+                        className="h-10 sm:h-12 w-auto object-contain max-w-[140px]"
+                      />
+                    </div>
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-bold text-yellow-400">Corporativo CAMSA</h2>
+                      <p className="text-gray-300 text-sm mt-0.5">
+                        Contenido de capacitación exclusivo para trabajadores del corporativo
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </section>
             )}

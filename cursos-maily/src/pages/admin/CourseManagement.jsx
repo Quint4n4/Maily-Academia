@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Search, Trash2, Eye, EyeOff, Archive } from 'lucide-react';
+import { BookOpen, Search, Trash2, Eye, Archive, RotateCcw } from 'lucide-react';
 import { Card, Button, Input, Badge } from '../../components/ui';
 import courseService from '../../services/courseService';
 
@@ -13,6 +13,7 @@ const CourseManagement = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -29,20 +30,25 @@ const CourseManagement = () => {
   useEffect(() => { load(); }, [statusFilter, search]);
 
   const handleStatusChange = async (id, newStatus) => {
+    setActionError('');
     try {
       await courseService.update(id, { status: newStatus });
       load();
-    } catch { /* empty */ }
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.response?.data?.status?.[0] || 'No se pudo cambiar el estado del curso.';
+      setActionError(msg);
+    }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Estás seguro de eliminar este curso?')) return;
+    setActionError('');
     try {
       await courseService.remove(id);
       load();
     } catch (err) {
       const msg = err.response?.data?.detail || 'No se pudo eliminar el curso.';
-      window.alert(msg);
+      setActionError(msg);
     }
   };
 
@@ -52,6 +58,12 @@ const CourseManagement = () => {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Cursos</h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">{courses.length} cursos en la plataforma</p>
       </div>
+
+      {actionError && (
+        <div className="mb-4 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400">
+          {actionError}
+        </div>
+      )}
 
       {/* Filters */}
       <Card className="p-4 mb-6">
@@ -119,8 +131,8 @@ const CourseManagement = () => {
                       </Button>
                     )}
                     {course.status === 'archived' && (
-                      <Button size="sm" variant="secondary" onClick={() => handleStatusChange(course.id, 'published')} icon={<Eye size={14} />}>
-                        Republicar
+                      <Button size="sm" variant="secondary" onClick={() => handleStatusChange(course.id, 'published')} icon={<RotateCcw size={14} />}>
+                        Restaurar
                       </Button>
                     )}
                     {(course.students_count ?? 0) === 0 ? (

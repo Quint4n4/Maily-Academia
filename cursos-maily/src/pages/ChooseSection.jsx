@@ -1,32 +1,32 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Building2, GraduationCap, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSection } from '../context/SectionContext';
 import logoLongevity from '../../Logos/Longevity360-03.png';
 import logoMaily from '../../Logos/logomaily.png';
+import logoCorporativo from '../../Logos/logocorporativo.png';
 
 const SECTION_CONFIG = {
   'longevity-360': {
     name: 'Longevity 360',
     path: '/longevity/dashboard',
-    icon: Sparkles,
     logo: logoLongevity,
+    logoBg: false,
     description: 'Cursos públicos y contenido general',
   },
   'maily-academia': {
     name: 'Maily Academia',
     path: '/maily/dashboard',
-    icon: GraduationCap,
     logo: logoMaily,
+    logoBg: false,
     description: 'Cursos del ecosistema Maily',
   },
   'corporativo-camsa': {
-    name: 'Corporativo',
+    name: 'Corporativo CAMSA',
     path: '/corporativo/dashboard',
-    icon: Building2,
-    logo: null,
+    logo: logoCorporativo,
+    logoBg: true,
     description: 'Contenido para trabajadores del corporativo',
   },
 };
@@ -80,23 +80,23 @@ export default function ChooseSection() {
       </motion.div>
 
       <div className="grid sm:grid-cols-2 gap-4 w-full max-w-2xl">
-        {choices.map(({ slug, name, path, icon: Icon, logo, description }, i) => (
+        {choices.map(({ slug, name, path, logo, logoBg, description }, i) => (
           <motion.button
             key={slug}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.08 }}
             onClick={() => handleChoose(slug, path)}
-            className="flex flex-col sm:flex-row items-center gap-4 p-6 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-maily hover:bg-maily/5 dark:hover:bg-maily/10 transition-all text-left"
+            className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-maily hover:bg-maily/5 dark:hover:bg-maily/10 transition-all text-center"
           >
-            {logo ? (
-              <img src={logo} alt={name} className="h-14 w-auto object-contain flex-shrink-0" />
-            ) : (
-              <div className="h-14 w-14 rounded-xl bg-maily/20 flex items-center justify-center flex-shrink-0">
-                <Icon className="w-7 h-7 text-maily" />
-              </div>
-            )}
-            <div className="min-w-0">
+            <div className={`flex items-center justify-center rounded-xl overflow-hidden flex-shrink-0 ${logoBg ? 'bg-black p-3' : ''}`}>
+              <img
+                src={logo}
+                alt={name}
+                className={`h-12 w-auto object-contain ${logoBg ? 'max-w-[160px]' : 'max-w-[140px]'}`}
+              />
+            </div>
+            <div>
               <h2 className="font-semibold text-lg text-gray-900 dark:text-white">{name}</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
             </div>

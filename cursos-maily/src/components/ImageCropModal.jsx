@@ -86,12 +86,15 @@ export default function ImageCropModal({ isOpen, imageFile, onComplete, onCancel
         Ajusta el área que se verá en la imagen del curso. Arrastra y usa la rueda para ampliar.
       </p>
       {imageSrc && (
-        <div className="relative w-full h-[400px] bg-gray-900 rounded-xl overflow-hidden">
+        <div className="relative w-full h-[520px] bg-gray-900 rounded-xl overflow-hidden">
           <Cropper
             image={imageSrc}
             crop={crop}
             zoom={zoom}
             aspect={aspect}
+            objectFit="contain"
+            minZoom={0.3}
+            maxZoom={5}
             onCropChange={setCrop}
             onZoomChange={setZoom}
             onCropComplete={onCropComplete}
@@ -99,6 +102,19 @@ export default function ImageCropModal({ isOpen, imageFile, onComplete, onCancel
           />
         </div>
       )}
+      <div className="flex items-center gap-3 mt-3">
+        <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">Zoom</span>
+        <input
+          type="range"
+          min={0.3}
+          max={5}
+          step={0.05}
+          value={zoom}
+          onChange={(e) => setZoom(Number(e.target.value))}
+          className="w-full accent-maily"
+        />
+        <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 w-8">{zoom.toFixed(1)}x</span>
+      </div>
       <div className="flex justify-end gap-3 mt-4">
         <Button type="button" variant="ghost" onClick={handleClose}>
           Cancelar
