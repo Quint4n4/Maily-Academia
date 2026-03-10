@@ -74,18 +74,15 @@ class CourseListCreateView(generics.ListCreateAPIView):
             materials_count=Count('materials', distinct=True),
         )
         user = self.request.user
-        if not user.is_authenticated or user.role == 'student':
+        role = getattr(user, 'role', None)
+        if not user.is_authenticated or role == 'student':
             qs = qs.filter(status='published')
-        elif user.role == 'instructor':
+        elif role == 'instructor':
             section_ids = _instructor_section_ids(user)
             qs = qs.filter(
                 Q(status='published') | (Q(instructor=user) & (Q(section__isnull=True) | Q(section_id__in=section_ids)))
             )
-        else:
-            # Admin: aplicar filtro de estado explícitamente si se proporciona
-            status_param = self.request.query_params.get('status')
-            if status_param:
-                qs = qs.filter(status=status_param)
+        # else: admin/superuser — no filtrar por status aquí; DjangoFilterBackend lo aplica
 
         # Filtros adicionales por categoría y tags (Fase 3)
         category_slug = self.request.query_params.get('category')
@@ -99,7 +96,7 @@ class CourseListCreateView(generics.ListCreateAPIView):
                 qs = qs.filter(tags__contains=tags)
         return qs
 
-    filterset_fields = ['level', 'instructor']
+    filterset_fields = ['level', 'status', 'instructor']
     search_fields = ['title', 'description']
     ordering_fields = ['created_at', 'rating', 'title']
 
