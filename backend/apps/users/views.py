@@ -179,22 +179,57 @@ class MeView(generics.RetrieveUpdateAPIView):
 
 
 class AvatarUploadView(APIView):
-    """PATCH /api/auth/me/avatar/ – Subir o reemplazar foto de perfil."""
+    """PATCH /api/auth/me/avatar/ – Subir foto de perfil a Cloudinary y guardar URL."""
 
     permission_classes = [IsAuthenticated]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
 
     def patch(self, request):
+        import os
+        import tempfile
+        import cloudinary
+        import cloudinary.uploader
+
         avatar_file = request.FILES.get('avatar')
         if not avatar_file:
             return Response({'detail': 'No se envió ningún archivo.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        profile, _ = Profile.objects.get_or_create(user=request.user)
-        profile.avatar = avatar_file
-        profile.save(update_fields=['avatar'])
+        allowed_types = {'image/jpeg', 'image/png', 'image/webp'}
+        if avatar_file.content_type not in allowed_types:
+            return Response({'detail': 'Solo se permiten imágenes JPG, PNG o WebP.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        from .serializers import ProfileSerializer
-        return Response({'avatar': ProfileSerializer(profile).data.get('avatar')}, status=status.HTTP_200_OK)
+        if avatar_file.size > 2 * 1024 * 1024:
+            return Response({'detail': 'La imagen no puede superar 2 MB.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            cloudinary.config(cloudinary_url=os.environ.get('CLOUDINARY_URL'))
+            suffix = os.path.splitext(getattr(avatar_file, 'name', ''))[1] or '.jpg'
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                for chunk in avatar_file.chunks():
+                    tmp.write(chunk)
+                tmp_path = tmp.name
+            try:
+                result = cloudinary.uploader.upload(
+                    tmp_path,
+                    folder='avatars',
+                    resource_type='image',
+                    transformation=[{'width': 400, 'height': 400, 'crop': 'fill', 'gravity': 'face'}],
+                )
+            finally:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+
+            url = result.get('secure_url')
+            if not url:
+                return Response({'detail': 'Error al subir la imagen.'}, status=status.HTTP_502_BAD_GATEWAY)
+
+            profile, _ = Profile.objects.get_or_create(user=request.user)
+            profile.avatar = url
+            profile.save(update_fields=['avatar'])
+
+            return Response({'avatar': url}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'detail': f'Error al procesar la imagen: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class SurveyView(APIView):

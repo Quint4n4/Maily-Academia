@@ -130,7 +130,7 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     bio = models.TextField('biografía', blank=True, default='')
     phone = models.CharField('teléfono', max_length=20, blank=True, default='')
-    avatar = models.ImageField('avatar', upload_to='avatars/', blank=True, null=True)
+    avatar = models.URLField('avatar', max_length=500, blank=True, default='')
     country = models.CharField('país', max_length=100, blank=True, default='')
     state = models.CharField('estado/provincia', max_length=100, blank=True, default='')
     city = models.CharField('ciudad', max_length=100, blank=True, default='')
@@ -205,6 +205,7 @@ class Profile(models.Model):
     def is_corporate_profile_complete(self):
         """Verifica si el perfil corporativo está completo (foto, departamento y puesto)."""
         return bool(self.avatar and self.department and self.position)
+
 
 
 class SurveyResponse(models.Model):

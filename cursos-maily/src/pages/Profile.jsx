@@ -1,13 +1,21 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, FileText, Save, Check } from 'lucide-react';
 import { Card, Button, Input, Badge } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
+import { useSection } from '../context/SectionContext';
 
 const ROLE_LABELS = { admin: 'Administrador', instructor: 'Profesor', student: 'Estudiante' };
 
 const Profile = () => {
   const { user, updateProfile } = useAuth();
+  const { currentSection } = useSection();
+
+  // Usuarios corporativos tienen su propia página de perfil
+  if (currentSection === 'corporativo-camsa') {
+    return <Navigate to="/corporativo/profile" replace />;
+  }
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
