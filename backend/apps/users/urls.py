@@ -9,6 +9,7 @@ urlpatterns = [
     path('login/', views.SecureLoginView.as_view(), name='auth-login'),
     path('refresh/', TokenRefreshView.as_view(), name='auth-refresh'),
     path('me/', views.MeView.as_view(), name='auth-me'),
+    path('me/avatar/', views.AvatarUploadView.as_view(), name='auth-me-avatar'),
     path('survey/', views.SurveyView.as_view(), name='auth-survey'),
 
     # Password reset

@@ -8,12 +8,18 @@ import { User, Camera, Phone, Building, AlertCircle, CheckCircle } from 'lucide-
 import api from '../../services/api';
 
 export default function CorporativoProfile() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [cropImageFile, setCropImageFile] = useState(null);
   const fileInputRef = useRef(null);
+
+  const [personalData, setPersonalData] = useState({
+    firstName: '',
+    lastName: '',
+  });
+
   const [profileData, setProfileData] = useState({
     bio: '',
     phone: '',
@@ -30,6 +36,10 @@ export default function CorporativoProfile() {
   useEffect(() => {
     corporateService.getCorporateProfile()
       .then((data) => {
+        setPersonalData({
+          firstName: data.first_name || '',
+          lastName: data.last_name || '',
+        });
         const p = data.profile || {};
         setProfileData({
           bio: p.bio || '',
@@ -50,6 +60,11 @@ export default function CorporativoProfile() {
 
   const isComplete = profileData.avatar && profileData.department && profileData.position;
 
+  const handlePersonalChange = (e) => {
+    const { name, value } = e.target;
+    setPersonalData((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setProfileData((prev) => ({ ...prev, [name]: value }));
@@ -59,17 +74,29 @@ export default function CorporativoProfile() {
     e.preventDefault();
     setSaving(true);
     try {
-      await corporateService.updateCorporateProfile({
-        department: profileData.department,
-        position: profileData.position,
-        employee_id: profileData.employee_id,
-        hire_date: profileData.hire_date || null,
-        emergency_contact_name: profileData.emergency_contact_name,
-        emergency_contact_phone: profileData.emergency_contact_phone,
-        bio: profileData.bio,
-        phone: profileData.phone,
-        country: profileData.country,
+      // Guardar nombre/apellido y campos de perfil en una sola llamada a /auth/me/
+      await api.patch('/auth/me/', {
+        first_name: personalData.firstName,
+        last_name: personalData.lastName,
+        profile: {
+          bio: profileData.bio,
+          phone: profileData.phone,
+          country: profileData.country,
+          department: profileData.department,
+          position: profileData.position,
+          employee_id: profileData.employee_id,
+          hire_date: profileData.hire_date || null,
+          emergency_contact_name: profileData.emergency_contact_name,
+          emergency_contact_phone: profileData.emergency_contact_phone,
+        },
       });
+      // Actualizar AuthContext para que el nombre cambie en el navbar
+      if (updateProfile) {
+        await updateProfile({
+          firstName: personalData.firstName,
+          lastName: personalData.lastName,
+        });
+      }
       showToast('Perfil actualizado correctamente', 'success');
     } catch {
       showToast('Error al guardar el perfil', 'error');
@@ -81,23 +108,28 @@ export default function CorporativoProfile() {
   const handleFileSelected = (e) => {
     const file = e.target.files?.[0];
     if (file) setCropImageFile(file);
-    // limpiar para que el mismo archivo pueda seleccionarse de nuevo
     e.target.value = '';
   };
 
   const handlePhotoCropped = async (croppedBlob) => {
     setCropImageFile(null);
     const formData = new FormData();
-    formData.append('profile.avatar', croppedBlob, 'foto_perfil.jpg');
+    formData.append('avatar', croppedBlob, 'foto_perfil.jpg');
     try {
-      const response = await api.patch('/auth/me/', formData, {
+      const response = await api.patch('/auth/me/avatar/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setProfileData((prev) => ({ ...prev, avatar: response.data.profile?.avatar || prev.avatar }));
+      setProfileData((prev) => ({ ...prev, avatar: response.data.avatar || prev.avatar }));
       showToast('Foto actualizada', 'success');
     } catch {
       showToast('Error al subir la foto', 'error');
     }
+  };
+
+  const inputStyle = {
+    backgroundColor: CAMSA.bgSurface,
+    borderColor: CAMSA.border,
+    color: CAMSA.textPrimary,
   };
 
   if (loading) {
@@ -121,8 +153,8 @@ export default function CorporativoProfile() {
           Mantén tu información actualizada para acceder a los beneficios corporativos.
         </p>
 
-        {/* Alerta si perfil incompleto */}
-        {!isComplete && (
+        {/* Alerta estado de perfil */}
+        {!isComplete ? (
           <div
             className="flex items-start gap-3 p-4 rounded-lg mb-6 border"
             style={{ backgroundColor: CAMSA.goldGlow, borderColor: CAMSA.goldBorder }}
@@ -135,9 +167,7 @@ export default function CorporativoProfile() {
               </p>
             </div>
           </div>
-        )}
-
-        {isComplete && (
+        ) : (
           <div
             className="flex items-center gap-2 p-3 rounded-lg mb-6 border"
             style={{ backgroundColor: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.3)' }}
@@ -156,7 +186,7 @@ export default function CorporativoProfile() {
           </h2>
           <div className="flex items-center gap-6">
             <div
-              className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center border-2"
+              className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center border-2 shrink-0"
               style={{ borderColor: CAMSA.goldBorder, backgroundColor: CAMSA.bgSurface }}
             >
               {profileData.avatar ? (
@@ -189,6 +219,81 @@ export default function CorporativoProfile() {
         </div>
 
         <form onSubmit={handleSave} className="space-y-6">
+          {/* Información personal */}
+          <div className="rounded-xl p-6" style={{ backgroundColor: CAMSA.bgCard }}>
+            <h2 className="font-semibold mb-4 flex items-center gap-2" style={{ color: CAMSA.gold }}>
+              <User size={18} /> Información Personal
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: CAMSA.textMuted }}>
+                  Nombre
+                </label>
+                <input
+                  name="firstName"
+                  value={personalData.firstName}
+                  onChange={handlePersonalChange}
+                  placeholder="Tu nombre"
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none border transition-colors"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: CAMSA.textMuted }}>
+                  Apellido
+                </label>
+                <input
+                  name="lastName"
+                  value={personalData.lastName}
+                  onChange={handlePersonalChange}
+                  placeholder="Tu apellido"
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none border transition-colors"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: CAMSA.textMuted }}>
+                  Teléfono
+                </label>
+                <input
+                  name="phone"
+                  value={profileData.phone}
+                  onChange={handleChange}
+                  placeholder="10 dígitos"
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none border transition-colors"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: CAMSA.textMuted }}>
+                  País
+                </label>
+                <input
+                  name="country"
+                  value={profileData.country}
+                  onChange={handleChange}
+                  placeholder="México"
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none border transition-colors"
+                  style={inputStyle}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium mb-1" style={{ color: CAMSA.textMuted }}>
+                  Bio
+                </label>
+                <textarea
+                  name="bio"
+                  value={profileData.bio}
+                  onChange={handleChange}
+                  rows={3}
+                  placeholder="Cuéntanos algo sobre ti..."
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none border transition-colors resize-none"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Información corporativa */}
           <div className="rounded-xl p-6" style={{ backgroundColor: CAMSA.bgCard }}>
             <h2 className="font-semibold mb-4 flex items-center gap-2" style={{ color: CAMSA.gold }}>
@@ -205,11 +310,7 @@ export default function CorporativoProfile() {
                   onChange={handleChange}
                   placeholder="Ej: Clínica, Administración"
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none border transition-colors"
-                  style={{
-                    backgroundColor: CAMSA.bgSurface,
-                    borderColor: CAMSA.border,
-                    color: CAMSA.textPrimary,
-                  }}
+                  style={inputStyle}
                 />
               </div>
               <div>
@@ -222,11 +323,7 @@ export default function CorporativoProfile() {
                   onChange={handleChange}
                   placeholder="Ej: Enfermera, Recepcionista"
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none border transition-colors"
-                  style={{
-                    backgroundColor: CAMSA.bgSurface,
-                    borderColor: CAMSA.border,
-                    color: CAMSA.textPrimary,
-                  }}
+                  style={inputStyle}
                 />
               </div>
               <div>
@@ -239,11 +336,7 @@ export default function CorporativoProfile() {
                   onChange={handleChange}
                   placeholder="Ej: EMP-0023"
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none border transition-colors"
-                  style={{
-                    backgroundColor: CAMSA.bgSurface,
-                    borderColor: CAMSA.border,
-                    color: CAMSA.textPrimary,
-                  }}
+                  style={inputStyle}
                 />
               </div>
               <div>
@@ -256,11 +349,7 @@ export default function CorporativoProfile() {
                   value={profileData.hire_date}
                   onChange={handleChange}
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none border transition-colors"
-                  style={{
-                    backgroundColor: CAMSA.bgSurface,
-                    borderColor: CAMSA.border,
-                    color: CAMSA.textPrimary,
-                  }}
+                  style={inputStyle}
                 />
               </div>
             </div>
@@ -282,11 +371,7 @@ export default function CorporativoProfile() {
                   onChange={handleChange}
                   placeholder="Nombre completo"
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none border transition-colors"
-                  style={{
-                    backgroundColor: CAMSA.bgSurface,
-                    borderColor: CAMSA.border,
-                    color: CAMSA.textPrimary,
-                  }}
+                  style={inputStyle}
                 />
               </div>
               <div>
@@ -299,11 +384,7 @@ export default function CorporativoProfile() {
                   onChange={handleChange}
                   placeholder="10 dígitos"
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none border transition-colors"
-                  style={{
-                    backgroundColor: CAMSA.bgSurface,
-                    borderColor: CAMSA.border,
-                    color: CAMSA.textPrimary,
-                  }}
+                  style={inputStyle}
                 />
               </div>
             </div>

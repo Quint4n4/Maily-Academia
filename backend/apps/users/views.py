@@ -7,7 +7,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 import logging
 import threading
-from rest_framework import generics, status
+from rest_framework import generics, parsers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -176,6 +176,25 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class AvatarUploadView(APIView):
+    """PATCH /api/auth/me/avatar/ – Subir o reemplazar foto de perfil."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+
+    def patch(self, request):
+        avatar_file = request.FILES.get('avatar')
+        if not avatar_file:
+            return Response({'detail': 'No se envió ningún archivo.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        profile.avatar = avatar_file
+        profile.save(update_fields=['avatar'])
+
+        from .serializers import ProfileSerializer
+        return Response({'avatar': ProfileSerializer(profile).data.get('avatar')}, status=status.HTTP_200_OK)
 
 
 class SurveyView(APIView):
