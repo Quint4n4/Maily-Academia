@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { SectionContextProvider, useSection } from './context/SectionContext';
 import { ProgressProvider } from './context/ProgressContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
 import { MainLayout } from './components/layout';
 import {
   Auth,
@@ -28,10 +29,13 @@ import FinalEvaluationView from './pages/FinalEvaluationView';
 import CertificateVerify from './pages/CertificateVerify';
 import MailyPresentacion from './pages/MailyPresentacion';
 import ChooseSection from './pages/ChooseSection';
+import LandingHub from './pages/landing/LandingHub';
+import AcademyLanding from './pages/landing/AcademyLanding';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import CourseManagement from './pages/admin/CourseManagement';
 import PromoVideosManagement from './pages/admin/PromoVideosManagement';
+import CouponManagement from './pages/admin/CouponManagement';
 import InstructorDashboard from './pages/instructor/InstructorDashboard';
 import InstructorMyCourses from './pages/instructor/MyCourses';
 import QnAPanel from './pages/instructor/QnAPanel';
@@ -41,6 +45,18 @@ import InstructorEvaluationsPanel from './pages/instructor/InstructorEvaluations
 import StudentManagement from './pages/instructor/StudentManagement';
 import StudentDetail from './pages/instructor/StudentDetail';
 import CourseAnalytics from './pages/instructor/CourseAnalytics';
+import DropoutAnalysis from './pages/instructor/DropoutAnalysis';
+import PaymentHistory from './pages/PaymentHistory';
+// Páginas corporativas
+import CorporativoProfile from './pages/corporativo/CorporativoProfile';
+import CorporativoBenefits from './pages/corporativo/CorporativoBenefits';
+import CorporativoBooking from './pages/corporativo/CorporativoBooking';
+import CorporativoCalendar from './pages/corporativo/CorporativoCalendar';
+import CorporativoReservations from './pages/corporativo/CorporativoReservations';
+// Páginas admin corporativo
+import BenefitManagement from './pages/admin/BenefitManagement';
+import ScheduleManagement from './pages/admin/ScheduleManagement';
+import ReservationManagement from './pages/admin/ReservationManagement';
 
 // Redirige estudiantes de /dashboard a su dashboard por sección
 const StudentDashboardRedirect = ({ children }) => {
@@ -107,17 +123,20 @@ const SuperAdminRoute = ({ children }) => {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public – Login (sin landing) */}
+      {/* Public – Landing pages */}
+      <Route path="/" element={<LandingHub />} />
+      <Route path="/academia/:slug" element={<AcademyLanding />} />
+
+      {/* Auth */}
       <Route
-        path="/"
+        path="/login"
         element={
           <PublicRoute>
             <Auth />
           </PublicRoute>
         }
       />
-      <Route path="/login" element={<Navigate to="/" replace />} />
-      <Route path="/auth" element={<Navigate to="/" replace />} />
+      <Route path="/auth" element={<Navigate to="/login" replace />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route path="/choose-section" element={<ProtectedRoute><ChooseSection /></ProtectedRoute>} />
@@ -136,6 +155,10 @@ function AppRoutes() {
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/courses" element={<CourseManagement />} />
         <Route path="/admin/promo-videos" element={<SuperAdminRoute><PromoVideosManagement /></SuperAdminRoute>} />
+        <Route path="/admin/coupons" element={<CouponManagement />} />
+        <Route path="/admin/corporate/benefits" element={<BenefitManagement />} />
+        <Route path="/admin/corporate/schedules" element={<ScheduleManagement />} />
+        <Route path="/admin/corporate/reservations" element={<ReservationManagement />} />
       </Route>
 
       {/* ── Instructor routes ────────────────────────────────────── */}
@@ -153,6 +176,7 @@ function AppRoutes() {
         <Route path="/instructor/students" element={<StudentManagement />} />
         <Route path="/instructor/students/:id" element={<StudentDetail />} />
         <Route path="/instructor/courses/:courseId/analytics" element={<CourseAnalytics />} />
+        <Route path="/instructor/dropout" element={<DropoutAnalysis />} />
         <Route path="/instructor/qna" element={<QnAPanel />} />
         <Route path="/instructor/evaluations" element={<InstructorEvaluationsPanel />} />
         <Route path="/instructor/blog" element={<BlogManagement />} />
@@ -199,10 +223,16 @@ function AppRoutes() {
         <Route path="/maily/courses" element={<MailyCourses />} />
         <Route path="/longevity/courses" element={<LongevityCourses />} />
         <Route path="/corporativo/courses" element={<CorporativoCourses />} />
+        <Route path="/corporativo/profile" element={<CorporativoProfile />} />
+        <Route path="/corporativo/benefits" element={<CorporativoBenefits />} />
+        <Route path="/corporativo/benefits/:slug/book" element={<CorporativoBooking />} />
+        <Route path="/corporativo/calendar" element={<CorporativoCalendar />} />
+        <Route path="/corporativo/reservations" element={<CorporativoReservations />} />
         <Route path="/course/:courseId" element={<CourseView />} />
         <Route path="/certificates" element={<Certificates />} />
         <Route path="/survey" element={<Survey />} />
         <Route path="/maily-academia/presentacion" element={<MailyPresentacion />} />
+        <Route path="/mis-pagos" element={<PaymentHistory />} />
       </Route>
 
       {/* ── Shared routes (all roles, with layout) ───────────────── */}
@@ -254,15 +284,17 @@ function AppRoutes() {
 function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <AuthProvider>
-          <SectionContextProvider>
-            <ProgressProvider>
-              <AppRoutes />
-            </ProgressProvider>
-          </SectionContextProvider>
-        </AuthProvider>
-      </Router>
+      <ToastProvider>
+        <Router>
+          <AuthProvider>
+            <SectionContextProvider>
+              <ProgressProvider>
+                <AppRoutes />
+              </ProgressProvider>
+            </SectionContextProvider>
+          </AuthProvider>
+        </Router>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

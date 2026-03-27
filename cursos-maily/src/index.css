@@ -134,3 +134,22 @@ body {
 .confetti {
   animation: confetti-fall 3s linear forwards;
 }
+
+/* --- Stitch Custom Utilities --- */
+@layer utilities {
+  .dot-pattern {
+    background-image: radial-gradient(#1b1c19 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .primary-gradient {
+    background: linear-gradient(135deg, #845400 0%, #ffb347 100%);
+  }
+  .ambient-shadow {
+    box-shadow: 0 40px 40px -10px rgba(27, 28, 25, 0.06);
+  }
+}

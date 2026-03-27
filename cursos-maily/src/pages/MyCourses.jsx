@@ -4,12 +4,17 @@ import { motion } from 'framer-motion';
 import { BookOpen, Play, Clock, Award } from 'lucide-react';
 import { Card, ProgressBar, Badge } from '../components/ui';
 import { useProgress } from '../context/ProgressContext';
+import { useSection } from '../context/SectionContext';
+import { isCamsa } from '../theme/camsaTheme';
 import courseService from '../services/courseService';
 
 const LEVEL_LABELS = { beginner: 'Principiante', intermediate: 'Intermedio', advanced: 'Avanzado' };
 
 const MyCourses = () => {
   const { loadDashboard } = useProgress();
+  const { currentSection } = useSection();
+  const isC = isCamsa(currentSection);
+
   const [dashData, setDashData] = useState(null);
   const [allCourses, setAllCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,8 +65,8 @@ const MyCourses = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Mis Cursos</h1>
-      <p className="text-gray-500 dark:text-gray-400 mb-6">
+      <h1 className={`text-3xl font-bold mb-2 ${ isC ? 'text-[#e6c364]' : 'text-gray-900 dark:text-white' }`}>Mis Cursos</h1>
+      <p className={`mb-6 ${ isC ? 'text-[#d0c5b2]' : 'text-gray-500 dark:text-gray-400' }`}>
         {enrolledCourses.length} curso{enrolledCourses.length !== 1 ? 's' : ''} inscrito{enrolledCourses.length !== 1 ? 's' : ''}
       </p>
 
@@ -79,14 +84,16 @@ const MyCourses = () => {
         </Card>
       ) : (
         <>
-          <Card className="p-4 mb-6">
+          <Card className={`p-4 mb-6 ${ isC ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)] shadow-none' : '' }`}>
             <div className="flex flex-wrap gap-2">
               {['', 'beginner', 'intermediate', 'advanced'].map((l) => (
                 <button
                   key={l}
                   onClick={() => setSelectedLevel(l)}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selectedLevel === l ? 'bg-maily text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    selectedLevel === l 
+                      ? isC ? 'bg-[#e6c364] text-[#141311]' : 'bg-maily text-white' 
+                      : isC ? 'bg-[#141311] text-[#d0c5b2] hover:bg-[#141311]/80 hover:text-[#e6c364]' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
                   {l ? LEVEL_LABELS[l] : 'Todos'}
@@ -98,7 +105,7 @@ const MyCourses = () => {
           {filteredSections.map(({ key, title, courses }) =>
             courses.length === 0 ? null : (
               <section key={key}>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{title}</h2>
+                <h2 className={`text-xl font-semibold mb-4 ${ isC ? 'text-[#c9a84c]' : 'text-gray-900 dark:text-white' }`}>{title}</h2>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {courses.map((cp, i) => {
                     const course = allCourses.find((c) => c.id === cp.course_id);
@@ -112,29 +119,37 @@ const MyCourses = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }}
                       >
-                        <Card hover padding={false} className="overflow-hidden h-full flex flex-col">
+                        <Card hover padding={false} className={`overflow-hidden h-full flex flex-col ${ isC ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)] shadow-none' : '' }`}>
                           {course?.thumbnail && (
                             <img src={course.thumbnail} alt="" className="w-full aspect-video object-cover" />
                           )}
                           <div className="p-4 flex-1 flex flex-col">
                             <div className="flex items-start justify-between gap-2 mb-2">
-                              <Badge variant={course?.level === 'beginner' ? 'success' : course?.level === 'intermediate' ? 'warning' : 'danger'} size="sm">
-                                {LEVEL_LABELS[course?.level] || course?.level}
-                              </Badge>
+                              {isC ? (
+                                <span className="bg-[#141311] text-[#e6c364] px-2 py-0.5 rounded border border-[rgba(230,195,100,0.1)] text-[10px] uppercase font-black tracking-widest">
+                                  {LEVEL_LABELS[course?.level] || course?.level}
+                                </span>
+                              ) : (
+                                <Badge variant={course?.level === 'beginner' ? 'success' : course?.level === 'intermediate' ? 'warning' : 'danger'} size="sm">
+                                  {LEVEL_LABELS[course?.level] || course?.level}
+                                </Badge>
+                              )}
                               {cp.progress_percent === 100 && (
-                                <Badge variant="success" size="sm">
+                                <Badge variant="success" size="sm" className={isC ? 'bg-[#c9a84c]/20 text-[#e6c364] border-none' : ''}>
                                   <Award size={12} /> Completado
                                 </Badge>
                               )}
                             </div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-2 mb-2">{cp.course_title}</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                            <h3 className={`font-semibold line-clamp-2 mb-2 ${ isC ? 'text-[#f5f0e8]' : 'text-gray-900 dark:text-white' }`}>{cp.course_title}</h3>
+                            <p className={`text-sm mb-4 ${ isC ? 'text-[#8a8578]' : 'text-gray-500 dark:text-gray-400' }`}>
                               {cp.completed_lessons} de {cp.total_lessons} lecciones
                             </p>
-                            <ProgressBar value={cp.progress_percent} showLabel={false} size="sm" className="mb-4" />
+                            <ProgressBar value={cp.progress_percent} showLabel={false} size="sm" className={`mb-4 ${ isC ? 'bg-[#141311] ring-1 ring-[rgba(230,195,100,0.1)] [&>div]:bg-[#e6c364]' : '' }`} />
                             <Link
                               to={resumeUrl}
-                              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-maily text-white rounded-xl font-medium hover:bg-maily-dark transition-colors"
+                              className={`flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl font-medium transition-colors ${
+                                isC ? 'bg-[#e6c364] text-[#141311] hover:bg-[#c9a84c]' : 'bg-maily text-white hover:bg-maily-dark'
+                              }`}
                             >
                               <Play size={18} />
                               {cp.progress_percent > 0 ? 'Reanudar' : 'Comenzar'}

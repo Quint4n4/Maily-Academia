@@ -309,7 +309,12 @@ class ModuleCreateView(generics.CreateAPIView):
     permission_classes = [IsAdminOrInstructor]
 
     def perform_create(self, serializer):
-        course = Course.objects.get(pk=self.kwargs['course_id'])
+        course = get_object_or_404(Course, pk=self.kwargs['course_id'])
+        user = self.request.user
+        is_admin = user.role == 'admin' or user.is_superuser or user.is_staff
+        if not is_admin and course.instructor_id != user.id:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Solo puedes crear módulos en tus propios cursos.')
         serializer.save(course=course)
 
 
@@ -332,7 +337,12 @@ class LessonCreateView(generics.CreateAPIView):
     permission_classes = [IsAdminOrInstructor]
 
     def perform_create(self, serializer):
-        module = Module.objects.get(pk=self.kwargs['module_id'])
+        module = get_object_or_404(Module.objects.select_related('course'), pk=self.kwargs['module_id'])
+        user = self.request.user
+        is_admin = user.role == 'admin' or user.is_superuser or user.is_staff
+        if not is_admin and module.course.instructor_id != user.id:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Solo puedes crear lecciones en tus propios cursos.')
         serializer.save(module=module)
 
 

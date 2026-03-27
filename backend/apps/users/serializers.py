@@ -48,6 +48,7 @@ def generate_unique_username(first_name, last_name):
 
 class ProfileSerializer(serializers.ModelSerializer):
     age = serializers.SerializerMethodField(read_only=True)
+    is_corporate_profile_complete = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Profile
@@ -62,10 +63,22 @@ class ProfileSerializer(serializers.ModelSerializer):
             'occupation_type',
             'has_completed_survey',
             'age',
+            # Campos corporativos
+            'employee_id',
+            'department',
+            'position',
+            'hire_date',
+            'emergency_contact_name',
+            'emergency_contact_phone',
+            'is_corporate_profile_complete',
         ]
+        read_only_fields = ['age', 'is_corporate_profile_complete']
 
     def get_age(self, obj):
         return obj.age
+
+    def get_is_corporate_profile_complete(self, obj):
+        return obj.is_corporate_profile_complete
 
 
 class UserSerializer(serializers.ModelSerializer):

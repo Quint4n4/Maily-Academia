@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Users, Search, ChevronRight } from 'lucide-react';
-import { Card } from '../../components/ui';
+import { Card, Pagination } from '../../components/ui';
 import courseService from '../../services/courseService';
 import instructorService from '../../services/instructorService';
 
@@ -12,22 +12,32 @@ const StudentManagement = () => {
   const [search, setSearch] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 20;
+
+  useEffect(() => {
+    courseService.list({}).then((res) => setCourses(res.results || res || [])).catch(() => {});
+  }, []);
+
+  useEffect(() => { setPage(1); }, [search, courseFilter]);
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       try {
-        const [studentsRes, coursesRes] = await Promise.all([
-          instructorService.getStudents({ search: search || undefined, course: courseFilter || undefined }),
-          courseService.list({}).catch(() => ({ results: [] })),
-        ]);
+        const params = { page };
+        if (search) params.search = search;
+        if (courseFilter) params.course = courseFilter;
+        const studentsRes = await instructorService.getStudents(params);
         const list = studentsRes.results || studentsRes;
         setStudents(Array.isArray(list) ? list : []);
-        setCourses(coursesRes.results || coursesRes || []);
+        setTotalCount(studentsRes.count ?? (Array.isArray(list) ? list.length : 0));
       } catch { setStudents([]); }
       setLoading(false);
     };
     load();
-  }, [search, courseFilter]);
+  }, [search, courseFilter, page]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -105,6 +115,13 @@ const StudentManagement = () => {
           )}
         </Card>
       )}
+
+      <Pagination
+        page={page}
+        totalPages={Math.ceil(totalCount / PAGE_SIZE)}
+        count={totalCount}
+        onPageChange={setPage}
+      />
     </div>
   );
 };

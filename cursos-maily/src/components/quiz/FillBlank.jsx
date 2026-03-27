@@ -3,12 +3,15 @@ import { useState } from 'react';
 /**
  * Llenar espacios. value = { blank_id: "texto" }.
  * config: { text: "La {{1}} es...", blanks: [ { id: 1, hint: "..." } ] } (correct_answers no se envía al alumno).
+ * Accesibilidad WCAG 2.1 AA: aria-label descriptivo en cada input, aria-required.
  */
 export default function FillBlank({ question, value, onChange, disabled }) {
   const config = question.config || {};
   const text = config.text || '';
   const blanks = config.blanks || [];
   const [answers, setAnswers] = useState(() => (typeof value === 'object' && value !== null ? { ...value } : {}));
+  const grupId = `fillblank-group-${question.id}`;
+  const instruccionesId = `fillblank-instrucciones-${question.id}`;
 
   const handleBlankChange = (id, v) => {
     if (disabled) return;
@@ -22,6 +25,7 @@ export default function FillBlank({ question, value, onChange, disabled }) {
   const re = /\{\{(\d+)\}\}/g;
   let m;
   let lastIndex = 0;
+  let blankContador = 0;
   while ((m = re.exec(text)) !== null) {
     parts.push({ type: 'text', value: text.slice(lastIndex, m.index) });
     parts.push({ type: 'blank', id: Number(m[1]) });
@@ -30,24 +34,46 @@ export default function FillBlank({ question, value, onChange, disabled }) {
   parts.push({ type: 'text', value: text.slice(lastIndex) });
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2 text-gray-900 dark:text-white">
-        {parts.map((part, i) =>
-          part.type === 'text' ? (
-            <span key={i}>{part.value}</span>
-          ) : (
-            <span key={i} className="inline-flex items-center gap-1">
-              <input
-                type="text"
-                value={answers[part.id] ?? ''}
-                onChange={(e) => handleBlankChange(part.id, e.target.value.trim())}
-                disabled={disabled}
-                placeholder={blanks.find((b) => b.id === part.id)?.hint || '...'}
-                className="px-2 py-1 rounded border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 min-w-[120px] text-center"
-              />
-            </span>
-          )
-        )}
+    <div
+      role="group"
+      aria-labelledby={grupId}
+      aria-describedby={instruccionesId}
+    >
+      {/* ID oculto para aria-labelledby */}
+      <span id={grupId} className="sr-only">{question.text}</span>
+      <span id={instruccionesId} className="sr-only">
+        Completa los espacios en blanco del texto con las palabras correspondientes.
+      </span>
+
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2 text-gray-900 dark:text-white">
+          {parts.map((part, i) => {
+            if (part.type === 'text') {
+              return <span key={i}>{part.value}</span>;
+            }
+            blankContador += 1;
+            const pista = blanks.find((b) => b.id === part.id)?.hint || '';
+            const etiqueta = `Espacio ${blankContador}${pista ? `: ${pista}` : ''}`;
+            return (
+              <span key={i} className="inline-flex items-center gap-1">
+                <label htmlFor={`fillblank-input-${question.id}-${part.id}`} className="sr-only">
+                  {etiqueta}
+                </label>
+                <input
+                  id={`fillblank-input-${question.id}-${part.id}`}
+                  type="text"
+                  aria-label={etiqueta}
+                  aria-required="true"
+                  value={answers[part.id] ?? ''}
+                  onChange={(e) => handleBlankChange(part.id, e.target.value.trim())}
+                  disabled={disabled}
+                  placeholder={pista || '...'}
+                  className="px-2 py-1 rounded border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 min-w-[120px] text-center"
+                />
+              </span>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

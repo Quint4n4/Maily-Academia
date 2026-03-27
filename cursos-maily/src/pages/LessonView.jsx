@@ -2,19 +2,25 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, CheckCircle, BookOpen, MessageSquare, Send, Lock, Paperclip, Download, FileText, File, Image } from 'lucide-react';
-import { Button, Card, Badge } from '../components/ui';
+import { ChevronLeft, ChevronRight, CheckCircle, MessageSquare, Send, Lock, Download, FileText, File, Image } from 'lucide-react';
+import { Badge } from '../components/ui';
+import SkeletonLoader from '../components/ui/SkeletonLoader';
 import courseService from '../services/courseService';
 import materialService from '../services/materialService';
 import { useProgress } from '../context/ProgressContext';
+import { useToast } from '../context/ToastContext';
 import qnaService from '../services/qnaService';
 import progressService from '../services/progressService';
 import YouTubePlayer from '../components/YouTubePlayer';
+import { useSection } from '../context/SectionContext';
+import { isCamsa } from '../theme/camsaTheme';
 
 const LessonView = () => {
   const { courseId, moduleId, lessonId } = useParams();
   const navigate = useNavigate();
   const { completeLesson, isLessonComplete, loadCourseProgress } = useProgress();
+  const { currentSection } = useSection();
+  const isC = isCamsa(currentSection);
 
   const [course, setCourse] = useState(null);
   const [progress, setProgress] = useState(null);
@@ -24,18 +30,19 @@ const LessonView = () => {
   const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const { success: toastSuccess } = useToast();
   const playerRef = useRef(null);
   const playerContainerRef = useRef(null);
 
   // Q&A
   const [questions, setQuestions] = useState([]);
-  const [showQnA, setShowQnA] = useState(false);
   const [newQuestion, setNewQuestion] = useState({ title: '', body: '' });
   const [askingQuestion, setAskingQuestion] = useState(false);
 
-  // Material de apoyo (Fase 4)
+  // Material de apoyo
   const [lessonMaterials, setLessonMaterials] = useState([]);
   const [downloadingId, setDownloadingId] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -60,25 +67,31 @@ const LessonView = () => {
         try {
           const qRes = await qnaService.getQuestions(lessonId);
           setQuestions(qRes.results || qRes);
-        } catch { /* empty */ }
+        } catch (err) {
+          console.error('Error loading Q&A:', err);
+        }
         try {
           const mats = await materialService.list(courseId, { lesson: lessonId });
           setLessonMaterials(Array.isArray(mats) ? mats : mats.results || []);
         } catch { setLessonMaterials([]); }
-      } catch { /* empty */ }
+      } catch (err) {
+        console.error('Error loading lesson:', err);
+        setError('No se pudo cargar la lección. Intenta de nuevo.');
+      }
       setLoading(false);
     };
     load();
   }, [courseId, moduleId, lessonId]);
 
   const handleVideoEnded = useCallback(async () => {
-    await completeLesson(Number(lessonId));
+    await completeLesson(Number(lessonId), courseId);
     setCompleted(true);
+    toastSuccess('¡Lección completada! Sigue avanzando en el curso.');
     try {
       const prog = await loadCourseProgress(courseId);
       setProgress(prog);
     } catch { /* ignore */ }
-  }, [courseId, lessonId, completeLesson, loadCourseProgress]);
+  }, [courseId, lessonId, completeLesson, loadCourseProgress, toastSuccess]);
 
   const handleAskQuestion = async () => {
     if (!newQuestion.title.trim() || !newQuestion.body.trim()) return;
@@ -87,7 +100,10 @@ const LessonView = () => {
       const q = await qnaService.createQuestion(lessonId, newQuestion);
       setQuestions((prev) => [...prev, q]);
       setNewQuestion({ title: '', body: '' });
-    } catch { /* empty */ }
+    } catch (err) {
+      console.error('Error posting question:', err);
+      setError('No se pudo enviar tu pregunta. Intenta de nuevo.');
+    }
     setAskingQuestion(false);
   };
 
@@ -118,7 +134,10 @@ const LessonView = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch { /* empty */ }
+    } catch (err) {
+      console.error('Error downloading material:', err);
+      setError('No se pudo descargar el material. Intenta de nuevo.');
+    }
     setDownloadingId(null);
   }, []);
 
@@ -159,7 +178,6 @@ const LessonView = () => {
     saveVideoPosition().then(doNav).catch(doNav);
   }, [courseId, navigate, saveVideoPosition]);
 
-  // Navigation helpers
   const getNavigation = () => {
     if (!course || !currentModule) return { prev: null, next: null };
     const allLessons = [];
@@ -173,10 +191,35 @@ const LessonView = () => {
     };
   };
 
+  // ── Loading skeleton ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-10 h-10 border-4 border-maily border-t-transparent rounded-full animate-spin" />
+      <div className={`font-plus-jakarta-sans min-h-screen ${ isC ? 'bg-[#0e0e0c]' : 'bg-surface dark:bg-gray-950' }`}>
+        <div className={`sticky top-0 z-30 backdrop-blur-xl border-b px-6 py-4 ${ isC ? 'bg-[#141311]/90 border-[rgba(201,168,76,0.15)] shadow-[0_4px_24px_-4px_rgba(0,0,0,0.5)]' : 'bg-white/80 dark:bg-gray-900/80 border-outline-variant/15' }`}>
+          <div className="max-w-[1400px] mx-auto flex items-center justify-between">
+            <SkeletonLoader className="h-5 w-32" />
+            <SkeletonLoader className="h-4 w-40" />
+          </div>
+        </div>
+        <div className="pt-6 pb-12 px-4 sm:px-8 max-w-[1400px] mx-auto">
+          <div className="flex flex-col lg:flex-row gap-8">
+            <div className="flex-1 space-y-6">
+              <div className={`aspect-video rounded-xl animate-pulse ${ isC ? 'bg-[#1f1f1c]' : 'bg-surface-container dark:bg-gray-800' }`} />
+              <div className="space-y-3">
+                <SkeletonLoader className="h-8 w-3/4" />
+                <SkeletonLoader className="h-4 w-full" />
+              </div>
+              <div className={`p-8 rounded-xl space-y-3 ${ isC ? 'bg-[#1f1f1c]' : 'bg-surface-container-lowest dark:bg-gray-800' }`}>
+                <SkeletonLoader lines={4} />
+              </div>
+            </div>
+            <div className="w-full lg:w-[380px]">
+              <div className={`rounded-xl p-8 animate-pulse ${ isC ? 'bg-[#1f1f1c]' : 'bg-surface-container-lowest dark:bg-gray-800' }`}>
+                <SkeletonLoader className="h-5 w-40" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -196,13 +239,18 @@ const LessonView = () => {
   const lessonLocked = isEnrolled && requireSequential && !isLessonAccessible();
   if (lessonLocked) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full p-8 text-center">
-          <Lock size={48} className="mx-auto mb-4 text-amber-500" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Lección bloqueada</h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-6">Completa la lección anterior para desbloquear esta.</p>
-          <Button onClick={() => navigate(`/course/${courseId}`)} variant="secondary">Volver al curso</Button>
-        </Card>
+      <div className={`font-plus-jakarta-sans min-h-screen flex items-center justify-center p-4 ${ isC ? 'bg-[#0e0e0c]' : 'bg-surface dark:bg-gray-950' }`}>
+        <div className={`max-w-md w-full p-8 text-center rounded-2xl shadow-xl border ${ isC ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)]' : 'bg-surface-container-lowest dark:bg-gray-800 border-outline-variant/10' }`}>
+          <Lock size={48} className={`mx-auto mb-4 opacity-60 ${ isC ? 'text-[#8a8578]' : 'text-stitch-primary' }`} />
+          <h2 className={`text-xl font-extrabold mb-2 tracking-tight ${ isC ? 'text-[#e6c364]' : 'text-on-surface dark:text-white' }`}>Lección bloqueada</h2>
+          <p className={`mb-6 ${ isC ? 'text-[#d0c5b2]/80' : 'text-on-surface-variant dark:text-gray-400' }`}>Completa la lección anterior para desbloquear esta.</p>
+          <button
+            onClick={() => navigate(`/course/${courseId}`)}
+            className={`px-6 py-3 rounded-full font-bold text-sm border-2 transition-all ${ isC ? 'border-[#c9a84c] text-[#e6c364] hover:bg-[#c9a84c]/20' : 'border-stitch-primary text-stitch-primary hover:bg-stitch-primary hover:text-white' }`}
+          >
+            Volver al curso
+          </button>
+        </div>
       </div>
     );
   }
@@ -216,34 +264,58 @@ const LessonView = () => {
     const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/);
     return match ? match[1] : null;
   };
+  const getVimeoId = (url) => {
+    if (!url) return null;
+    const match = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+    return match ? match[1] : null;
+  };
   const getVideoEmbedUrl = (url, start = 0) => {
-    const id = getVideoId(url);
-    if (!id) return url || '';
-    return start > 0 ? `https://www.youtube.com/embed/${id}?start=${start}` : `https://www.youtube.com/embed/${id}`;
+    const ytId = getVideoId(url);
+    if (ytId) return start > 0 ? `https://www.youtube.com/embed/${ytId}?start=${start}` : `https://www.youtube.com/embed/${ytId}`;
+    const vimeoId = getVimeoId(url);
+    if (vimeoId) { const base = `https://player.vimeo.com/video/${vimeoId}`; return start > 0 ? `${base}#t=${start}s` : base; }
+    return url || '';
   };
   const videoId = getVideoId(currentLesson?.video_url);
   const isYouTube = Boolean(videoId);
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Top bar */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <button onClick={() => goTo(`/course/${courseId}`)} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-maily">
-            <ChevronLeft size={18} /> Volver al curso
+    <div className={`font-plus-jakarta-sans min-h-screen ${ isC ? 'bg-[#0e0e0c] text-[#f5f0e8]' : 'bg-surface dark:bg-gray-950 text-on-surface' }`}>
+
+      {/* Glass top bar */}
+      <div className={`sticky top-0 z-30 backdrop-blur-xl border-b px-6 py-4 ${ isC ? 'bg-[#141311]/90 border-[rgba(201,168,76,0.15)] shadow-[0_4px_24px_-4px_rgba(0,0,0,0.5)]' : 'bg-white/80 dark:bg-gray-900/80 border-outline-variant/15 shadow-[0_4px_24px_-4px_rgba(27,28,25,0.06)]' }`}>
+        <div className="max-w-[1400px] mx-auto flex items-center justify-between">
+          <button onClick={() => goTo(`/course/${courseId}`)} className="flex items-center gap-2 group" aria-label="Volver al curso">
+            <ChevronLeft size={18} className={`group-hover:-translate-x-1 transition-transform ${ isC ? 'text-[#c9a84c]' : 'text-stitch-primary' }`} aria-hidden="true" />
+            <span className={`font-bold text-sm tracking-wide uppercase ${ isC ? 'text-[#e6c364]' : 'text-stitch-primary' }`}>Volver al curso</span>
           </button>
-          <span className="text-sm text-gray-500 dark:text-gray-400">{currentModule?.title}</span>
+          <span className={`text-sm font-medium hidden sm:block ${ isC ? 'text-[#d0c5b2]/70' : 'text-on-surface-variant dark:text-gray-400' }`} aria-label={`Módulo actual: ${currentModule?.title}`}>
+            {currentModule?.title}
+          </span>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Video */}
-            {currentLesson.video_url && (
-              <div className="aspect-video bg-black rounded-2xl overflow-hidden">
-                {isYouTube ? (
+      <main id="main-content" className="pt-6 pb-12 px-4 sm:px-8 max-w-[1400px] mx-auto">
+
+        {/* Error alert */}
+        {error && (
+          <div role="alert" aria-live="assertive"
+            className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm flex items-center justify-between border border-red-100">
+            <span>{error}</span>
+            <button onClick={() => setError('')} className="ml-2 text-red-400 hover:text-red-600 font-bold" aria-label="Cerrar error">&times;</button>
+          </div>
+        )}
+
+        <div className="flex flex-col lg:flex-row gap-8">
+
+          {/* ── Main Content ──────────────────────────────────────── */}
+          <section className="flex-1 space-y-6 min-w-0">
+
+            {/* Video shell */}
+            <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-2xl bg-on-background dark:bg-black">
+              {currentLesson.video_url ? (
+                isYouTube ? (
                   <YouTubePlayer
                     videoId={videoId}
                     startSeconds={startSeconds}
@@ -258,153 +330,197 @@ const LessonView = () => {
                   <iframe
                     src={getVideoEmbedUrl(currentLesson.video_url, startSeconds)}
                     title={currentLesson.title}
-                    className="w-full h-full"
+                    className="absolute inset-0 w-full h-full"
                     allowFullScreen
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   />
-                )}
-              </div>
-            )}
-
-            {/* Title + completed badge (auto when video ends) */}
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{currentLesson.title}</h1>
-                {currentLesson.description && (
-                  <p className="text-gray-500 dark:text-gray-400 mt-2">{currentLesson.description}</p>
-                )}
-                {isPreviewLesson && (
-                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-2">Vista previa. Inscríbete o compra el curso para acceder al contenido completo.</p>
-                )}
-              </div>
-              {isEnrolled && completed && (
-                <Badge variant="success" size="sm" className="flex items-center gap-1 whitespace-nowrap">
-                  <CheckCircle size={14} /> Completada
-                </Badge>
-              )}
-            </div>
-
-            {/* Content (sanitized to prevent XSS) */}
-            {currentLesson.content && (
-              <Card className="prose dark:prose-invert max-w-none">
-                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentLesson.content) }} />
-              </Card>
-            )}
-
-            {/* Material de apoyo */}
-            {isEnrolled && lessonMaterials.length > 0 && (
-              <Card className="p-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                  <Paperclip size={18} className="text-maily" /> Material de apoyo
-                </h3>
-                <ul className="space-y-2">
-                  {lessonMaterials.map((mat) => (
-                    <li
-                      key={mat.id}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
-                    >
-                      {getMaterialIcon(mat.file_type)}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{mat.title}</p>
-                        {formatFileSize(mat.file_size) && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{formatFileSize(mat.file_size)}</p>
-                        )}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleDownloadMaterial(mat)}
-                        disabled={downloadingId === mat.id}
-                        icon={downloadingId === mat.id ? null : <Download size={14} />}
-                      >
-                        {downloadingId === mat.id ? 'Descargando...' : 'Descargar'}
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            )}
-
-            {/* Navigation */}
-            <div className="flex justify-between pt-4">
-              {prev ? (
-                <Button variant="secondary" onClick={() => goTo(prev)} icon={<ChevronLeft size={16} />}>
-                  Anterior
-                </Button>
-              ) : <div />}
-              {nextAllowed ? (
-                <Button onClick={() => goTo(next)} icon={<ChevronRight size={16} />} iconPosition="right">
-                  Siguiente
-                </Button>
-              ) : next && requireSequential && !completed ? (
-                <Button variant="secondary" disabled>
-                  Ve el video hasta el final para continuar
-                </Button>
+                )
               ) : (
-                <Button onClick={() => goTo(`/course/${courseId}`)} variant="secondary">
-                  {isPreviewLesson ? 'Ver curso e inscribirme' : 'Volver al curso'}
-                </Button>
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                  <p className="text-white/60 text-sm font-medium">Esta lección no tiene video.</p>
+                </div>
               )}
             </div>
-          </div>
 
-          {/* Sidebar - Q&A */}
-          <div className="space-y-4">
-            <Card>
-              <button onClick={() => setShowQnA(!showQnA)} className="flex items-center gap-2 w-full text-left">
-                <MessageSquare size={18} className="text-maily" />
-                <h3 className="font-semibold text-gray-900 dark:text-white">Preguntas ({questions.length})</h3>
+            {/* Lesson info + nav */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5">
+              <div className="space-y-1">
+                <span className={`text-xs font-bold tracking-[0.1em] uppercase ${ isC ? 'text-[#c9a84c]' : 'text-stitch-primary/60' }`}>{currentModule?.title}</span>
+                <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight ${ isC ? 'text-[#e6c364]' : 'text-on-surface dark:text-white' }`}>
+                  {currentLesson.title}
+                </h1>
+                {isPreviewLesson && (
+                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-1.5 font-medium">
+                    Vista previa — Inscríbete para acceder al contenido completo.
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                {isEnrolled && completed && (
+                  <span className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest ${
+                    isC ? 'bg-[#c9a84c]/20 text-[#e6c364]' : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                  }`}>
+                    <CheckCircle size={13} aria-hidden="true" /> Completada
+                  </span>
+                )}
+                {nextAllowed ? (
+                  <button onClick={() => goTo(next)} aria-label={`Siguiente lección: ${next?.title || 'siguiente'}`}
+                    className={`flex items-center gap-2 px-7 py-3.5 rounded-full font-bold text-sm shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all ${
+                      isC ? 'bg-[#e6c364] text-[#141311] shadow-[#e6c364]/10 hover:bg-[#c9a84c]' : 'text-white shadow-stitch-primary/20'
+                    }`}
+                    style={ isC ? {} : { background: 'linear-gradient(135deg, #845400 0%, #ffb347 100%)' } }>
+                    Siguiente <ChevronRight size={16} aria-hidden="true" />
+                  </button>
+                ) : next && requireSequential && !completed ? (
+                  <span className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider opacity-70 cursor-not-allowed select-none ${
+                    isC ? 'bg-[#1f1f1c] text-[#8a8578] border border-[rgba(77,70,55,0.3)]' : 'bg-surface-container dark:bg-gray-700 text-on-surface-variant'
+                  }`}>
+                    Ve el video para continuar
+                  </span>
+                ) : (
+                  <button onClick={() => goTo(`/course/${courseId}`)}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm border-2 transition-all ${
+                      isC ? 'border-[#c9a84c] text-[#e6c364] hover:bg-[#c9a84c]/20' : 'border-stitch-primary text-stitch-primary hover:bg-stitch-primary hover:text-white'
+                    }`}>
+                    {isPreviewLesson ? 'Ver curso e inscribirme' : 'Volver al curso'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Content card */}
+            <div className={`p-6 sm:p-8 rounded-xl shadow-sm border ${
+              isC ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)]' : 'bg-surface-container-lowest dark:bg-gray-800 border-outline-variant/10'
+            }`}>
+              {currentLesson.description && (
+                <>
+                  <h3 className={`text-lg font-bold mb-3 ${ isC ? 'text-[#e6c364]' : 'text-on-surface dark:text-white' }`}>Sobre esta lección</h3>
+                  <p className={`leading-relaxed mb-5 ${ isC ? 'text-[#d0c5b2]/80' : 'text-on-surface-variant dark:text-gray-400' }`}>{currentLesson.description}</p>
+                </>
+              )}
+              {currentLesson.content && (
+                <div className={`prose max-w-none text-sm mb-5 ${ isC ? 'prose-invert text-[#d0c5b2]/80 prose-headings:text-[#e6c364] prose-a:text-[#c9a84c]' : 'dark:prose-invert text-on-surface-variant dark:text-gray-300' }`}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentLesson.content) }} />
+              )}
+              {isEnrolled && lessonMaterials.length > 0 && (
+                <div className={`flex flex-wrap gap-3 pt-5 border-t ${ isC ? 'border-[rgba(77,70,55,0.2)]' : 'border-outline-variant/10' }`}>
+                  {lessonMaterials.map((mat) => (
+                    <button key={mat.id} onClick={() => handleDownloadMaterial(mat)} disabled={downloadingId === mat.id}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${
+                        isC
+                          ? 'bg-[#141311] text-[#e6c364] hover:bg-[#141311]/80 border border-[rgba(230,195,100,0.2)]'
+                          : 'bg-surface-container dark:bg-gray-700 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container-high dark:hover:bg-gray-600'
+                      }`}>
+                      <Download size={13} aria-hidden="true" />
+                      {downloadingId === mat.id ? 'Descargando...' : mat.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {prev && (
+              <button onClick={() => goTo(prev)} aria-label={`Lección anterior: ${prev.title || 'anterior'}`}
+                className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                  isC ? 'text-[#d0c5b2]/70 hover:text-[#e6c364]' : 'text-on-surface-variant dark:text-gray-400 hover:text-stitch-primary'
+                }`}>
+                <ChevronLeft size={15} aria-hidden="true" />
+                Lección anterior: <span className="font-bold">{prev.title}</span>
               </button>
-            </Card>
+            )}
+          </section>
 
-            {showQnA && (
-              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                {/* Ask question */}
-                <Card className="space-y-3">
-                  <input
-                    type="text"
-                    placeholder="Título de tu pregunta..."
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
-                    value={newQuestion.title}
-                    onChange={(e) => setNewQuestion({ ...newQuestion, title: e.target.value })}
-                  />
-                  <textarea
-                    placeholder="Describe tu duda..."
-                    rows={2}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
-                    value={newQuestion.body}
-                    onChange={(e) => setNewQuestion({ ...newQuestion, body: e.target.value })}
-                  />
-                  <Button size="sm" onClick={handleAskQuestion} loading={askingQuestion} icon={<Send size={14} />}>
-                    Preguntar
-                  </Button>
-                </Card>
+          {/* ── Sidebar: Q&A (always visible) ──────────────────── */}
+          <aside aria-label="Preguntas y respuestas" className="w-full lg:w-[380px] flex-shrink-0">
+            <div className={`rounded-xl p-6 sm:p-8 shadow-xl sticky top-24 border transition-colors ${
+              isC ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)] shadow-black/20' : 'bg-surface-container-lowest dark:bg-gray-800 shadow-on-surface/5 border-outline-variant/10'
+            }`}>
+              <div className="flex items-center gap-3 mb-7">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  isC ? 'bg-[#141311] border border-[rgba(230,195,100,0.3)]' : 'bg-primary-container/20 dark:bg-stitch-primary/10'
+                }`}>
+                  <MessageSquare size={20} className={isC ? 'text-[#e6c364]' : 'text-stitch-primary'} aria-hidden="true" />
+                </div>
+                <h2 className={`text-xl font-extrabold tracking-tight ${ isC ? 'text-[#f5f0e8]' : 'text-on-surface dark:text-white' }`}>
+                  Preguntas {questions.length > 0 && <span className={isC ? 'text-[#c9a84c]' : 'text-stitch-primary'}>({questions.length})</span>}
+                </h2>
+              </div>
 
-                {/* Existing questions */}
-                {questions.map((q) => (
-                  <Card key={q.id}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{q.user_name}</span>
-                      <span className="text-xs text-gray-400">{new Date(q.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{q.title}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{q.body}</p>
-                    {(q.answers || []).map((a) => (
-                      <div key={a.id} className="mt-2 ml-4 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{a.user_name}</span>
-                          {a.is_accepted && <Badge size="sm" variant="accent">Aceptada</Badge>}
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label htmlFor="qna-titulo-input" className={`text-xs font-bold uppercase tracking-widest px-1 ${ isC ? 'text-[#d0c5b2]/60' : 'text-on-surface-variant/70 dark:text-gray-400' }`}>Asunto</label>
+                  <input id="qna-titulo-input" type="text" placeholder="Título de tu pregunta..." aria-label="Título de la pregunta"
+                    className={`w-full px-5 py-3.5 border border-transparent rounded-xl text-sm outline-none transition-all ${
+                      isC
+                        ? 'bg-[#141311] text-[#f5f0e8] placeholder:text-[#d0c5b2]/30 focus:border-[#c9a84c]/50 focus:ring-1 focus:ring-[#c9a84c]'
+                        : 'bg-surface-container-low dark:bg-gray-700 text-on-surface dark:text-white placeholder:text-on-surface-variant/40 focus:ring-2 focus:ring-stitch-primary/30'
+                    }`}
+                    value={newQuestion.title} onChange={(e) => setNewQuestion({ ...newQuestion, title: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="qna-cuerpo-textarea" className={`text-xs font-bold uppercase tracking-widest px-1 ${ isC ? 'text-[#d0c5b2]/60' : 'text-on-surface-variant/70 dark:text-gray-400' }`}>Contenido</label>
+                  <textarea id="qna-cuerpo-textarea" placeholder="Describe tu duda..." aria-label="Descripción de tu pregunta" rows={4}
+                    className={`w-full px-5 py-3.5 border border-transparent rounded-xl text-sm outline-none resize-none transition-all ${
+                      isC
+                        ? 'bg-[#141311] text-[#f5f0e8] placeholder:text-[#d0c5b2]/30 focus:border-[#c9a84c]/50 focus:ring-1 focus:ring-[#c9a84c]'
+                        : 'bg-surface-container-low dark:bg-gray-700 text-on-surface dark:text-white placeholder:text-on-surface-variant/40 focus:ring-2 focus:ring-stitch-primary/30'
+                    }`}
+                    value={newQuestion.body} onChange={(e) => setNewQuestion({ ...newQuestion, body: e.target.value })} />
+                </div>
+                <button onClick={handleAskQuestion} disabled={askingQuestion || !newQuestion.title.trim() || !newQuestion.body.trim()}
+                  className={`w-full py-4 rounded-full font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isC
+                      ? 'bg-[#e6c364] text-[#141311] shadow-[#e6c364]/10 hover:bg-[#c9a84c]'
+                      : 'text-white shadow-stitch-primary/20 hover:shadow-stitch-primary/40'
+                  }`}
+                  style={ isC ? {} : { background: 'linear-gradient(135deg, #845400 0%, #ffb347 100%)' } }>
+                  {askingQuestion ? 'Enviando...' : 'Preguntar'}
+                  {!askingQuestion && <Send size={13} className="ml-0.5" />}
+                </button>
+              </div>
+
+              {questions.length > 0 && (
+                <div className={`mt-8 pt-6 border-t ${ isC ? 'border-[rgba(77,70,55,0.2)]' : 'border-outline-variant/20' }`}>
+                  <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-5 ${ isC ? 'text-[#8a8578]' : 'text-stitch-primary' }`}>Dudas de otros alumnos</h3>
+                  <div className="space-y-5">
+                    {questions.slice(0, 3).map((q) => (
+                      <div key={q.id} className="group cursor-pointer">
+                        <div className="flex gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold uppercase ${
+                            isC ? 'bg-[#141311] text-[#c9a84c] border border-[rgba(230,195,100,0.2)]' : 'bg-surface-container dark:bg-gray-700 text-on-surface-variant'
+                          }`}>
+                            {(q.user_name || 'U').charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-bold transition-colors line-clamp-1 ${
+                              isC ? 'text-[#f5f0e8] group-hover:text-[#e6c364]' : 'text-on-surface dark:text-white group-hover:text-stitch-primary'
+                            }`}>{q.title}</p>
+                            <p className={`text-xs line-clamp-1 mt-0.5 ${ isC ? 'text-[#d0c5b2]/70' : 'text-on-surface-variant/70 dark:text-gray-500' }`}>{q.body}</p>
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{a.body}</p>
+                        {(q.answers || []).map((a) => (
+                          <div key={a.id} className={`ml-11 mt-2 p-2.5 rounded-lg ${ isC ? 'bg-[#141311]/50 border border-[rgba(77,70,55,0.2)]' : 'bg-surface-container dark:bg-gray-700/50' }`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`text-xs font-medium ${ isC ? 'text-[#d0c5b2]/80' : 'text-on-surface-variant dark:text-gray-400' }`}>{a.user_name}</span>
+                              {a.is_accepted && <Badge size="sm" variant="accent" className={isC ? 'bg-[#c9a84c]/20 text-[#e6c364] border-none' : ''}>Aceptada</Badge>}
+                            </div>
+                            <p className={`text-xs ${ isC ? 'text-[#d0c5b2]/70' : 'text-on-surface-variant dark:text-gray-400' }`}>{a.body}</p>
+                          </div>
+                        ))}
                       </div>
                     ))}
-                  </Card>
-                ))}
-              </motion.div>
-            )}
-          </div>
+                    {questions.length > 3 && (
+                      <p className={`text-xs font-bold uppercase tracking-widest text-center pt-1 ${ isC ? 'text-[#d0c5b2]/50' : 'text-on-surface-variant/60' }`}>
+                        + {questions.length - 3} preguntas más
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

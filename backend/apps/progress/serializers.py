@@ -13,7 +13,45 @@ class PurchaseAdminSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Purchase
-        fields = ['id', 'course_id', 'course_title', 'user_id', 'user_email', 'amount', 'paid_at']
+        fields = [
+            'id', 'course_id', 'course_title', 'user_id', 'user_email',
+            'amount', 'currency', 'status', 'payment_method',
+            'stripe_payment_intent_id', 'receipt_url',
+            'refund_amount', 'refund_status',
+            'created_at', 'completed_at', 'paid_at',
+        ]
+
+
+class PurchaseStudentSerializer(serializers.ModelSerializer):
+    """Información de compra para el alumno que la realizó."""
+
+    course_title = serializers.CharField(source='course.title', read_only=True)
+    course_thumbnail = serializers.SerializerMethodField()
+    coupon_code = serializers.SerializerMethodField()
+    invoice_number = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Purchase
+        fields = [
+            'id', 'course', 'course_title', 'course_thumbnail',
+            'amount', 'currency', 'status',
+            'coupon_code', 'original_amount', 'discount_amount',
+            'receipt_url', 'refund_status',
+            'invoice_number',
+            'created_at', 'completed_at',
+        ]
+
+    def get_course_thumbnail(self, obj):
+        return getattr(obj.course, 'thumbnail', None) or ''
+
+    def get_coupon_code(self, obj):
+        return obj.coupon.code if obj.coupon else None
+
+    def get_invoice_number(self, obj):
+        try:
+            return obj.invoice.invoice_number
+        except Exception:
+            return None
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):

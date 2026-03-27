@@ -1,18 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Users, BookOpen, DollarSign, TrendingUp, ArrowRight,
   ChevronRight, ArrowUpRight, ArrowDownRight, Building2,
-  GraduationCap, BarChart2,
+  GraduationCap, BarChart2, ChevronUp, ChevronDown, Search,
 } from 'lucide-react';
 import {
-  ComposedChart, BarChart, Bar, LineChart, Line,
+  AreaChart, Area, ComposedChart, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { Card, Modal } from '../../components/ui';
+import { Card, Modal, DateRangePicker, SkeletonStatCard } from '../../components/ui';
 import adminService from '../../services/adminService';
+import {
+  getRevenueAnalytics,
+  getTrendsAnalytics,
+  getInstructorsAnalytics,
+} from '../../services/instructorService';
 
 const PERIODS = [
   { value: 'daily', label: 'Diario' },
@@ -110,6 +115,33 @@ const SectionCard = ({ sec, delay = 0 }) => {
   );
 };
 
+// ─── Helpers de formato ────────────────────────────────────────────────────────
+const formatMXN = (amount) =>
+  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount ?? 0);
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const daysAgoStr = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+};
+
+// ─── Componente TrendBadge ──────────────────────────────────────────────────────
+const TrendBadge = ({ value, suffix = '' }) => {
+  if (value == null) return null;
+  const isUp = value >= 0;
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-xs font-medium px-2 py-0.5 rounded-full ${
+      isUp
+        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+    }`}>
+      {isUp ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+      {Math.abs(value).toFixed(1)}{suffix}
+    </span>
+  );
+};
+
 // ─── Main Component ─────────────────────────────────────────────────────────────
 const AdminDashboard = () => {
   const [revenue, setRevenue] = useState(null);
@@ -119,6 +151,23 @@ const AdminDashboard = () => {
   const [period, setPeriod] = useState('monthly');
   const [loading, setLoading] = useState(true);
   const [detailModal, setDetailModal] = useState(null); // 'revenue' | 'users' | 'courses' | 'completion'
+
+  // ── Estado: Revenue con DateRangePicker ──
+  const [rangeStart, setRangeStart] = useState(daysAgoStr(29));
+  const [rangeEnd, setRangeEnd] = useState(todayStr());
+  const [groupBy, setGroupBy] = useState('day');
+  const [rangeRevenue, setRangeRevenue] = useState(null);
+  const [rangeLoading, setRangeLoading] = useState(false);
+
+  // ── Estado: Tendencias ──
+  const [trends, setTrends] = useState(null);
+  const [trendsLoading, setTrendsLoading] = useState(true);
+
+  // ── Estado: Tabla de instructores ──
+  const [instructors, setInstructors] = useState(null);
+  const [instructorsLoading, setInstructorsLoading] = useState(true);
+  const [instrSearch, setInstrSearch] = useState('');
+  const [instrSort, setInstrSort] = useState({ col: 'revenue', dir: 'desc' });
 
   useEffect(() => {
     const load = async () => {
@@ -140,6 +189,37 @@ const AdminDashboard = () => {
     load();
   }, [period]);
 
+  // Cargar tendencias e instructores al montar
+  useEffect(() => {
+    getTrendsAnalytics()
+      .then(setTrends)
+      .catch(() => setTrends(null))
+      .finally(() => setTrendsLoading(false));
+    getInstructorsAnalytics()
+      .then(setInstructors)
+      .catch(() => setInstructors(null))
+      .finally(() => setInstructorsLoading(false));
+  }, []);
+
+  // Cargar revenue por rango cuando cambia el filtro
+  useEffect(() => {
+    if (!rangeStart || !rangeEnd) return;
+    let cancelled = false;
+    const load = async () => {
+      setRangeLoading(true);
+      try {
+        const data = await getRevenueAnalytics(rangeStart, rangeEnd, null, groupBy);
+        if (!cancelled) setRangeRevenue(data);
+      } catch {
+        if (!cancelled) setRangeRevenue(null);
+      } finally {
+        if (!cancelled) setRangeLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [rangeStart, rangeEnd, groupBy]);
+
   const usersSectionData = usersAnalytics?.users_by_section
     ? Object.entries(usersAnalytics.users_by_section).map(([name, value]) => ({ name, value }))
     : [];
@@ -150,6 +230,34 @@ const AdminDashboard = () => {
         value,
       }))
     : [];
+
+  // Tabla instructores: filtrado + ordenado
+  const filteredInstructors = useMemo(() => {
+    const list = Array.isArray(instructors) ? instructors : (instructors?.results ?? []);
+    const q = instrSearch.toLowerCase().trim();
+    const filtered = q
+      ? list.filter((i) => (i.name ?? i.full_name ?? '').toLowerCase().includes(q))
+      : list;
+    const { col, dir } = instrSort;
+    return [...filtered].sort((a, b) => {
+      const va = a[col] ?? 0;
+      const vb = b[col] ?? 0;
+      return dir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+    });
+  }, [instructors, instrSearch, instrSort]);
+
+  const handleInstrSort = (col) => {
+    setInstrSort((prev) =>
+      prev.col === col ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'desc' }
+    );
+  };
+
+  const SortIcon = ({ col }) => {
+    if (instrSort.col !== col) return <ChevronUp size={12} className="text-gray-300 dark:text-gray-600" />;
+    return instrSort.dir === 'asc'
+      ? <ChevronUp size={12} className="text-blue-500" />
+      : <ChevronDown size={12} className="text-blue-500" />;
+  };
 
   if (loading) {
     return (
@@ -449,6 +557,329 @@ const AdminDashboard = () => {
           </ResponsiveContainer>
         </Card>
       )}
+
+      {/* ══ SECCIÓN A: Revenue con DateRangePicker ══ */}
+      <Card className="p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+          <div className="flex items-center gap-2">
+            <DollarSign size={20} className="text-indigo-500" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Revenue por Período</h2>
+          </div>
+          {/* Granularidad */}
+          <div className="flex gap-2">
+            {[
+              { value: 'day', label: 'Día' },
+              { value: 'week', label: 'Semana' },
+              { value: 'month', label: 'Mes' },
+            ].map((g) => (
+              <button
+                key={g.value}
+                type="button"
+                onClick={() => setGroupBy(g.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  groupBy === g.value
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* DateRangePicker */}
+        <DateRangePicker
+          startDate={rangeStart}
+          endDate={rangeEnd}
+          onChange={(s, e) => { setRangeStart(s); setRangeEnd(e); }}
+          maxDays={365}
+          className="mb-5"
+        />
+
+        {/* Cards de totales */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4">
+            <p className="text-xs text-indigo-500 dark:text-indigo-400 font-medium uppercase tracking-wider mb-1">Revenue total</p>
+            <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">
+              {rangeLoading ? '...' : formatMXN(rangeRevenue?.total_revenue ?? 0)}
+            </p>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 flex items-center gap-3">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider mb-1">Vs período anterior</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xl font-bold text-gray-900 dark:text-white">
+                  {rangeLoading ? '...' : (rangeRevenue?.comparison?.vs_previous_period ?? 'N/A')}
+                </p>
+                {!rangeLoading && rangeRevenue?.comparison?.change_pct != null && (
+                  <TrendBadge value={rangeRevenue.comparison.change_pct} suffix="%" />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Gráfica de área */}
+        {rangeLoading ? (
+          <div className="flex justify-center items-center h-[260px]">
+            <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (rangeRevenue?.data?.length > 0) ? (
+          <ResponsiveContainer width="100%" height={260}>
+            <AreaChart data={rangeRevenue.data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+              <defs>
+                <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
+              <Tooltip
+                formatter={(value, name) => {
+                  if (name === 'revenue' || name === 'Ingresos')
+                    return [formatMXN(value), 'Ingresos'];
+                  return [value, 'Compras'];
+                }}
+                contentStyle={{
+                  backgroundColor: 'var(--tooltip-bg, #fff)',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                }}
+              />
+              <Legend formatter={(v) => (v === 'revenue' ? 'Ingresos' : v === 'purchases' ? 'Compras' : v)} />
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                name="Ingresos"
+                stroke="#6366f1"
+                strokeWidth={2.5}
+                fill="url(#revenueGradient)"
+                dot={false}
+                activeDot={{ r: 5, fill: '#6366f1' }}
+              />
+              <Area
+                type="monotone"
+                dataKey="purchases"
+                name="Compras"
+                stroke="#f59e0b"
+                strokeWidth={2}
+                fill="none"
+                dot={false}
+                activeDot={{ r: 4, fill: '#f59e0b' }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-gray-500 dark:text-gray-400 text-sm py-10 text-center">
+            No hay datos para el rango de fechas seleccionado.
+          </p>
+        )}
+      </Card>
+
+      {/* ══ SECCIÓN B: Comparativa Mes Actual vs Anterior + Tendencias ══ */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp size={20} className="text-maily" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Tendencias y Comparativa</h2>
+        </div>
+
+        {/* 4 tarjetas de métricas */}
+        {trendsLoading ? (
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+            {[0, 1, 2, 3].map((i) => <SkeletonStatCard key={i} />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+            {[
+              {
+                label: 'Revenue',
+                value: formatMXN(trends?.current?.revenue),
+                change: trends?.changes?.revenue_pct,
+                color: 'text-green-600 dark:text-green-400',
+                bg: 'bg-green-50 dark:bg-green-900/20',
+              },
+              {
+                label: 'Inscripciones',
+                value: trends?.current?.enrollments ?? 0,
+                change: trends?.changes?.enrollments_pct,
+                color: 'text-blue-600 dark:text-blue-400',
+                bg: 'bg-blue-50 dark:bg-blue-900/20',
+              },
+              {
+                label: 'Completaciones',
+                value: trends?.current?.completions ?? 0,
+                change: trends?.changes?.completions_pct,
+                color: 'text-purple-600 dark:text-purple-400',
+                bg: 'bg-purple-50 dark:bg-purple-900/20',
+              },
+              {
+                label: 'Estudiantes activos',
+                value: trends?.current?.active_students ?? 0,
+                change: trends?.changes?.active_students_pct,
+                color: 'text-orange-600 dark:text-orange-400',
+                bg: 'bg-orange-50 dark:bg-orange-900/20',
+              },
+            ].map(({ label, value, change, color, bg }) => (
+              <div key={label} className={`rounded-xl p-4 ${bg}`}>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">{label}</p>
+                <p className={`text-xl font-bold ${color}`}>{value}</p>
+                <div className="mt-2">
+                  <TrendBadge value={change} suffix="%" />
+                  <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">vs mes anterior</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* BarChart últimos 6 meses */}
+        {!trendsLoading && (trends?.monthly_comparison?.length > 0) && (
+          <Card className="p-6">
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Inscripciones y Revenue — últimos 6 meses</p>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={trends.monthly_comparison} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="left" tick={{ fontSize: 11 }} allowDecimals={false} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
+                <Tooltip
+                  formatter={(value, name) => {
+                    if (name === 'revenue' || name === 'Revenue')
+                      return [formatMXN(value), 'Revenue'];
+                    return [value, 'Inscripciones'];
+                  }}
+                />
+                <Legend formatter={(v) => (v === 'revenue' ? 'Revenue' : v === 'enrollments' ? 'Inscripciones' : v)} />
+                <Bar yAxisId="left" dataKey="enrollments" name="Inscripciones" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="right" dataKey="revenue" name="Revenue" fill="#059669" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        )}
+      </div>
+
+      {/* ══ SECCIÓN C: Tabla de Instructores ══ */}
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-2">
+            <GraduationCap size={20} className="text-purple-500" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Instructores</h2>
+          </div>
+          {/* Búsqueda */}
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar instructor..."
+              value={instrSearch}
+              onChange={(e) => setInstrSearch(e.target.value)}
+              className="pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 w-52"
+            />
+          </div>
+        </div>
+
+        <Card className="overflow-x-auto">
+          {instructorsLoading ? (
+            <div className="p-6 space-y-3">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="h-10 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : filteredInstructors.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400 text-sm py-10 text-center">
+              {instrSearch ? 'No se encontraron instructores con ese nombre.' : 'No hay datos de instructores.'}
+            </p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60">
+                  {[
+                    { col: 'name', label: 'Instructor' },
+                    { col: 'courses_count', label: 'Cursos' },
+                    { col: 'total_students', label: 'Estudiantes' },
+                    { col: 'active_students', label: 'Activos' },
+                    { col: 'revenue', label: 'Revenue' },
+                    { col: 'completion_rate', label: 'Completación' },
+                    { col: null, label: 'Top Curso' },
+                  ].map(({ col, label }) => (
+                    <th
+                      key={label}
+                      className={`px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap ${col ? 'cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200' : ''}`}
+                      onClick={col ? () => handleInstrSort(col) : undefined}
+                    >
+                      <span className="flex items-center gap-1">
+                        {label}
+                        {col && <SortIcon col={col} />}
+                      </span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {filteredInstructors.map((inst, idx) => {
+                  const name = inst.name ?? inst.full_name ?? inst.username ?? `Instructor #${idx + 1}`;
+                  return (
+                    <tr key={inst.id ?? idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {inst.avatar ? (
+                            <img src={inst.avatar} alt={name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
+                              <span className="text-xs font-bold text-purple-600 dark:text-purple-400">
+                                {name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                          <span className="font-medium text-gray-900 dark:text-white truncate max-w-[140px]">{name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center font-medium text-gray-700 dark:text-gray-300">
+                        {inst.courses_count ?? inst.courses ?? 0}
+                      </td>
+                      <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">
+                        {inst.total_students ?? inst.students ?? 0}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-green-600 dark:text-green-400 font-medium">
+                          {inst.active_students ?? 0}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">
+                        {formatMXN(inst.revenue ?? 0)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {inst.completion_rate != null ? (
+                          <span className={`font-medium ${
+                            inst.completion_rate >= 70
+                              ? 'text-green-600 dark:text-green-400'
+                              : inst.completion_rate >= 40
+                              ? 'text-yellow-600 dark:text-yellow-400'
+                              : 'text-red-500 dark:text-red-400'
+                          }`}>
+                            {Number(inst.completion_rate).toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-[160px]">
+                        <span className="truncate block text-xs">
+                          {inst.top_course ?? inst.top_course_title ?? '—'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      </div>
 
       {/* ── Links de acceso rápido ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

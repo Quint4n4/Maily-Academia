@@ -18,12 +18,17 @@ import {
   Library,
   CheckCircle,
   Video,
+  Tag,
   ChevronDown,
   ArrowLeftRight,
+  Calendar,
+  Gift,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useSection } from '../../context/SectionContext';
+import { isCamsa } from '../../theme/camsaTheme';
 import qnaService from '../../services/qnaService';
 import logoMaily from '../../../Logos/logomaily.png';
 import logoLongevity from '../../../Logos/Longevity360-03.png';
@@ -86,6 +91,8 @@ const Navbar = () => {
           { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { to: '/admin/users', label: 'Usuarios', icon: Users },
           { to: '/admin/courses', label: 'Cursos', icon: BookOpen },
+          { to: '/admin/coupons', label: 'Cupones', icon: Tag },
+          { to: '/admin/corporate/benefits', label: 'Corporativo', icon: Gift },
           { to: '/admin/promo-videos', label: 'Videos Maily', icon: Video },
         ];
       case 'instructor':
@@ -98,6 +105,16 @@ const Navbar = () => {
           { to: '/instructor/blog', label: 'Blog', icon: FileText },
         ];
       default:
+        // Navegación específica para el portal corporativo
+        if (currentSection === 'corporativo-camsa') {
+          return [
+            { to: '/corporativo/dashboard', label: 'Inicio', icon: Home },
+            { to: '/corporativo/courses', label: 'Cursos', icon: BookOpen },
+            { to: '/corporativo/benefits', label: 'Beneficios', icon: Gift },
+            { to: '/corporativo/reservations', label: 'Mis Citas', icon: Calendar },
+            { to: '/corporativo/profile', label: 'Mi Perfil', icon: User },
+          ];
+        }
         return [
           { to: '/dashboard', label: 'Inicio', icon: Home },
           { to: '/my-courses', label: 'Mis Cursos', icon: Library },
@@ -105,7 +122,7 @@ const Navbar = () => {
           { to: '/certificates', label: 'Certificados', icon: Award },
         ];
     }
-  }, [user?.role]);
+  }, [user?.role, currentSection]);
 
   const activeSection = useMemo(() => {
     if (!currentSection) return null;
@@ -157,8 +174,15 @@ const Navbar = () => {
     }
   }, [user?.role]);
 
+  // El tema CAMSA solo aplica a estudiantes; admin e instructor usan el tema estándar
+  const isC = user?.role === 'student' && isCamsa(currentSection);
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700">
+    <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-lg border-b ${
+      isC
+        ? 'bg-[#141311] border-[rgba(77,70,55,0.3)] shadow-[0_4px_30px_rgba(0,0,0,0.6)]'
+        : 'bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700'
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo según rol y academia */}
@@ -191,9 +215,13 @@ const Navbar = () => {
                   key={item.to}
                   to={item.to}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive(item.to)
-                      ? 'bg-maily/10 text-maily dark:text-maily-light'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    isC
+                      ? isActive(item.to)
+                        ? 'text-[#e6c364] border-b-2 border-[#e6c364]'
+                        : 'text-[#d0c5b2] hover:text-[#e6c364] hover:bg-white/5'
+                      : isActive(item.to)
+                        ? 'bg-maily/10 text-maily dark:text-maily-light'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
                 >
                   <span className="relative inline-flex">
@@ -256,13 +284,15 @@ const Navbar = () => {
                 </AnimatePresence>
               </div>
             )}
-            {/* Theme toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              {isDark ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
+            {/* Theme toggle — hidden for CAMSA (always dark) */}
+            {!isC && (
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                {isDark ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+            )}
 
             {/* Profile dropdown */}
             <div className="relative" ref={profileRef}>
@@ -286,11 +316,15 @@ const Navbar = () => {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 8 }}
-                    className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50"
+                    className={`absolute right-0 mt-2 w-64 rounded-xl shadow-lg border py-2 z-50 ${
+                      isC
+                        ? 'bg-[#141311] border-[rgba(77,70,55,0.4)]'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                    }`}
                   >
-                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                      <p className="font-medium text-gray-900 dark:text-white">{user?.name}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+                    <div className={`px-4 py-3 border-b ${ isC ? 'border-[rgba(77,70,55,0.3)]' : 'border-gray-100 dark:border-gray-700' }`}>
+                      <p className={`font-medium ${ isC ? 'text-[#e6c364]' : 'text-gray-900 dark:text-white' }`}>{user?.name}</p>
+                      <p className={`text-sm truncate ${ isC ? 'text-[#d0c5b2]' : 'text-gray-500 dark:text-gray-400' }`}>{user?.email}</p>
                       {roleBadge && (
                         <span className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${roleBadge.color}`}>
                           {roleBadge.label}
@@ -300,7 +334,11 @@ const Navbar = () => {
                     <Link
                       to="/profile"
                       onClick={() => setShowProfile(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      className={`flex items-center gap-3 px-4 py-2.5 text-sm ${
+                        isC
+                          ? 'text-[#d0c5b2] hover:bg-white/5 hover:text-[#e6c364]'
+                          : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}
                     >
                       <User size={16} /> Mi perfil
                     </Link>
@@ -341,7 +379,11 @@ const Navbar = () => {
                     )}
                     <button
                       onClick={() => { logout(); navigate('/'); }}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 w-full text-left"
+                      className={`flex items-center gap-3 px-4 py-2.5 text-sm w-full text-left ${
+                        isC
+                          ? 'text-[#e6c364]/70 hover:bg-white/5 hover:text-[#e6c364]'
+                          : 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+                      }`}
                     >
                       <LogOut size={16} /> Cerrar sesión
                     </button>
@@ -368,7 +410,11 @@ const Navbar = () => {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden"
+            className={`md:hidden border-t overflow-hidden ${
+              isC
+                ? 'bg-[#141311] border-[rgba(77,70,55,0.3)]'
+                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700'
+            }`}
           >
             <div className="px-4 py-3 space-y-1">
               {navItems.map((item) => {

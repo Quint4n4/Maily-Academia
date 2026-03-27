@@ -1,14 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, Users, FileText, ArrowRight, MessageSquare } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Card } from '../../components/ui';
+import { BookOpen, Users, FileText, ArrowRight, MessageSquare, DollarSign, TrendingDown } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, Legend,
+} from 'recharts';
+import { Card, SkeletonCard } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import courseService from '../../services/courseService';
 import blogService from '../../services/blogService';
 import progressService from '../../services/progressService';
 import qnaService from '../../services/qnaService';
+import instructorService, { getTrendsAnalytics } from '../../services/instructorService';
 
 const InstructorDashboard = () => {
   const { user } = useAuth();
@@ -18,16 +22,23 @@ const InstructorDashboard = () => {
   const [totalStudents, setTotalStudents] = useState(0);
   const [qnaPendingCount, setQnaPendingCount] = useState(0);
   const [questionsPerCourse, setQuestionsPerCourse] = useState([]);
+  const [revenue, setRevenue] = useState({ total_revenue: 0, total_sales: 0 });
   const [loading, setLoading] = useState(true);
+
+  // Tendencias temporales
+  const [trends, setTrends] = useState(null);
+  const [trendsLoading, setTrendsLoading] = useState(true);
+  const [trendsError, setTrendsError] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [coursesRes, blogRes, statsRes, qnaRes] = await Promise.all([
+        const [coursesRes, blogRes, statsRes, qnaRes, revenueRes] = await Promise.all([
           courseService.list({ instructor: user.id }),
           blogService.list(),
           progressService.getInstructorStats().catch(() => ({ total_students: 0 })),
           qnaService.getInstructorStats().catch(() => ({ questions_pending_count: 0, questions_per_course: [] })),
+          instructorService.getRevenue().catch(() => ({ total_revenue: 0, total_sales: 0 })),
         ]);
         setCourses((coursesRes.results || coursesRes));
         const blogList = blogRes.results || blogRes;
@@ -35,11 +46,28 @@ const InstructorDashboard = () => {
         setTotalStudents(statsRes?.total_students ?? 0);
         setQnaPendingCount(qnaRes?.questions_pending_count ?? 0);
         setQuestionsPerCourse(qnaRes?.questions_per_course ?? []);
+        setRevenue(revenueRes || { total_revenue: 0, total_sales: 0 });
       } catch { /* empty */ }
       setLoading(false);
     };
     load();
   }, [user.id]);
+
+  // Cargar tendencias al montar (sin course_id = todos los cursos)
+  useEffect(() => {
+    const loadTrends = async () => {
+      setTrendsLoading(true);
+      setTrendsError(false);
+      try {
+        const data = await getTrendsAnalytics();
+        setTrends(data);
+      } catch {
+        setTrendsError(true);
+      }
+      setTrendsLoading(false);
+    };
+    loadTrends();
+  }, []);
 
   const chartStudentsData = useMemo(() => {
     return [...courses]
@@ -61,6 +89,8 @@ const InstructorDashboard = () => {
     { label: 'Total Estudiantes', value: totalStudents, icon: Users, color: 'text-green-600 bg-green-100 dark:bg-green-900/30' },
     { label: 'Preguntas pendientes', value: qnaPendingCount, icon: MessageSquare, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30', to: '/instructor/qna' },
     { label: 'Posts del Blog', value: blogCount, icon: FileText, color: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30', to: '/instructor/blog' },
+    { label: 'Ingresos totales', value: `$${Number(revenue.total_revenue).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, icon: DollarSign, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
+    { label: 'Ventas', value: revenue.total_sales, icon: DollarSign, color: 'text-teal-600 bg-teal-100 dark:bg-teal-900/30' },
   ];
 
   if (loading) {
@@ -158,7 +188,7 @@ const InstructorDashboard = () => {
       </div>
 
       {/* My courses list */}
-      <Card className="p-6">
+      <Card className="p-6 mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Mis Cursos</h2>
           <Link to="/instructor/courses" className="text-maily hover:underline text-sm flex items-center gap-1">
@@ -186,6 +216,122 @@ const InstructorDashboard = () => {
           </div>
         )}
       </Card>
+
+      {/* Acceso rápido a Análisis de Abandono */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="mb-8"
+      >
+        <Card
+          className="p-5 flex items-center justify-between cursor-pointer hover:ring-2 hover:ring-red-300/40 transition-shadow"
+          onClick={() => navigate('/instructor/dropout')}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <TrendingDown size={20} className="text-red-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 dark:text-white">Análisis de Abandono</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Identifica en qué lecciones pierdes estudiantes</p>
+            </div>
+          </div>
+          <ArrowRight size={18} className="text-gray-400" />
+        </Card>
+      </motion.div>
+
+      {/* Tendencias temporales — últimos 6 meses */}
+      <div className="mb-2 flex items-center gap-2">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Tendencias (últimos 6 meses)</h2>
+      </div>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        Inscripciones y completaciones agregadas de todos tus cursos por mes.
+      </p>
+
+      {trendsLoading ? (
+        <SkeletonCard />
+      ) : trendsError ? (
+        <Card className="p-6">
+          <p className="text-red-500 dark:text-red-400 text-sm">No se pudieron cargar los datos de tendencias.</p>
+        </Card>
+      ) : !trends || !(trends.monthly_data || trends.data || []).length ? (
+        <Card className="p-6">
+          <p className="text-gray-500 dark:text-gray-400 text-sm">No hay datos de tendencias disponibles aún.</p>
+        </Card>
+      ) : (
+        <Card className="p-6">
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={(trends.monthly_data || trends.data || []).map((item) => ({
+                  mes: item.month_label || item.month || item.periodo || '',
+                  inscripciones: item.enrollments ?? item.inscripciones ?? 0,
+                  completaciones: item.completions ?? item.completaciones ?? 0,
+                }))}
+                margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
+                <XAxis
+                  dataKey="mes"
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v) => {
+                    if (!v) return '';
+                    // Intentar formatear "YYYY-MM" a "Mes YYYY"
+                    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                    const parts = String(v).split('-');
+                    if (parts.length === 2) {
+                      const m = parseInt(parts[1], 10);
+                      return `${meses[m - 1] || parts[1]} ${parts[0]}`;
+                    }
+                    return v;
+                  }}
+                />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                  formatter={(value, name) => [value, name === 'inscripciones' ? 'Inscripciones' : 'Completaciones']}
+                  labelFormatter={(label) => {
+                    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                    const parts = String(label).split('-');
+                    if (parts.length === 2) {
+                      const m = parseInt(parts[1], 10);
+                      return `${meses[m - 1] || parts[1]} ${parts[0]}`;
+                    }
+                    return label;
+                  }}
+                />
+                <Legend
+                  formatter={(value) => value === 'inscripciones' ? 'Inscripciones' : 'Completaciones'}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="inscripciones"
+                  stroke="#4A90A4"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name="inscripciones"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="completaciones"
+                  stroke="#16a34a"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name="completaciones"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

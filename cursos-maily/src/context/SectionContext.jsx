@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 const SectionContext = createContext(null);
 
 const DEFAULT_PUBLIC_SECTION_SLUG = 'longevity-360';
+const SECTION_STORAGE_KEY = 'maily_current_section';
 
 const pickDefaultSectionSlug = (sections) => {
   if (!Array.isArray(sections) || sections.length === 0) return null;
@@ -29,8 +30,12 @@ export const useSection = () => {
 };
 
 export const SectionContextProvider = ({ children }) => {
-  const { user, redirectSection, userSections: authUserSections } = useAuth();
-  const [currentSection, setCurrentSection] = useState(null);
+  const { user, redirectSection, userSections: authUserSections, isLoading: authIsLoading } = useAuth();
+  const [currentSection, setCurrentSection] = useState(() => {
+    try {
+      return localStorage.getItem(SECTION_STORAGE_KEY) || null;
+    } catch { return null; }
+  });
   const [availableSections, setAvailableSections] = useState([]);
   const [userSections, setUserSections] = useState([]);
   const [isLoadingSections, setIsLoadingSections] = useState(false);
@@ -60,9 +65,14 @@ export const SectionContextProvider = ({ children }) => {
   useEffect(() => {
     let cancelled = false;
 
+    // No limpiar la sección mientras auth sigue cargando — evita race condition en refresh
+    // (user=null durante la carga inicial no significa que el usuario cerró sesión)
+    if (authIsLoading) return () => { cancelled = true; };
+
     if (!user) {
       setUserSections([]);
       setCurrentSection(null);
+      try { localStorage.removeItem(SECTION_STORAGE_KEY); } catch { /* */ }
       return () => {
         cancelled = true;
       };
@@ -84,13 +94,16 @@ export const SectionContextProvider = ({ children }) => {
         });
       } catch {
         if (!cancelled) {
-          // Fallback: usar secciones derivadas del login si existen
+          // Fallback: usar secciones derivadas del login si existen; preservar sección actual
           const fallbackSections =
             Array.isArray(authUserSections) && authUserSections.length > 0
               ? authUserSections.map((slug) => ({ slug }))
               : [];
           setUserSections(fallbackSections);
-          setCurrentSection((prev) => prev || redirectSection || DEFAULT_PUBLIC_SECTION_SLUG);
+          setCurrentSection((prev) => {
+            if (prev) return prev;
+            return redirectSection || DEFAULT_PUBLIC_SECTION_SLUG;
+          });
         }
       } finally {
         if (!cancelled) {
@@ -104,10 +117,14 @@ export const SectionContextProvider = ({ children }) => {
     return () => {
       cancelled = true;
     };
-  }, [user, redirectSection, authUserSections]);
+  }, [user, redirectSection, authUserSections, authIsLoading]);
 
   const setCurrentSectionSlug = useCallback((slug) => {
     setCurrentSection(slug);
+    try {
+      if (slug) localStorage.setItem(SECTION_STORAGE_KEY, slug);
+      else localStorage.removeItem(SECTION_STORAGE_KEY);
+    } catch { /* storage not available */ }
   }, []);
 
   // Dado un rol y la sección activa, obtener la ruta de dashboard adecuada

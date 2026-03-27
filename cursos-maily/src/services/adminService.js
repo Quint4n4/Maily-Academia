@@ -42,6 +42,34 @@ export const adminService = {
   async removeStudentFromSection(slug, userId) {
     await api.delete(`/admin/sections/${slug}/members/${userId}/`);
   },
+
+  async exportUsersCSV(params = {}) {
+    const { data } = await api.get('/users/export/csv/', { params, responseType: 'blob' });
+    return data;
+  },
+
+  async exportPurchasesCSV(params = {}) {
+    const { data } = await api.get('/users/purchases/export/csv/', { params, responseType: 'blob' });
+    return data;
+  },
 };
+
+// ===== CUPONES =====
+export const getCoupons = (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  return api.get(`/admin/coupons/${query ? '?' + query : ''}`);
+};
+
+export const createCoupon = (data) =>
+  api.post('/admin/coupons/', data);
+
+export const updateCoupon = (id, data) =>
+  api.patch(`/admin/coupons/${id}/`, data);
+
+export const deleteCoupon = (id) =>
+  api.delete(`/admin/coupons/${id}/`);
+
+export const toggleCouponStatus = (id, isActive) =>
+  api.patch(`/admin/coupons/${id}/`, { is_active: isActive });
 
 export default adminService;

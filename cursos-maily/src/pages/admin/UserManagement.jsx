@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, Plus, Search, X, UserCheck, UserX, Edit, Key, Unlock, Lock,
   Phone, Building2, ShieldCheck, GraduationCap, UserPlus, CheckCircle2,
-  AlertCircle,
+  AlertCircle, Download,
 } from 'lucide-react';
-import { Card, Button, Input, Modal, Badge } from '../../components/ui';
+import { Card, Button, Input, Modal, Badge, Pagination } from '../../components/ui';
+import { SkeletonTableRow } from '../../components/ui/SkeletonLoader';
 import userService from '../../services/userService';
 import adminService from '../../services/adminService';
 const ROLE_LABELS = { admin: 'Admin', instructor: 'Profesor', student: 'Estudiante' };
@@ -78,16 +79,41 @@ const UserManagement = () => {
 
   // Desbloqueo
   const [unlocking, setUnlocking] = useState(null);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 20;
+  const [exporting, setExporting] = useState(false);
 
-  const load = async () => {
+  const handleExportCSV = async () => {
+    setExporting(true);
+    try {
+      const blob = await adminService.exportUsersCSV(activeTab ? { role: activeTab } : {});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'usuarios.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export error:', err);
+    }
+    setExporting(false);
+  };
+
+  const load = async (p = page) => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { page: p };
       if (activeTab) params.role = activeTab;
       if (search) params.search = search;
       const res = await userService.list(params);
       setUsers(res.results || res);
-    } catch { /* empty */ }
+      setTotalCount(res.count ?? (res.results || res).length);
+    } catch (err) {
+      console.error('Error loading users:', err);
+    }
     setLoading(false);
   };
 
@@ -95,7 +121,8 @@ const UserManagement = () => {
     userService.getSections().then(setSections).catch(() => setSections([]));
   }, []);
 
-  useEffect(() => { load(); }, [activeTab, search]);
+  useEffect(() => { setPage(1); }, [activeTab, search]);
+  useEffect(() => { load(page); }, [activeTab, search, page]);
 
   // ── Crear Instructor ──────────────────────────────────────────────────────
   const handleCreateInstructor = async (e) => {
@@ -300,6 +327,12 @@ const UserManagement = () => {
 
   // ── Toggle activo ─────────────────────────────────────────────────────────
   const handleToggleActive = async (u) => {
+    if (u.is_active) {
+      const confirmed = window.confirm(
+        `¿Estás seguro de desactivar al usuario ${u.first_name} ${u.last_name} (${u.email})? No podrá iniciar sesión.`
+      );
+      if (!confirmed) return;
+    }
     try {
       if (u.is_active) {
         await userService.deactivate(u.id);
@@ -307,7 +340,9 @@ const UserManagement = () => {
         await userService.update(u.id, { isActive: true });
       }
       load();
-    } catch { /* empty */ }
+    } catch (err) {
+      console.error('Error toggling user active status:', err);
+    }
   };
 
   const handleUnlock = async (u) => {
@@ -327,9 +362,17 @@ const UserManagement = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Usuarios</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">{users.length} usuarios registrados</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">{totalCount} usuarios registrados</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            onClick={handleExportCSV}
+            loading={exporting}
+            icon={<Download size={18} />}
+            variant="secondary"
+          >
+            Exportar CSV
+          </Button>
           <Button
             onClick={() => setShowStudentModal(true)}
             icon={<UserPlus size={18} />}
@@ -375,9 +418,11 @@ const UserManagement = () => {
 
       {/* Tabla */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-4 border-maily border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Card className="p-4 divide-y divide-gray-100 dark:divide-gray-700">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonTableRow key={i} cols={5} />
+          ))}
+        </Card>
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
@@ -523,6 +568,13 @@ const UserManagement = () => {
           </div>
         </Card>
       )}
+
+      <Pagination
+        page={page}
+        totalPages={Math.ceil(totalCount / PAGE_SIZE)}
+        count={totalCount}
+        onPageChange={setPage}
+      />
 
       {/* ── Modal Crear Profesor ─────────────────────────────────────────── */}
       <Modal isOpen={showInstructorModal} onClose={() => setShowInstructorModal(false)} title="Crear nuevo Profesor">

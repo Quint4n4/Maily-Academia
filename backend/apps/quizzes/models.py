@@ -10,10 +10,16 @@ class Quiz(models.Model):
     module = models.OneToOneField(Module, on_delete=models.CASCADE, related_name='quiz')
     title = models.CharField('título', max_length=255)
     passing_score = models.PositiveIntegerField('puntaje para aprobar (%)', default=70)
+    max_attempts = models.PositiveIntegerField(
+        'máximo de intentos',
+        default=0,
+        help_text='0 = intentos ilimitados.',
+    )
 
     class Meta:
         verbose_name = 'quiz'
         verbose_name_plural = 'quizzes'
+        ordering = ['module']
 
     def __str__(self):
         return self.title
@@ -112,6 +118,7 @@ class FinalEvaluation(models.Model):
     class Meta:
         verbose_name = 'evaluación final'
         verbose_name_plural = 'evaluaciones finales'
+        ordering = ['course']
 
     def __str__(self):
         return f'{self.course.title} – {self.title}'

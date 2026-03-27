@@ -74,14 +74,14 @@ class QuizSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Quiz
-        fields = ['id', 'module', 'title', 'passing_score', 'questions']
+        fields = ['id', 'module', 'title', 'passing_score', 'max_attempts', 'questions']
         read_only_fields = ['id']
 
 
 class QuizCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Quiz
-        fields = ['id', 'title', 'passing_score']
+        fields = ['id', 'title', 'passing_score', 'max_attempts']
         read_only_fields = ['id']
 
 

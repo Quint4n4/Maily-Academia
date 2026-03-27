@@ -83,6 +83,7 @@ function getLineCells(r0, c0, r1, c1) {
 /**
  * Sopa de letras real: grilla interactiva donde el usuario selecciona celdas (arrastrar) para formar palabras.
  * value = array de palabras encontradas (strings en mayúsculas).
+ * Accesibilidad WCAG 2.1 AA: aria-label en grilla, aria-live para palabras encontradas.
  */
 export default function WordSearch({ question, value, onChange, disabled }) {
   const config = question.config || {};
@@ -157,68 +158,102 @@ export default function WordSearch({ question, value, onChange, disabled }) {
 
   const rows = grid.length;
   const cols = grid[0]?.length || 0;
+  const grupId = `wordsearch-group-${question.id}`;
+  const instruccionesId = `wordsearch-instrucciones-${question.id}`;
 
   return (
-    <div className="space-y-4">
-      {wordsToFind.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Encuentra estas palabras en la sopa de letras (haz clic y arrastra sobre las letras):
-          </p>
+    <div
+      role="group"
+      aria-labelledby={grupId}
+      aria-describedby={instruccionesId}
+    >
+      {/* ID oculto para aria-labelledby */}
+      <span id={grupId} className="sr-only">{question.text}</span>
+
+      <div className="space-y-4">
+        {wordsToFind.length > 0 && (
+          <div className="space-y-2">
+            <p id={instruccionesId} className="text-sm text-gray-600 dark:text-gray-400">
+              Encuentra estas palabras en la sopa de letras (haz clic y arrastra sobre las letras):
+            </p>
+            <div className="flex flex-wrap gap-2" aria-label="Palabras a encontrar">
+              {wordsToFind.map((w) => (
+                <span
+                  key={w}
+                  className={`inline-flex items-center px-2.5 py-1 rounded-lg font-medium text-sm border ${
+                    found.includes(w)
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border-green-300 line-through'
+                      : 'bg-maily/10 text-maily dark:bg-maily/20 dark:text-maily-light border-maily/30'
+                  }`}
+                  aria-label={found.includes(w) ? `${w}, encontrada` : w}
+                >
+                  {w}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Anuncio accesible de palabras encontradas */}
+        <div
+          aria-live="polite"
+          aria-atomic="false"
+          className="sr-only"
+        >
+          {found.length > 0 && `Palabras encontradas: ${found.join(', ')}. ${found.length} de ${wordsToFind.length}.`}
+        </div>
+
+        <div
+          className="inline-block p-3 bg-gray-100 dark:bg-gray-800 rounded-xl select-none"
+          role="application"
+          aria-label={`Sopa de letras. ${found.length} de ${wordsToFind.length} palabras encontradas.`}
+        >
+          <div
+            className="inline-grid gap-0.5"
+            style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+            onMouseLeave={handleCellMouseUp}
+            onMouseUp={handleCellMouseUp}
+          >
+            {grid.map((row, ri) =>
+              row.map((letter, ci) => {
+                const highlighted = isHighlighted(ri, ci);
+                return (
+                  <div
+                    key={`${ri}-${ci}`}
+                    onMouseDown={() => handleCellMouseDown(ri, ci)}
+                    onMouseEnter={() => handleCellMouseEnter(ri, ci)}
+                    aria-label={`Letra ${letter}, fila ${ri + 1}, columna ${ci + 1}`}
+                    aria-selected={highlighted}
+                    role="gridcell"
+                    className={`
+                      w-8 h-8 flex items-center justify-center border-2 font-mono font-bold text-sm cursor-pointer
+                      transition-colors
+                      ${highlighted ? 'bg-maily text-white border-maily' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:border-maily/50'}
+                      ${disabled ? 'cursor-default opacity-80' : ''}
+                    `}
+                  >
+                    {letter || ''}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {found.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {wordsToFind.map((w) => (
+            <span className="text-xs text-gray-500 dark:text-gray-400">Encontradas:</span>
+            {found.map((w) => (
               <span
                 key={w}
-                className="inline-flex items-center px-2.5 py-1 rounded-lg bg-maily/10 text-maily dark:bg-maily/20 dark:text-maily-light font-medium text-sm border border-maily/30"
+                className="inline-flex items-center px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-sm font-medium"
               >
                 {w}
               </span>
             ))}
           </div>
-        </div>
-      )}
-      <div className="inline-block p-3 bg-gray-100 dark:bg-gray-800 rounded-xl select-none">
-        <div
-          className="inline-grid gap-0.5"
-          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-          onMouseLeave={handleCellMouseUp}
-          onMouseUp={handleCellMouseUp}
-        >
-          {grid.map((row, ri) =>
-            row.map((letter, ci) => {
-              const highlighted = isHighlighted(ri, ci);
-              return (
-                <div
-                  key={`${ri}-${ci}`}
-                  onMouseDown={() => handleCellMouseDown(ri, ci)}
-                  onMouseEnter={() => handleCellMouseEnter(ri, ci)}
-                  className={`
-                    w-8 h-8 flex items-center justify-center border-2 font-mono font-bold text-sm cursor-pointer
-                    transition-colors
-                    ${highlighted ? 'bg-maily text-white border-maily' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:border-maily/50'}
-                    ${disabled ? 'cursor-default opacity-80' : ''}
-                  `}
-                >
-                  {letter || ''}
-                </div>
-              );
-            })
-          )}
-        </div>
+        )}
       </div>
-      {found.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          <span className="text-xs text-gray-500 dark:text-gray-400">Encontradas:</span>
-          {found.map((w) => (
-            <span
-              key={w}
-              className="inline-flex items-center px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-sm font-medium"
-            >
-              {w}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

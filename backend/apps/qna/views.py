@@ -1,5 +1,5 @@
 from django.db.models import Count
-from rest_framework import generics, status
+from rest_framework import generics, serializers as drf_serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -72,6 +72,50 @@ class AnswerAcceptView(APIView):
         answer.is_accepted = True
         answer.save()
         return Response(QnAAnswerSerializer(answer).data)
+
+
+class InstructorQnAListView(generics.ListAPIView):
+    """GET /api/qna/instructor/ – all questions for instructor's courses with filters.
+
+    Query params: status (pending|answered), course (id), search
+    """
+
+    serializer_class = QnAQuestionSerializer
+    permission_classes = [IsAdminOrInstructor]
+
+    class InstructorQnAQuestionSerializer(QnAQuestionSerializer):
+        course_title = drf_serializers.CharField(source='lesson.module.course.title', read_only=True)
+        lesson_title = drf_serializers.CharField(source='lesson.title', read_only=True)
+
+        class Meta(QnAQuestionSerializer.Meta):
+            fields = QnAQuestionSerializer.Meta.fields + ['course_title', 'lesson_title']
+
+    serializer_class = InstructorQnAQuestionSerializer
+
+    def get_queryset(self):
+        qs = (
+            QnAQuestion.objects
+            .filter(lesson__module__course__instructor=self.request.user)
+            .select_related('user', 'lesson__module__course')
+            .prefetch_related('answers__user')
+            .annotate(answers_count=Count('answers'))
+            .order_by('-created_at')
+        )
+        status_filter = self.request.query_params.get('status')
+        if status_filter == 'pending':
+            qs = qs.filter(answers_count=0)
+        elif status_filter == 'answered':
+            qs = qs.filter(answers_count__gt=0)
+
+        course_id = self.request.query_params.get('course')
+        if course_id:
+            qs = qs.filter(lesson__module__course_id=course_id)
+
+        search = self.request.query_params.get('search')
+        if search:
+            qs = qs.filter(title__icontains=search)
+
+        return qs
 
 
 class InstructorQnAStatsView(APIView):

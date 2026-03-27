@@ -43,26 +43,35 @@ export const ProgressProvider = ({ children }) => {
     }
   }, []);
 
+  // Invalidate cached progress for a course so next load fetches fresh data
+  const invalidateCourseProgress = useCallback((courseId) => {
+    if (courseId) {
+      setCourseProgressCache((prev) => {
+        const next = { ...prev };
+        delete next[courseId];
+        return next;
+      });
+    }
+  }, []);
+
   // Mark a lesson as complete
-  const completeLesson = useCallback(async (lessonId) => {
+  const completeLesson = useCallback(async (lessonId, courseId) => {
     try {
       const data = await progressService.completeLesson(lessonId);
       setCompletedLessons((prev) => new Set([...prev, lessonId]));
+      if (courseId) invalidateCourseProgress(courseId);
       return data;
     } catch {
       return null;
     }
-  }, []);
+  }, [invalidateCourseProgress]);
 
   // Submit quiz answers and get result
-  const completeQuiz = useCallback(async (quizId, answers) => {
-    try {
-      const data = await quizService.submitAttempt(quizId, answers);
-      return { score: data.score, passed: data.passed, attempt: data };
-    } catch {
-      return { score: 0, passed: false };
-    }
-  }, []);
+  const completeQuiz = useCallback(async (quizId, answers, courseId) => {
+    const data = await quizService.submitAttempt(quizId, answers);
+    if (courseId) invalidateCourseProgress(courseId);
+    return { score: data.score, passed: data.passed, attempt: data };
+  }, [invalidateCourseProgress]);
 
   // Get quiz for a module
   const getQuiz = useCallback(async (moduleId) => {
@@ -187,6 +196,7 @@ export const ProgressProvider = ({ children }) => {
       loadDashboard,
       loadCourseProgress,
       getCachedProgress,
+      invalidateCourseProgress,
       completeLesson,
       completeQuiz,
       getQuiz,

@@ -149,7 +149,15 @@ class CourseStudentsView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Enrollment.objects.filter(course_id=self.kwargs['course_id']).select_related('user')
+        course_id = self.kwargs['course_id']
+        course = get_object_or_404(Course, pk=course_id)
+        user = self.request.user
+        # Solo el instructor del curso o un admin pueden ver la lista de alumnos
+        is_admin = user.role == 'admin' or user.is_superuser or user.is_staff
+        if not is_admin and course.instructor_id != user.id:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('No tienes permiso para ver los alumnos de este curso.')
+        return Enrollment.objects.filter(course_id=course_id).select_related('user')
 
 
 class LessonCompleteView(APIView):

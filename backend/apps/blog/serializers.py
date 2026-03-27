@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from apps.utils.sanitize import sanitize_html
 from .models import BlogPost
 
 
@@ -39,3 +40,9 @@ class BlogPostCreateUpdateSerializer(serializers.ModelSerializer):
         model = BlogPost
         fields = ['id', 'title', 'content', 'excerpt', 'cover_image', 'status', 'published_at']
         read_only_fields = ['id']
+
+    def validate_content(self, value):
+        return sanitize_html(value)
+
+    def validate_excerpt(self, value):
+        return sanitize_html(value)

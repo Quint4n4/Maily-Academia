@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -39,22 +40,25 @@ class SecureLoginView(TokenObtainPairView):
 
     def post(self, request, *args, **kwargs):
         email = request.data.get('email')
-        user = User.objects.filter(email=email).first()
 
-        if user:
-            # Verificar si la cuenta está bloqueada
-            if user.is_locked:
-                remaining = user.get_lockout_remaining_minutes()
-                return Response({
-                    'error': 'account_locked',
-                    'message': f'Cuenta bloqueada por demasiados intentos fallidos. Intenta de nuevo en {remaining} minutos o contacta al administrador.',
-                    'locked_until': user.locked_until.isoformat(),
-                    'remaining_minutes': remaining,
-                }, status=status.HTTP_403_FORBIDDEN)
+        # Usar select_for_update para evitar race conditions en el contador de intentos
+        with transaction.atomic():
+            user = User.objects.select_for_update().filter(email=email).first()
 
-            # Si el bloqueo expiró, desbloquear automáticamente
-            if user.locked_until and user.locked_until <= timezone.now():
-                user.reset_login_attempts()
+            if user:
+                # Verificar si la cuenta está bloqueada
+                if user.is_locked:
+                    remaining = user.get_lockout_remaining_minutes()
+                    return Response({
+                        'error': 'account_locked',
+                        'message': f'Cuenta bloqueada por demasiados intentos fallidos. Intenta de nuevo en {remaining} minutos o contacta al administrador.',
+                        'locked_until': user.locked_until.isoformat(),
+                        'remaining_minutes': remaining,
+                    }, status=status.HTTP_403_FORBIDDEN)
+
+                # Si el bloqueo expiró, desbloquear automáticamente
+                if user.locked_until and user.locked_until <= timezone.now():
+                    user.reset_login_attempts()
 
         # Intentar login normal
         try:
@@ -120,27 +124,27 @@ class SecureLoginView(TokenObtainPairView):
         except Exception as e:
             # Login fallido: incrementar intentos si el usuario existe
             if user and user.is_active:
-                user.increment_failed_attempts()
-                
-                # Recargar el usuario para obtener los valores actualizados
-                user.refresh_from_db()
-                
-                # Verificar si ahora está bloqueado
-                if user.is_locked:
-                    return Response({
-                        'error': 'account_locked',
-                        'message': f'Cuenta bloqueada por demasiados intentos fallidos. Intenta de nuevo en {user.get_lockout_remaining_minutes()} minutos o contacta al administrador.',
-                        'locked_until': user.locked_until.isoformat(),
-                        'remaining_minutes': user.get_lockout_remaining_minutes(),
-                    }, status=status.HTTP_403_FORBIDDEN)
-                
-                # Informar intentos restantes
-                remaining_attempts = User.MAX_LOGIN_ATTEMPTS - user.failed_login_attempts
-                return Response({
-                    'detail': 'Correo o contraseña incorrectos.',
-                    'remaining_attempts': remaining_attempts,
-                }, status=status.HTTP_401_UNAUTHORIZED)
-            
+                with transaction.atomic():
+                    # Re-lock el usuario para incremento atómico
+                    locked_user = User.objects.select_for_update().filter(pk=user.pk).first()
+                    if locked_user:
+                        locked_user.increment_failed_attempts()
+                        locked_user.refresh_from_db()
+
+                        if locked_user.is_locked:
+                            return Response({
+                                'error': 'account_locked',
+                                'message': f'Cuenta bloqueada por demasiados intentos fallidos. Intenta de nuevo en {locked_user.get_lockout_remaining_minutes()} minutos o contacta al administrador.',
+                                'locked_until': locked_user.locked_until.isoformat(),
+                                'remaining_minutes': locked_user.get_lockout_remaining_minutes(),
+                            }, status=status.HTTP_403_FORBIDDEN)
+
+                        remaining_attempts = User.MAX_LOGIN_ATTEMPTS - locked_user.failed_login_attempts
+                        return Response({
+                            'detail': 'Correo o contraseña incorrectos.',
+                            'remaining_attempts': remaining_attempts,
+                        }, status=status.HTTP_401_UNAUTHORIZED)
+
             # Usuario no existe o no está activo
             return Response({
                 'detail': 'Correo o contraseña incorrectos.',

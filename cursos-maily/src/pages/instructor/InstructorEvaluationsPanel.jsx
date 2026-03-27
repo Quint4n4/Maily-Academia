@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, CheckCircle, XCircle } from 'lucide-react';
 
-import { Card, Button, Badge, Input } from '../../components/ui';
+import { Card, Button, Badge, Input, Pagination } from '../../components/ui';
 import evaluationService from '../../services/evaluationService';
 
 const STATUS_LABELS = {
@@ -40,25 +40,28 @@ const InstructorEvaluationsPanel = () => {
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [approvingId, setApprovingId] = useState(null);
   const [statusFilter, setStatusFilter] = useState('pending');
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 20;
 
-  const loadRequests = async () => {
+  const loadRequests = async (p = page) => {
     setLoading(true);
     setError('');
     try {
-      const data = await evaluationService.listRequests(
-        statusFilter ? { status: statusFilter } : {},
-      );
+      const params = { page: p };
+      if (statusFilter) params.status = statusFilter;
+      const data = await evaluationService.listRequests(params);
       const items = data.results || data;
       setRequests(items);
+      setTotalCount(data.count ?? items.length);
     } catch (err) {
       setError('No se pudieron cargar las solicitudes de evaluación.');
     }
     setLoading(false);
   };
 
-  useEffect(() => {
-    loadRequests();
-  }, [statusFilter]);
+  useEffect(() => { setPage(1); }, [statusFilter]);
+  useEffect(() => { loadRequests(page); }, [statusFilter, page]);
 
   const handleApprove = async (id) => {
     setApprovingId(id);
@@ -203,6 +206,12 @@ const InstructorEvaluationsPanel = () => {
               </Card>
             </motion.div>
           ))}
+          <Pagination
+            page={page}
+            totalPages={Math.ceil(totalCount / PAGE_SIZE)}
+            count={totalCount}
+            onPageChange={setPage}
+          />
         </div>
       )}
     </div>

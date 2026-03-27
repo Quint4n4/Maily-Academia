@@ -85,6 +85,16 @@ class QuizAttemptView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
 
         quiz = Quiz.objects.prefetch_related('questions').get(pk=self.kwargs['quiz_id'])
+
+        # Enforce max_attempts
+        if quiz.max_attempts > 0:
+            attempt_count = QuizAttempt.objects.filter(user=request.user, quiz=quiz).count()
+            if attempt_count >= quiz.max_attempts:
+                return Response(
+                    {'detail': f'Has alcanzado el máximo de {quiz.max_attempts} intento(s) para este quiz.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         submitted = serializer.validated_data['answers']
 
         total_weight = 0.0
@@ -291,7 +301,9 @@ class FinalEvaluationDetailView(APIView):
             )
 
         serializer = FinalEvaluationSerializer(evaluation)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        data = serializer.data
+        data['available_until'] = req.available_until.isoformat() if req.available_until else None
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class FinalEvaluationAttemptView(APIView):

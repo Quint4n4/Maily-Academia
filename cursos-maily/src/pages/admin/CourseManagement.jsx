@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Search, Trash2, Eye, Archive, RotateCcw } from 'lucide-react';
-import { Card, Button, Input, Badge } from '../../components/ui';
+import { BookOpen, Search, Trash2, Eye, Archive, RotateCcw, Edit, X } from 'lucide-react';
+import { Card, Button, Input, Badge, Pagination, Modal } from '../../components/ui';
+import { SkeletonTableRow } from '../../components/ui/SkeletonLoader';
 import courseService from '../../services/courseService';
+import userService from '../../services/userService';
 
 const LEVEL_LABELS = { beginner: 'Principiante', intermediate: 'Intermedio', advanced: 'Avanzado' };
 const STATUS_LABELS = { draft: 'Borrador', published: 'Publicado', archived: 'Archivado' };
@@ -14,20 +16,42 @@ const CourseManagement = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [actionError, setActionError] = useState('');
+  const [instructorFilter, setInstructorFilter] = useState('');
+  const [instructors, setInstructors] = useState([]);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 20;
 
-  const load = async () => {
+  // Edit modal state
+  const [editModal, setEditModal] = useState({ open: false, course: null });
+  const [editForm, setEditForm] = useState({ title: '', description: '', price: '', status: '' });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  useEffect(() => {
+    userService.list({ role: 'instructor' }).then((res) => {
+      setInstructors(res.results || res || []);
+    }).catch(() => {});
+  }, []);
+
+  const load = async (p = page) => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { page: p };
       if (statusFilter) params.status = statusFilter;
       if (search) params.search = search;
+      if (instructorFilter) params.instructor = instructorFilter;
       const res = await courseService.list(params);
       setCourses(res.results || res);
-    } catch { /* empty */ }
+      setTotalCount(res.count ?? (res.results || res).length);
+    } catch (err) {
+      console.error('Error loading courses:', err);
+    }
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [statusFilter, search]);
+  useEffect(() => { setPage(1); }, [statusFilter, search, instructorFilter]);
+  useEffect(() => { load(page); }, [statusFilter, search, instructorFilter, page]);
 
   const handleStatusChange = async (id, newStatus) => {
     setActionError('');
@@ -38,6 +62,36 @@ const CourseManagement = () => {
       const msg = err.response?.data?.detail || err.response?.data?.status?.[0] || 'No se pudo cambiar el estado del curso.';
       setActionError(msg);
     }
+  };
+
+  const openEdit = (course) => {
+    setEditForm({
+      title: course.title || '',
+      description: course.description || '',
+      price: course.price ?? '',
+      status: course.status || '',
+    });
+    setEditError('');
+    setEditModal({ open: true, course });
+  };
+
+  const handleEditSave = async () => {
+    setEditSaving(true);
+    setEditError('');
+    try {
+      await courseService.update(editModal.course.id, {
+        title: editForm.title,
+        description: editForm.description,
+        price: editForm.price === '' ? 0 : Number(editForm.price),
+        status: editForm.status,
+      });
+      setEditModal({ open: false, course: null });
+      load();
+    } catch (err) {
+      const d = err.response?.data;
+      setEditError(d?.detail || d?.title?.[0] || d?.price?.[0] || 'Error al guardar los cambios.');
+    }
+    setEditSaving(false);
   };
 
   const handleDelete = async (id) => {
@@ -56,7 +110,7 @@ const CourseManagement = () => {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Cursos</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">{courses.length} cursos en la plataforma</p>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">{totalCount} cursos en la plataforma</p>
       </div>
 
       {actionError && (
@@ -76,6 +130,16 @@ const CourseManagement = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <select
+            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
+            value={instructorFilter}
+            onChange={(e) => setInstructorFilter(e.target.value)}
+          >
+            <option value="">Todos los profesores</option>
+            {instructors.map((i) => (
+              <option key={i.id} value={i.id}>{i.first_name} {i.last_name} ({i.email})</option>
+            ))}
+          </select>
           <div className="flex gap-2">
             {['', 'draft', 'published', 'archived'].map((s) => (
               <button
@@ -95,9 +159,11 @@ const CourseManagement = () => {
       </Card>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-4 border-maily border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Card className="p-4 divide-y divide-gray-100 dark:divide-gray-700">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonTableRow key={i} cols={4} />
+          ))}
+        </Card>
       ) : (
         <div className="grid gap-4">
           {courses.map((course, i) => (
@@ -120,6 +186,9 @@ const CourseManagement = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => openEdit(course)} icon={<Edit size={14} />}>
+                      Editar
+                    </Button>
                     {course.status === 'draft' && (
                       <Button size="sm" variant="secondary" onClick={() => handleStatusChange(course.id, 'published')} icon={<Eye size={14} />}>
                         Publicar
@@ -155,8 +224,67 @@ const CourseManagement = () => {
           {courses.length === 0 && (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400">No se encontraron cursos.</div>
           )}
+          <Pagination
+            page={page}
+            totalPages={Math.ceil(totalCount / PAGE_SIZE)}
+            count={totalCount}
+            onPageChange={setPage}
+          />
         </div>
       )}
+      {/* Edit Course Modal */}
+      <Modal isOpen={editModal.open} onClose={() => setEditModal({ open: false, course: null })} title="Editar curso">
+        <div className="space-y-4">
+          {editError && (
+            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">{editError}</div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Título</label>
+            <Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
+            <textarea
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
+              rows={3}
+              value={editForm.description}
+              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio (MXN)</label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={editForm.price}
+                onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado</label>
+              <select
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
+                value={editForm.status}
+                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+              >
+                <option value="draft">Borrador</option>
+                <option value="published">Publicado</option>
+                <option value="archived">Archivado</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setEditModal({ open: false, course: null })} className="flex-1">
+              Cancelar
+            </Button>
+            <Button onClick={handleEditSave} loading={editSaving} className="flex-1">
+              Guardar cambios
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

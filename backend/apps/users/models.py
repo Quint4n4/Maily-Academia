@@ -41,6 +41,15 @@ class User(AbstractUser):
         default=False,
     )
 
+    # Stripe
+    stripe_customer_id = models.CharField(
+        'Stripe Customer ID',
+        max_length=255,
+        unique=True,
+        null=True,
+        blank=True,
+    )
+
     # Campos para seguridad anti-DDoS
     failed_login_attempts = models.PositiveIntegerField(
         'intentos fallidos',
@@ -138,6 +147,43 @@ class Profile(models.Model):
         default=False,
     )
 
+    # Campos adicionales para perfil corporativo CAMSA
+    employee_id = models.CharField(
+        'número de empleado',
+        max_length=50,
+        blank=True,
+        default='',
+    )
+    department = models.CharField(
+        'departamento',
+        max_length=100,
+        blank=True,
+        default='',
+    )
+    position = models.CharField(
+        'puesto',
+        max_length=100,
+        blank=True,
+        default='',
+    )
+    hire_date = models.DateField(
+        'fecha de ingreso',
+        null=True,
+        blank=True,
+    )
+    emergency_contact_name = models.CharField(
+        'nombre de contacto de emergencia',
+        max_length=200,
+        blank=True,
+        default='',
+    )
+    emergency_contact_phone = models.CharField(
+        'teléfono de contacto de emergencia',
+        max_length=20,
+        blank=True,
+        default='',
+    )
+
     class Meta:
         verbose_name = 'perfil'
         verbose_name_plural = 'perfiles'
@@ -154,6 +200,11 @@ class Profile(models.Model):
         return today.year - born.year - (
             (today.month, today.day) < (born.month, born.day)
         )
+
+    @property
+    def is_corporate_profile_complete(self):
+        """Verifica si el perfil corporativo está completo (foto, departamento y puesto)."""
+        return bool(self.avatar and self.department and self.position)
 
 
 class SurveyResponse(models.Model):

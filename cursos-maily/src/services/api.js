@@ -2,20 +2,21 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-let accessToken = null;
+// Persisten en sessionStorage para sobrevivir recargas de página
+let accessToken = sessionStorage.getItem('accessToken');
 let refreshToken = sessionStorage.getItem('refreshToken');
 
 export const setTokens = (access, refresh) => {
   accessToken = access;
   refreshToken = refresh;
-  if (refresh) {
-    sessionStorage.setItem('refreshToken', refresh);
-  }
+  if (access) sessionStorage.setItem('accessToken', access);
+  if (refresh) sessionStorage.setItem('refreshToken', refresh);
 };
 
 export const clearTokens = () => {
   accessToken = null;
   refreshToken = null;
+  sessionStorage.removeItem('accessToken');
   sessionStorage.removeItem('refreshToken');
 };
 
@@ -35,53 +36,48 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Auto-refresh on 401
-let isRefreshing = false;
-let failedQueue = [];
+// Promise compartida — evita que tryRestore y el interceptor renueven el token en paralelo
+let refreshPromise = null;
 
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) prom.reject(error);
-    else prom.resolve(token);
-  });
-  failedQueue = [];
+/**
+ * Renueva el access token usando el refresh token almacenado.
+ * Si ya hay una renovación en curso, devuelve la misma promesa (sin hacer segunda petición).
+ */
+export const doRefresh = () => {
+  if (!refreshPromise) {
+    const currentRefresh = refreshToken;
+    refreshPromise = axios
+      .post(`${API_BASE_URL}/auth/refresh/`, { refresh: currentRefresh })
+      .then(({ data }) => {
+        setTokens(data.access, data.refresh || currentRefresh);
+        return data.access;
+      })
+      .catch((err) => {
+        clearTokens();
+        throw err;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
 };
 
+// Auto-refresh on 401 — usa doRefresh() compartida para evitar doble renovación
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry && refreshToken) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return api(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
-
       try {
-        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh/`, {
-          refresh: refreshToken,
-        });
-        setTokens(data.access, data.refresh || refreshToken);
-        processQueue(null, data.access);
-        originalRequest.headers.Authorization = `Bearer ${data.access}`;
+        const newToken = await doRefresh();
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        clearTokens();
+      } catch (err) {
         window.location.href = '/';
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+        return Promise.reject(err);
       }
     }
 

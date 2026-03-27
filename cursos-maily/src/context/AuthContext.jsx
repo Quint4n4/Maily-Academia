@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import authService from '../services/authService';
-import { setTokens, clearTokens, getRefreshToken } from '../services/api';
+import { setTokens, clearTokens, getRefreshToken, doRefresh } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -60,15 +59,14 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Try to restore session from refresh token on mount
+  // Restaura la sesión al recargar la página usando el refresh token almacenado.
+  // Usa doRefresh() compartida con el interceptor para evitar dos renovaciones simultáneas.
   useEffect(() => {
     const tryRestore = async () => {
       const refresh = getRefreshToken();
       if (refresh) {
         try {
-          const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-          const { data } = await axios.post(`${API_BASE_URL}/auth/refresh/`, { refresh });
-          setTokens(data.access, data.refresh || refresh);
+          await doRefresh();
           await fetchUser();
         } catch {
           clearTokens();

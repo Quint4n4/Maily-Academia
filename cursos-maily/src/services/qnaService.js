@@ -25,6 +25,11 @@ export const qnaService = {
     const { data } = await api.get('/qna/instructor-stats/');
     return data;
   },
+
+  async getInstructorQuestions(params = {}) {
+    const { data } = await api.get('/qna/instructor/', { params });
+    return data;
+  },
 };
 
 export default qnaService;

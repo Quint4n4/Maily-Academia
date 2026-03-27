@@ -1,8 +1,18 @@
 """
 Fase 7 - Panel Avanzado del Instructor.
 Endpoints: students list, student detail, activity, progress, certificates, submissions (stub), course analytics.
+
+Fase 5 (Analytics Avanzados) - endpoints adicionales:
+  - analytics/revenue/      → Ingresos con rango de fechas y agrupación
+  - analytics/trends/       → Tendencias comparativas mes actual vs anterior
+  - analytics/instructors/  → Analytics por instructor (solo admin)
+  - analytics/engagement/   → Métricas de engagement por curso
+  - analytics/dropout/      → Análisis de abandono por lección
 """
-from django.db.models import Count, Q, Avg
+from datetime import timedelta
+
+from django.db.models import Count, Q, Avg, Sum, DecimalField, FloatField
+from django.db.models.functions import Coalesce, TruncDay, TruncWeek, TruncMonth
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
@@ -15,7 +25,7 @@ from apps.quizzes.models import QuizAttempt
 from apps.users.models import User
 from apps.users.permissions import IsAdminOrInstructor
 
-from apps.progress.models import Enrollment, LessonProgress, UserActivity
+from apps.progress.models import Enrollment, LessonProgress, UserActivity, Purchase
 
 
 def instructor_course_ids(request):
@@ -362,4 +372,606 @@ class InstructorCourseAnalyticsView(APIView):
             'avg_time_to_complete_days': None,
             'module_completion': module_completion,
             'dropout_points': dropout_points,
+        })
+
+
+class InstructorRevenueView(APIView):
+    """GET /api/instructor/revenue/ – revenue summary for instructor's courses."""
+
+    permission_classes = [IsAuthenticated, IsAdminOrInstructor]
+
+    def get(self, request):
+        cids = list(instructor_course_ids(request))
+        purchases = Purchase.objects.filter(
+            course_id__in=cids,
+            status='completed',
+        )
+        total_revenue = purchases.aggregate(
+            total=Coalesce(Sum('amount'), 0, output_field=DecimalField()),
+        )['total']
+        total_sales = purchases.count()
+
+        # Per-course breakdown
+        per_course = (
+            purchases
+            .values('course_id', 'course__title')
+            .annotate(revenue=Sum('amount'), sales=Count('id'))
+            .order_by('-revenue')
+        )
+        courses_data = [
+            {
+                'course_id': row['course_id'],
+                'course_title': row['course__title'] or '',
+                'revenue': float(row['revenue'] or 0),
+                'sales': row['sales'],
+            }
+            for row in per_course
+        ]
+
+        return Response({
+            'total_revenue': float(total_revenue),
+            'total_sales': total_sales,
+            'currency': 'mxn',
+            'courses': courses_data,
+        })
+
+
+# ---------------------------------------------------------------------------
+# Fase 5 — Analytics Avanzados
+# ---------------------------------------------------------------------------
+
+def _safe_percent(numerador, denominador):
+    """Calcula porcentaje evitando división por cero. Retorna float."""
+    if not denominador:
+        return 0.0
+    return round((numerador / denominador) * 100, 1)
+
+
+def _change_percent(actual, anterior):
+    """Calcula variación porcentual entre dos períodos. Retorna None si anterior es 0."""
+    if not anterior:
+        return None
+    return round(((actual - anterior) / anterior) * 100, 1)
+
+
+class AnalyticsRevenueView(APIView):
+    """
+    GET /api/instructor/analytics/revenue/
+    Ingresos con rango de fechas, agrupación por día/semana/mes
+    y comparación con el período anterior.
+
+    Parámetros:
+      start_date  (YYYY-MM-DD, requerido)
+      end_date    (YYYY-MM-DD, requerido)
+      course_id   (int, opcional)
+      group_by    (day|week|month, default=day)
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminOrInstructor]
+
+    def get(self, request):
+        from datetime import date as date_type
+        import datetime
+
+        # --- Validar parámetros de fecha ---
+        start_str = request.query_params.get('start_date', '').strip()
+        end_str = request.query_params.get('end_date', '').strip()
+        if not start_str or not end_str:
+            return Response(
+                {'detail': 'Los parámetros start_date y end_date son requeridos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            start_date = datetime.datetime.strptime(start_str, '%Y-%m-%d').date()
+            end_date = datetime.datetime.strptime(end_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response(
+                {'detail': 'Formato de fecha inválido. Use YYYY-MM-DD.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if start_date > end_date:
+            return Response(
+                {'detail': 'start_date debe ser anterior o igual a end_date.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if (end_date - start_date).days > 365:
+            return Response(
+                {'detail': 'El rango máximo permitido es de 1 año.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        group_by = request.query_params.get('group_by', 'day').lower()
+        if group_by not in ('day', 'week', 'month'):
+            group_by = 'day'
+
+        trunc_map = {'day': TruncDay, 'week': TruncWeek, 'month': TruncMonth}
+        TruncFunc = trunc_map[group_by]
+
+        # --- Filtrar cursos según rol ---
+        cids = list(instructor_course_ids(request))
+        course_id = request.query_params.get('course_id')
+        if course_id:
+            try:
+                cid = int(course_id)
+            except ValueError:
+                return Response({'detail': 'course_id inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+            if request.user.role != 'admin':
+                if cid not in cids:
+                    return Response({'detail': 'No autorizado para este curso.'}, status=status.HTTP_403_FORBIDDEN)
+            cids = [cid]
+
+        # Convertir fechas a datetime con timezone para el ORM
+        start_dt = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
+        end_dt = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
+
+        # --- Período actual ---
+        qs_actual = Purchase.objects.filter(
+            course_id__in=cids,
+            status='completed',
+            created_at__range=(start_dt, end_dt),
+        )
+        total_revenue = float(
+            qs_actual.aggregate(t=Coalesce(Sum('amount'), 0, output_field=DecimalField()))['t']
+        )
+
+        # Agrupación temporal
+        serie = (
+            qs_actual
+            .annotate(periodo=TruncFunc('created_at'))
+            .values('periodo')
+            .annotate(revenue=Sum('amount'), purchases=Count('id'))
+            .order_by('periodo')
+        )
+        data = []
+        for row in serie:
+            fecha = row['periodo']
+            if group_by == 'month':
+                label = fecha.strftime('%Y-%m') if fecha else ''
+            elif group_by == 'week':
+                label = fecha.strftime('%Y-%W') if fecha else ''
+            else:
+                label = fecha.strftime('%Y-%m-%d') if fecha else ''
+            data.append({
+                'date': label,
+                'revenue': float(row['revenue'] or 0),
+                'purchases': row['purchases'],
+            })
+
+        # --- Período anterior (misma duración, justo antes de start_date) ---
+        delta = end_dt - start_dt
+        prev_end_dt = start_dt - timedelta(seconds=1)
+        prev_start_dt = prev_end_dt - delta
+
+        qs_anterior = Purchase.objects.filter(
+            course_id__in=cids,
+            status='completed',
+            created_at__range=(prev_start_dt, prev_end_dt),
+        )
+        prev_revenue = float(
+            qs_anterior.aggregate(t=Coalesce(Sum('amount'), 0, output_field=DecimalField()))['t']
+        )
+        cambio = _change_percent(total_revenue, prev_revenue)
+
+        return Response({
+            'total_revenue': total_revenue,
+            'currency': 'MXN',
+            'period': {'start': start_str, 'end': end_str},
+            'data': data,
+            'comparison': {
+                'previous_period_revenue': prev_revenue,
+                'change_percent': cambio,
+            },
+        })
+
+
+class AnalyticsTrendsView(APIView):
+    """
+    GET /api/instructor/analytics/trends/
+    Tendencias comparativas: mes actual vs mes anterior y datos de los últimos 6 meses.
+
+    Parámetros:
+      course_id  (int, opcional)
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminOrInstructor]
+
+    def get(self, request):
+        import datetime
+
+        cids = list(instructor_course_ids(request))
+        course_id = request.query_params.get('course_id')
+        if course_id:
+            try:
+                cid = int(course_id)
+            except ValueError:
+                return Response({'detail': 'course_id inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+            if request.user.role != 'admin':
+                if cid not in cids:
+                    return Response({'detail': 'No autorizado para este curso.'}, status=status.HTTP_403_FORBIDDEN)
+            cids = [cid]
+
+        ahora = timezone.now()
+
+        # Inicio del mes actual y del mes anterior
+        inicio_mes_actual = ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if inicio_mes_actual.month == 1:
+            inicio_mes_anterior = inicio_mes_actual.replace(year=inicio_mes_actual.year - 1, month=12)
+        else:
+            inicio_mes_anterior = inicio_mes_actual.replace(month=inicio_mes_actual.month - 1)
+        fin_mes_anterior = inicio_mes_actual - timedelta(seconds=1)
+
+        def metricas_periodo(start, end):
+            """Calcula las cuatro métricas clave para un período dado."""
+            revenue = float(
+                Purchase.objects.filter(
+                    course_id__in=cids,
+                    status='completed',
+                    created_at__range=(start, end),
+                ).aggregate(t=Coalesce(Sum('amount'), 0, output_field=DecimalField()))['t']
+            )
+            enrollments = Enrollment.objects.filter(
+                course_id__in=cids,
+                enrolled_at__range=(start, end),
+            ).count()
+            # Completaron todas las lecciones de al menos un curso del conjunto
+            completions = 0
+            for cid_item in cids:
+                try:
+                    curso = Course.objects.get(pk=cid_item)
+                except Course.DoesNotExist:
+                    continue
+                total_l = Lesson.objects.filter(module__course=curso).count()
+                if total_l == 0:
+                    continue
+                enrolled_users = Enrollment.objects.filter(
+                    course=curso,
+                    enrolled_at__lte=end,
+                ).values_list('user_id', flat=True)
+                for uid in enrolled_users:
+                    compl = LessonProgress.objects.filter(
+                        user_id=uid,
+                        completed=True,
+                        lesson__module__course=curso,
+                        completed_at__range=(start, end),
+                    ).count()
+                    if compl >= total_l:
+                        completions += 1
+
+            # Estudiantes activos: completaron al menos 1 lección en el período
+            active_students = LessonProgress.objects.filter(
+                lesson__module__course_id__in=cids,
+                completed=True,
+                completed_at__range=(start, end),
+            ).values('user').distinct().count()
+
+            return {
+                'revenue': revenue,
+                'enrollments': enrollments,
+                'completions': completions,
+                'active_students': active_students,
+            }
+
+        actual = metricas_periodo(inicio_mes_actual, ahora)
+        anterior = metricas_periodo(inicio_mes_anterior, fin_mes_anterior)
+
+        changes = {
+            'revenue_change_percent': _change_percent(actual['revenue'], anterior['revenue']),
+            'enrollments_change_percent': _change_percent(actual['enrollments'], anterior['enrollments']),
+            'completions_change_percent': _change_percent(actual['completions'], anterior['completions']),
+            'active_students_change_percent': _change_percent(actual['active_students'], anterior['active_students']),
+        }
+
+        # --- Datos mensuales últimos 6 meses ---
+        monthly_data = []
+        for i in range(5, -1, -1):
+            # Retroceder i meses desde el mes actual
+            mes_ref = ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            for _ in range(i):
+                if mes_ref.month == 1:
+                    mes_ref = mes_ref.replace(year=mes_ref.year - 1, month=12)
+                else:
+                    mes_ref = mes_ref.replace(month=mes_ref.month - 1)
+
+            # Fin del mes de referencia
+            if mes_ref.month == 12:
+                fin_mes_ref = mes_ref.replace(year=mes_ref.year + 1, month=1) - timedelta(seconds=1)
+            else:
+                fin_mes_ref = mes_ref.replace(month=mes_ref.month + 1) - timedelta(seconds=1)
+
+            rev = float(
+                Purchase.objects.filter(
+                    course_id__in=cids,
+                    status='completed',
+                    created_at__range=(mes_ref, fin_mes_ref),
+                ).aggregate(t=Coalesce(Sum('amount'), 0, output_field=DecimalField()))['t']
+            )
+            enr = Enrollment.objects.filter(
+                course_id__in=cids,
+                enrolled_at__range=(mes_ref, fin_mes_ref),
+            ).count()
+            monthly_data.append({
+                'month': mes_ref.strftime('%Y-%m'),
+                'revenue': rev,
+                'enrollments': enr,
+            })
+
+        return Response({
+            'current_month': actual,
+            'previous_month': anterior,
+            'changes': changes,
+            'monthly_data': monthly_data,
+        })
+
+
+class AnalyticsInstructorsView(APIView):
+    """
+    GET /api/instructor/analytics/instructors/
+    Analytics agregados por instructor. Solo accesible por administradores.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'admin':
+            return Response(
+                {'detail': 'Solo los administradores pueden acceder a este endpoint.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        instructores = User.objects.filter(role='instructor')
+        resultado = []
+
+        for instructor in instructores:
+            cursos = Course.objects.filter(instructor=instructor)
+            cursos_ids = list(cursos.values_list('id', flat=True))
+            cursos_count = len(cursos_ids)
+
+            total_students = (
+                Enrollment.objects.filter(course_id__in=cursos_ids)
+                .values('user')
+                .distinct()
+                .count()
+            )
+
+            # Alumnos activos: completaron al menos 1 lección en los últimos 30 días
+            hace_30 = timezone.now() - timedelta(days=30)
+            active_students = (
+                LessonProgress.objects.filter(
+                    lesson__module__course_id__in=cursos_ids,
+                    completed=True,
+                    completed_at__gte=hace_30,
+                )
+                .values('user')
+                .distinct()
+                .count()
+            )
+
+            total_revenue = float(
+                Purchase.objects.filter(
+                    course_id__in=cursos_ids,
+                    status='completed',
+                ).aggregate(t=Coalesce(Sum('amount'), 0, output_field=DecimalField()))['t']
+            )
+
+            # Tasa media de completitud en todos los cursos del instructor
+            tasas = []
+            for curso in cursos:
+                enrolled = Enrollment.objects.filter(course=curso).count()
+                if enrolled == 0:
+                    continue
+                total_l = Lesson.objects.filter(module__course=curso).count()
+                if total_l == 0:
+                    continue
+                completados = sum(
+                    1 for uid in Enrollment.objects.filter(course=curso).values_list('user_id', flat=True)
+                    if LessonProgress.objects.filter(
+                        user_id=uid,
+                        completed=True,
+                        lesson__module__course=curso,
+                    ).count() >= total_l
+                )
+                tasas.append(_safe_percent(completados, enrolled))
+            avg_completion = round(sum(tasas) / len(tasas), 1) if tasas else 0.0
+
+            # Curso con más inscripciones
+            top_course_data = None
+            if cursos_ids:
+                top = (
+                    Enrollment.objects.filter(course_id__in=cursos_ids)
+                    .values('course_id', 'course__title')
+                    .annotate(cnt=Count('id'))
+                    .order_by('-cnt')
+                    .first()
+                )
+                if top:
+                    top_course_data = {
+                        'id': top['course_id'],
+                        'title': top['course__title'] or '',
+                        'enrollments': top['cnt'],
+                    }
+
+            resultado.append({
+                'id': instructor.id,
+                'name': instructor.get_full_name() or instructor.email,
+                'email': instructor.email,
+                'courses_count': cursos_count,
+                'total_students': total_students,
+                'active_students': active_students,
+                'total_revenue': total_revenue,
+                'avg_completion_rate': avg_completion,
+                'top_course': top_course_data,
+            })
+
+        return Response({'instructors': resultado})
+
+
+class AnalyticsEngagementView(APIView):
+    """
+    GET /api/instructor/analytics/engagement/?course_id=<id>
+    Métricas de engagement por módulo y lección para un curso.
+
+    Parámetro requerido: course_id
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminOrInstructor]
+
+    def get(self, request):
+        course_id = request.query_params.get('course_id')
+        if not course_id:
+            return Response(
+                {'detail': 'El parámetro course_id es requerido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            cid = int(course_id)
+        except ValueError:
+            return Response({'detail': 'course_id inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            course = Course.objects.get(pk=cid)
+        except Course.DoesNotExist:
+            return Response({'detail': 'Curso no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.user.role != 'admin' and course.instructor_id != request.user.id:
+            return Response({'detail': 'No autorizado para este curso.'}, status=status.HTTP_403_FORBIDDEN)
+
+        total_enrolled = Enrollment.objects.filter(course=course).count()
+
+        modules_data = []
+        for modulo in course.modules.order_by('order'):
+            lecciones = modulo.lessons.order_by('order')
+            lessons_data = []
+            for leccion in lecciones:
+                completions_count = LessonProgress.objects.filter(
+                    lesson=leccion, completed=True,
+                ).count()
+                rate = _safe_percent(completions_count, total_enrolled)
+                lessons_data.append({
+                    'id': leccion.id,
+                    'title': leccion.title,
+                    'order': leccion.order,
+                    'completion_rate': rate,
+                    'completions': completions_count,
+                    'total_enrolled': total_enrolled,
+                })
+
+            # Tasa promedio del módulo
+            if lessons_data:
+                avg_mod = round(sum(l['completion_rate'] for l in lessons_data) / len(lessons_data), 1)
+            else:
+                avg_mod = 0.0
+
+            modules_data.append({
+                'id': modulo.id,
+                'title': modulo.title,
+                'lessons_count': lecciones.count(),
+                'avg_completion_rate': avg_mod,
+                'lessons': lessons_data,
+            })
+
+        # Tasa de completitud global del curso
+        all_rates = [l['completion_rate'] for mod in modules_data for l in mod['lessons']]
+        avg_global = round(sum(all_rates) / len(all_rates), 1) if all_rates else 0.0
+
+        return Response({
+            'course': {'id': course.id, 'title': course.title},
+            'avg_completion_rate': avg_global,
+            'modules': modules_data,
+        })
+
+
+class AnalyticsDropoutView(APIView):
+    """
+    GET /api/instructor/analytics/dropout/?course_id=<id>
+    Análisis de abandono por lección para un curso.
+    Muestra cuántos alumnos llegaron a cada lección y cuántos la abandonaron.
+
+    Parámetro requerido: course_id
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminOrInstructor]
+
+    def get(self, request):
+        course_id = request.query_params.get('course_id')
+        if not course_id:
+            return Response(
+                {'detail': 'El parámetro course_id es requerido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            cid = int(course_id)
+        except ValueError:
+            return Response({'detail': 'course_id inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            course = Course.objects.get(pk=cid)
+        except Course.DoesNotExist:
+            return Response({'detail': 'Curso no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.user.role != 'admin' and course.instructor_id != request.user.id:
+            return Response({'detail': 'No autorizado para este curso.'}, status=status.HTTP_403_FORBIDDEN)
+
+        total_enrolled = Enrollment.objects.filter(course=course).count()
+
+        # Alumnos que completaron el 100% de las lecciones
+        total_lessons = Lesson.objects.filter(module__course=course).count()
+        total_completed = 0
+        if total_lessons > 0:
+            for uid in Enrollment.objects.filter(course=course).values_list('user_id', flat=True):
+                if LessonProgress.objects.filter(
+                    user_id=uid,
+                    completed=True,
+                    lesson__module__course=course,
+                ).count() >= total_lessons:
+                    total_completed += 1
+
+        overall_dropout = _safe_percent(total_enrolled - total_completed, total_enrolled)
+
+        # Construir lista ordenada de lecciones (todos los módulos en orden)
+        lecciones_ordenadas = []
+        for modulo in course.modules.order_by('order'):
+            for leccion in modulo.lessons.order_by('order'):
+                lecciones_ordenadas.append((modulo, leccion))
+
+        dropout_by_lesson = []
+        prev_reached = total_enrolled  # Para la primera lección, el punto de partida es el total
+
+        for idx, (modulo, leccion) in enumerate(lecciones_ordenadas):
+            students_reached = prev_reached
+            completions_this = LessonProgress.objects.filter(
+                lesson=leccion, completed=True,
+            ).count()
+            students_dropped = max(0, students_reached - completions_this)
+            dropout_rate = _safe_percent(students_dropped, students_reached)
+
+            dropout_by_lesson.append({
+                'lesson_id': leccion.id,
+                'lesson_title': leccion.title,
+                'lesson_order': leccion.order,
+                'module_title': modulo.title,
+                'students_reached': students_reached,
+                'students_dropped': students_dropped,
+                'dropout_rate': dropout_rate,
+            })
+
+            # El siguiente punto de partida son los que completaron esta lección
+            prev_reached = completions_this
+
+        # Lección con mayor tasa de abandono
+        biggest_dropoff = None
+        if dropout_by_lesson:
+            peor = max(dropout_by_lesson, key=lambda x: x['dropout_rate'])
+            biggest_dropoff = {
+                'lesson_id': peor['lesson_id'],
+                'lesson_title': peor['lesson_title'],
+                'dropout_rate': peor['dropout_rate'],
+            }
+
+        return Response({
+            'course': {'id': course.id, 'title': course.title},
+            'total_enrolled': total_enrolled,
+            'total_completed': total_completed,
+            'overall_dropout_rate': overall_dropout,
+            'dropout_by_lesson': dropout_by_lesson,
+            'biggest_dropoff': biggest_dropoff,
         })
