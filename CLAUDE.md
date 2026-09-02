@@ -8,15 +8,23 @@ Maily Academia is a multi-section e-learning platform with three portals (Maily 
 
 **Language:** The codebase, comments, commit messages, and documentation are in Spanish.
 
-## Tech Stack
+## Repo profile — read this first
 
-- **Frontend:** React 19 + Vite 5.4 + Tailwind CSS 3.4 (`cursos-maily/`)
-- **Backend:** Django 5.1 + Django REST Framework 3.15 (`backend/`)
-- **Database:** PostgreSQL 16
-- **Auth:** JWT (access 2h, refresh 7d with rotation)
-- **Images:** Cloudinary
-- **PDF Certificates:** ReportLab (backend), jspdf/html2canvas (frontend)
-- **Deployment:** Railway (both services), Docker Compose for local dev
+The facts about this repo (stack, isolation model, auth, verifiers, compliance) live in
+**`.claude/PERFIL-DEL-REPO.md`**, which is what the review skills read.
+
+**This file does not repeat a single value from the profile. If they differ, the profile wins.**
+
+This file keeps what the profile cannot hold: the *why* behind a decision, inherited traps, and
+what is in production and must not be touched.
+
+Not in the profile because it is prose, not a fact:
+
+- **Images go through Cloudinary and PDF certificates through ReportLab** (backend) plus
+  jspdf/html2canvas (frontend). The local `.env` holds real Cloudinary credentials — check whether
+  they are the same account as production before uploading anything from a dev machine.
+- **Both services deploy to Railway.** The frontend is `elegant-victory-production.up.railway.app`;
+  the backend is `maily-academia-production-de9b.up.railway.app`. They are separate services.
 
 ## Development Commands
 
