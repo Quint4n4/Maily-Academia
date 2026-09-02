@@ -1,3 +1,4 @@
+from django.db.models import Count
 from rest_framework import serializers
 
 from apps.sections.models import Section
@@ -213,6 +214,44 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
             'tags',
         ]
         read_only_fields = ['id']
+
+    def validate_status(self, value):
+        """Impide publicar un curso sin contenido.
+
+        El panel del instructor ya avisa de los requisitos, pero esa validacion
+        vive en el navegador y se salta con una peticion directa a la API. Un
+        curso publicado y vacio aparece en el catalogo del alumno y no tiene
+        nada dentro, asi que la regla se aplica aqui.
+        """
+        if value != Course.Status.PUBLISHED:
+            return value
+
+        course = self.instance
+        if course is None:
+            # Alta: todavia no existen modulos, no se puede crear publicado.
+            raise serializers.ValidationError(
+                'Un curso nuevo no puede crearse publicado. Agrega al menos un '
+                'modulo con una leccion y despues publicalo.'
+            )
+
+        if not course.modules.exists():
+            raise serializers.ValidationError(
+                'El curso necesita al menos un modulo antes de publicarse.'
+            )
+
+        # annotate + filter resuelve esto en UNA consulta; recorrer los modulos
+        # y preguntar por sus lecciones haria una consulta por modulo (N+1).
+        modulos_vacios = list(
+            course.modules.annotate(n_lessons=Count('lessons'))
+            .filter(n_lessons=0)
+            .values_list('title', flat=True)
+        )
+        if modulos_vacios:
+            raise serializers.ValidationError(
+                'Estos modulos no tienen lecciones: ' + ', '.join(modulos_vacios) + '.'
+            )
+
+        return value
 
 
 # ---------------------------------------------------------------------------

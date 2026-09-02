@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, BookOpen, Clock, ChevronDown, ChevronUp } from 'lucide-react';
-import { Card, Badge, Input } from '../components/ui';
+import { Card, Badge, Input, Pagination } from '../components/ui';
 import { SkeletonCard } from '../components/ui/SkeletonLoader';
 import courseService from '../services/courseService';
 import categoryService from '../services/categoryService';
@@ -71,8 +71,13 @@ const CoursesList = ({ sectionSlug }) => {
 
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
+  const [page, setPage] = useState(1);
+  const [count, setCount] = useState(0);
+  const [pageSize, setPageSize] = useState(0);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [categoriesExpanded, setCategoriesExpanded] = useState(true);
@@ -80,20 +85,52 @@ const CoursesList = ({ sectionSlug }) => {
   const [categoriesShowAll, setCategoriesShowAll] = useState(false);
   const [subcategoriesShowAll, setSubcategoriesShowAll] = useState(false);
 
+  // La busqueda viaja al servidor, asi que se espera a que el usuario deje de
+  // escribir para no disparar una peticion por tecla.
+  // Al terminar de escribir se aplica la busqueda y se vuelve a la primera
+  // pagina: si el usuario estaba en la 3 y el nuevo termino solo tiene una,
+  // la vista saldria vacia.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(id);
+  }, [searchQuery]);
+
   useEffect(() => {
     if (!effectiveSlug) return;
     const load = async () => {
       setLoading(true);
+      setLoadError('');
       try {
-        const params = {};
+        // El catalogo viene paginado por el backend (PAGE_SIZE=20). Filtrar en
+        // el navegador solo miraria la pagina cargada y esconderia cursos.
+        const params = { page };
         if (selectedCategory) params.category = selectedCategory;
+        if (selectedLevel) params.level = selectedLevel;
+        if (debouncedSearch) params.search = debouncedSearch;
+
         const res = await courseService.listBySection(effectiveSlug, params);
-        setCourses(res.results || res);
-      } catch { /* empty */ }
+        const results = res.results || res;
+        setCourses(results);
+        setCount(res.count ?? results.length);
+        // El tamano de pagina lo decide el backend; se deduce de la primera
+        // respuesta en lugar de cablearlo aqui.
+        if (res.results && page === 1) setPageSize(res.results.length || 0);
+      } catch (err) {
+        setCourses([]);
+        setCount(0);
+        setLoadError(
+          err?.response?.status === 403
+            ? 'No tienes acceso a esta academia.'
+            : 'No se pudieron cargar los cursos. Revisa tu conexión e inténtalo de nuevo.',
+        );
+      }
       setLoading(false);
     };
     load();
-  }, [effectiveSlug, selectedCategory]);
+  }, [effectiveSlug, selectedCategory, selectedLevel, debouncedSearch, page]);
 
   useEffect(() => {
     if (!effectiveSlug) return;
@@ -115,18 +152,16 @@ const CoursesList = ({ sectionSlug }) => {
     return { parentCategories: parent, subcategories: sub };
   }, [categories]);
 
-  const filteredCourses = useMemo(() => {
-    let result = [...courses];
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((c) => c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q));
-    }
-    if (selectedLevel) result = result.filter((c) => c.level === selectedLevel);
-    return result;
-  }, [courses, searchQuery, selectedLevel]);
+  const totalPages = pageSize > 0 ? Math.ceil(count / pageSize) : 1;
 
   const handleSelectCategory = (slug) => {
     setSelectedCategory((prev) => (prev === slug ? '' : slug));
+    setPage(1);
+  };
+
+  const handleSelectLevel = (level) => {
+    setSelectedLevel((prev) => (prev === level ? '' : level));
+    setPage(1);
   };
 
   if (loading) {
@@ -224,7 +259,7 @@ const CoursesList = ({ sectionSlug }) => {
                 <input 
                   type="checkbox" 
                   checked={selectedLevel === l}
-                  onChange={() => setSelectedLevel(l)}
+                  onChange={() => handleSelectLevel(l)}
                   className={`rounded border-outline-variant w-5 h-5 ${
                     isC 
                       ? 'border-[rgba(230,195,100,0.3)] bg-[#141311] text-[#c9a84c] focus:ring-[#c9a84c]' 
@@ -264,7 +299,7 @@ const CoursesList = ({ sectionSlug }) => {
             {['', 'beginner', 'intermediate', 'advanced'].map((l) => (
               <button
                 key={l}
-                onClick={() => setSelectedLevel(l)}
+                onClick={() => handleSelectLevel(l)}
                 className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-colors shadow-sm ${
                   selectedLevel === l
                     ? 'bg-stitch-primary text-white border-transparent'
@@ -306,7 +341,7 @@ const CoursesList = ({ sectionSlug }) => {
               />
             </div>
             <div className="flex items-center gap-2 text-sm w-full sm:w-auto mt-2 sm:mt-0 justify-between sm:justify-start">
-              <span className={`whitespace-nowrap sm:hidden lg:inline ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant/80' }`}>Mostrando <b>{filteredCourses.length}</b></span>
+              <span className={`whitespace-nowrap sm:hidden lg:inline ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant/80' }`}>Mostrando <b>{courses.length}</b></span>
               <select className={`bg-transparent border-none focus:ring-0 font-bold cursor-pointer text-sm outline-none px-2 py-1 rounded-md transition-colors ${
                 isC ? 'text-[#e6c364] hover:bg-white/5' : 'text-on-surface hover:bg-surface-container-low'
               }`}>
@@ -321,7 +356,7 @@ const CoursesList = ({ sectionSlug }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
           
           {/* Large Featured Card (First element if exists) */}
-          {filteredCourses.length > 0 && (
+          {courses.length > 0 && (
             <div className={`md:col-span-2 group relative rounded-2xl sm:rounded-[2rem] overflow-hidden transition-all duration-500 border ${
               isC 
                 ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)] hover:border-[rgba(230,195,100,0.35)] shadow-black/20' 
@@ -329,45 +364,45 @@ const CoursesList = ({ sectionSlug }) => {
             }`}>
               <div className="flex flex-col lg:flex-row">
                 <div className="lg:w-[50%] relative h-64 sm:h-80 lg:h-auto overflow-hidden">
-                  <img src={filteredCourses[0].thumbnail} alt={filteredCourses[0].title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <img src={courses[0].thumbnail} alt={courses[0].title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   <div className="absolute top-6 left-6 flex gap-2">
                     <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${ isC ? 'bg-[#141311] text-[#e6c364] border border-[rgba(230,195,100,0.2)]' : 'bg-[#2a1800] text-white' }`}>
-                      {LEVEL_LABELS[filteredCourses[0].level] || filteredCourses[0].level}
+                      {LEVEL_LABELS[courses[0].level] || courses[0].level}
                     </span>
                     <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${ isC ? 'bg-[#c9a84c]/20 text-[#e6c364]' : 'bg-primary-container text-on-primary-container' }`}>Destacado</span>
                   </div>
                 </div>
                 <div className="lg:w-[50%] p-8 sm:p-10 flex flex-col justify-between">
                   <div>
-                    <h2 className={`text-2xl sm:text-3xl font-extrabold mb-4 leading-tight transition-colors ${ isC ? 'text-[#f5f0e8] group-hover:text-[#e6c364]' : 'text-on-surface group-hover:text-stitch-primary' }`}>{filteredCourses[0].title}</h2>
-                    <p className={`leading-relaxed mb-6 opacity-80 line-clamp-3 ${ isC ? 'text-[#d0c5b2]' : 'text-on-surface-variant' }`}>{filteredCourses[0].description}</p>
+                    <h2 className={`text-2xl sm:text-3xl font-extrabold mb-4 leading-tight transition-colors ${ isC ? 'text-[#f5f0e8] group-hover:text-[#e6c364]' : 'text-on-surface group-hover:text-stitch-primary' }`}>{courses[0].title}</h2>
+                    <p className={`leading-relaxed mb-6 opacity-80 line-clamp-3 ${ isC ? 'text-[#d0c5b2]' : 'text-on-surface-variant' }`}>{courses[0].description}</p>
                     <div className="flex flex-wrap items-center gap-4 sm:gap-6 mb-8">
                       <div className="flex items-center gap-2">
                         <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs ${
                           isC ? 'bg-[#141311] border-[rgba(230,195,100,0.2)] text-[#e6c364]' : 'bg-surface-container-high border-stitch-primary/20 text-stitch-primary'
                         }`}>
-                          {filteredCourses[0].instructor_name?.[0] || 'C'}
+                          {courses[0].instructor_name?.[0] || 'C'}
                         </div>
-                        <span className={`text-sm font-bold ${ isC ? 'text-[#f5f0e8]' : 'text-on-surface' }`}>{filteredCourses[0].instructor_name}</span>
+                        <span className={`text-sm font-bold ${ isC ? 'text-[#f5f0e8]' : 'text-on-surface' }`}>{courses[0].instructor_name}</span>
                       </div>
                       <div className={`flex items-center gap-2 ${ isC ? 'text-[#8a8578]' : 'text-outline' }`}>
                         <span className="material-symbols-outlined text-base">schedule</span>
-                        <span className="text-sm">{filteredCourses[0].duration}</span>
+                        <span className="text-sm">{courses[0].duration}</span>
                       </div>
                       <div className={`flex items-center gap-2 ${ isC ? 'text-[#8a8578]' : 'text-outline' }`}>
                         <span className="material-symbols-outlined text-base">play_circle</span>
-                        <span className="text-sm">{filteredCourses[0].total_lessons} Lecc.</span>
+                        <span className="text-sm">{courses[0].total_lessons} Lecc.</span>
                       </div>
                     </div>
                   </div>
                   <div className={`flex items-center justify-between pt-6 border-t ${ isC ? 'border-[rgba(77,70,55,0.2)]' : 'border-surface-container' }`}>
-                    <Link to={`/course/${filteredCourses[0].id}`} className={`px-6 sm:px-8 py-3.5 rounded-full font-bold flex items-center gap-2 hover:translate-y-[-2px] transition-transform text-sm sm:text-base ${
+                    <Link to={`/course/${courses[0].id}`} className={`px-6 sm:px-8 py-3.5 rounded-full font-bold flex items-center gap-2 hover:translate-y-[-2px] transition-transform text-sm sm:text-base ${
                       isC ? 'bg-[#e6c364] text-[#141311]' : 'bg-stitch-primary text-on-primary'
                     }`}>
                       Entrar al Curso
                       <span className="material-symbols-outlined text-base">arrow_forward</span>
                     </Link>
-                    <span className={`text-2xl sm:text-3xl font-black tracking-tight ${ isC ? 'text-[#e6c364]' : 'text-stitch-primary' }`}>{(!filteredCourses[0].price || Number(filteredCourses[0].price) === 0) ? 'GRATIS' : `$${Number(filteredCourses[0].price).toFixed(2)}`}</span>
+                    <span className={`text-2xl sm:text-3xl font-black tracking-tight ${ isC ? 'text-[#e6c364]' : 'text-stitch-primary' }`}>{(!courses[0].price || Number(courses[0].price) === 0) ? 'GRATIS' : `$${Number(courses[0].price).toFixed(2)}`}</span>
                   </div>
                 </div>
               </div>
@@ -375,7 +410,7 @@ const CoursesList = ({ sectionSlug }) => {
           )}
 
           {/* Standard Course Cards */}
-          {filteredCourses.slice(1).map((course, index) => (
+          {courses.slice(1).map((course, index) => (
             <>
               {/* Promotional Card injected artificially */}
               {index === 2 && (
@@ -431,6 +466,26 @@ const CoursesList = ({ sectionSlug }) => {
           ))}
           
         </div>
+
+        {loadError && (
+          <p className="mt-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+        )}
+
+        {!loadError && courses.length === 0 && (
+          <p className={`mt-8 text-center text-sm ${isC ? 'text-[#8a8578]' : 'text-on-surface-variant'}`}>
+            No hay cursos que coincidan con tu búsqueda.
+          </p>
+        )}
+
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          count={count}
+          onPageChange={(p) => {
+            setPage(p);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
       </section>
     </div>
   );

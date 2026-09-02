@@ -94,7 +94,13 @@ class CourseListCreateView(generics.ListCreateAPIView):
             tags = [t.strip() for t in tags_param.split(',') if t.strip()]
             if tags:
                 qs = qs.filter(tags__contains=tags)
-        return qs
+
+        # Los annotate() de arriba fuerzan un GROUP BY, y Django descarta el
+        # Meta.ordering del modelo cuando agrupa. Sin ORDER BY explicito
+        # PostgreSQL devuelve las filas en orden arbitrario y la paginacion
+        # deja de ser determinista: un curso puede salir en dos paginas o en
+        # ninguna. Se reafirma aqui el orden declarado en Course.Meta.
+        return qs.order_by('-created_at')
 
     filterset_fields = ['level', 'status', 'instructor']
     search_fields = ['title', 'description']

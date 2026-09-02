@@ -10,6 +10,7 @@ import { Card, Button, Input, Badge, Modal } from '../../components/ui';
 import ImageCropModal from '../../components/ImageCropModal';
 import VideoPreview from '../../components/VideoPreview';
 import courseService from '../../services/courseService';
+import { useToast } from '../../context/ToastContext';
 import quizService from '../../services/quizService';
 import materialService from '../../services/materialService';
 import { uploadCourseThumbnail } from '../../services/uploadService';
@@ -33,6 +34,7 @@ const QUESTION_TYPES = [
 const CourseBuilder = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -227,7 +229,14 @@ const CourseBuilder = () => {
       await courseService.update(courseId, { status: newStatus });
       showSaved(newStatus === 'published' ? 'Curso publicado' : 'Curso despublicado');
       await loadCourse();
-    } catch { /* empty */ }
+    } catch (err) {
+      // El backend rechaza publicar un curso sin modulos o con modulos vacios.
+      // Sin este aviso el instructor cree que publico y el alumno no ve nada.
+      const detalle = err?.response?.data?.status?.[0]
+        || err?.response?.data?.detail
+        || 'No se pudo cambiar el estado del curso. Inténtalo de nuevo.';
+      toast.error(detalle, 6000, newStatus === 'published' ? 'No se publicó' : 'No se despublicó');
+    }
     setSaving(false);
   };
 
