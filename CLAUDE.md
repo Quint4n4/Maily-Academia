@@ -40,12 +40,38 @@ python manage.py runserver            # Dev server on localhost:8000
 python manage.py makemigrations <app> # Create migration for specific app
 ```
 
-### Docker (full stack)
+### Docker (backend + database) — recommended for local dev
 ```bash
-docker-compose up    # PostgreSQL + Django backend with auto-migrations
+docker compose up -d          # PostgreSQL + Django, runs migrations and seed_data
+docker compose logs -f backend
+docker compose down           # stop; add -v to also wipe the database volume
 ```
 
-The frontend connects to `localhost:8000` in dev. CORS is configured for `localhost:5173`.
+**Local ports.** Ports 5432 and 8000 are taken by other projects on this machine,
+so this stack publishes different ones:
+
+| Service | Container port | Host port | URL |
+|---|---|---|---|
+| PostgreSQL | 5432 | **5435** | `postgresql://postgres@localhost:5435/maily_academia` |
+| Django | 8000 | **8020** | http://localhost:8020 — API at `/api/`, docs at `/api/docs/` |
+| Vite | — | 5173 | http://localhost:5173 |
+
+The frontend reads `VITE_API_URL` from `cursos-maily/.env.local`, set to
+`http://localhost:8020/api`. CORS is configured for `localhost:5173`.
+
+`docker-compose.yml` reads `DB_NAME` / `DB_USER` / `DB_PASSWORD` from a `.env`
+file at the repository root (not versioned); they must match `backend/.env`.
+
+### Seed accounts (`seed_data`)
+
+| Role | Email | Password | Section |
+|---|---|---|---|
+| admin | admin@maily.com | Admin12345! | all |
+| instructor | maria.garcia@maily.com | Profesor12345! | maily-academia |
+| instructor | carlos.rodriguez@maily.com | Profesor12345! | longevity-360 |
+| instructor | ana.martinez@maily.com | Profesor12345! | corporativo-camsa |
+| student | estudiante1@maily.com | Estudiante12345! | maily-academia, corporativo-camsa |
+| student | estudiante2@maily.com | Estudiante12345! | longevity-360 |
 
 ## Architecture
 
