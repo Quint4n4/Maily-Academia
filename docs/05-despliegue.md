@@ -120,3 +120,22 @@ verificadores ausentes. **Cada línea dice qué falta, no qué se supone.**
 | Punto | Qué skill lo pedía | Qué falta para poder comprobarlo |
 |---|---|---|
 | | | |
+
+---
+
+## Puntos que salieron de la línea base del 2026-09-02
+
+Origen: `docs/00-deuda.md`, sección "NO VERIFICABLE".
+
+| # | Punto | Skill de origen | Qué haría falta | Comprobado |
+|---|---|---|---|---|
+| D1 | Cada fila de la matriz de roles tiene su test | `security-checklist` #12 | Un `docs/02-contrato.md` con la matriz, y tests en el backend | nunca |
+| D2 | El test de fuga entre academias existe y falla si se rompe el filtro | `aislamiento-de-datos` | `verificadores.tests_backend` distinto de `ninguno` | nunca |
+| D3 | Un archivo no es lo que dice su extensión | `security-checklist` #16 | Probar subida de un ejecutable renombrado a `.jpg` sin escribir en la cuenta de Cloudinary de producción | nunca |
+| D4 | Los datos sensibles no aparecen en logs ni notificaciones | `security-checklist` #23, #25 | Provocar errores y notificaciones reales y leer la salida | nunca |
+| D5 | La aplicación no arranca sin sus secretos | `security-checklist` #19 | Quitar `SECRET_KEY` en Railway y ver si arranca con un valor por defecto | nunca |
+| D6 | La restauración del backup de Railway funciona | — *(punto sin skill de origen)* | Restaurar un backup en una base vacía y comprobar los datos | nunca |
+| D7 | El `CLOUDINARY_URL` de producción no es el mismo que el del `.env` local | — *(punto sin skill de origen)* | Comparar el valor en el panel de Railway con `backend/.env` | nunca |
+
+**D6 y D7 no tienen skill de origen.** Se anotan igual para que no desaparezcan, pero ninguna
+revisión los va a volver a levantar sola.

@@ -1,0 +1,186 @@
+# Línea base de deuda
+
+> Auditoría de adopción de la biblioteca. **Modo auditoría: no bloquea nada.**
+> El estándar estricto aplica desde `proyecto.fecha_adopcion` (2026-09-02) hacia adelante; todo lo
+> anterior es backlog priorizado. *Clean as you code.*
+>
+> Repo: `Maily-Academia` · Fecha: `2026-09-02` · Skills: `security-checklist`, `aislamiento-de-datos`
+> Entorno: local (`docker compose`, backend en `:8020`), rama `chore/adoptar-biblioteca`
+
+---
+
+## Resumen
+
+| Severidad | Cuántos |
+|---|---|
+| **P0** | 1 |
+| **P1** | 6 |
+| **P2** | 4 |
+| PASA | 8 |
+| NO VERIFICABLE | 5 → `docs/05-despliegue.md` |
+
+---
+
+## P0 · El catálogo público expone academias con credenciales requeridas
+
+**Punto:** `aislamiento-de-datos` — los datos de un ámbito no llegan a otro.
+
+**Dónde:** `backend/apps/courses/views.py:61-63` (`get_permissions` devuelve `AllowAny` para GET) y
+`backend/apps/courses/views.py:76-79` (el queryset del anónimo solo filtra `status='published'`,
+nunca por sección ni por membresía). Lo mismo en `CourseDetailView`, `backend/apps/courses/views.py:183-186`.
+
+**Cómo se comprobó (2026-09-02, sin ninguna credencial):**
+
+```bash
+curl -s "http://localhost:8020/api/courses/?page_size=100" | grep -o '"section_name":"[^"]*"' | sort | uniq -c
+```
+
+Local:
+
+```
+  Longevity 360: 14 cursos
+  Maily Academia: 3 cursos          ← require_credentials=True
+  Corporativo CAMSA: 3 cursos       ← require_credentials=True
+```
+
+Y el detalle completo de un curso corporativo, también sin credenciales:
+
+```
+GET /api/courses/6/  →  HTTP 200
+  titulo   : Higiene y Bioseguridad en Clínica
+  modulos  : 1 — "Protocolos básicos"
+    · Lavado de manos clínico            | video: https://www.youtube.com/embed/8mAITcNt710
+    · Uso de equipo de protección personal | video: https://www.youtube.com/embed/8mAITcNt710
+```
+
+**Confirmado en producción el mismo día.** `GET /api/courses/?page=2` sin credenciales devuelve
+4 cursos de Corporativo CAMSA y 1 de Maily Academia.
+
+**Qué pasaría en producción:** ya está pasando. Cualquiera con la URL del backend obtiene el
+catálogo completo, la estructura de módulos y lecciones, y las URLs de los videos de las dos
+academias que exigen credenciales. El control de acceso de `HasSectionAccess`
+(`backend/apps/sections/permissions.py`) protege `/api/sections/{slug}/courses/`, pero `/api/courses/`
+es la puerta de atrás y no lo aplica.
+
+**Por qué se pasó por alto:** el aislamiento se implementó en el endpoint por academia, que es por
+donde entra el frontend. El endpoint global quedó como catálogo público de la landing, y nadie
+volvió a mirar que sirviera las tres academias.
+
+---
+
+## P1
+
+### 1 · Cerrar sesión no cierra la sesión
+
+**Punto 3 de `security-checklist`** — la sesión se puede revocar de verdad.
+
+`POST /api/auth/logout/` → **404**. El endpoint no existe (`backend/apps/users/urls.py:9-10`).
+El `logout()` del frontend solo borra `sessionStorage` (`cursos-maily/src/context/AuthContext.jsx:146`).
+
+La rotación sí revoca el refresh anterior (verificado: reusar uno rotado da 401 "El token está en
+lista negra"), pero eso solo cubre el uso normal. **Un refresh token copiado sigue siendo válido
+7 días y el usuario no tiene ninguna forma de invalidarlo.**
+
+### 2 · La bitácora de auditoría no persiste
+
+**Punto 26** — queda registro de quién vio o cambió qué.
+
+`AuditLogMiddleware` hace `logger.info(...)` y nada más (`backend/apps/users/middleware.py:41-49`).
+No escribe en base de datos. En Railway los logs se rotan.
+
+La skill es explícita: *"Una bitácora que no se puede consultar por recurso y por actor no responde
+la pregunta que la hace requisito: quién vio este expediente."*
+
+### 3 · Campos de texto sin límite
+
+**Punto 14** — ningún campo de texto es ilimitado.
+
+Enviar 1 MB en `description` al crear un curso → **HTTP 201, se guardó**. `TextField` sin
+`max_length` ni validación en el serializer (`backend/apps/courses/models.py:88`).
+
+### 4 · Sin monitoreo de errores
+
+**Punto 24.** `cumplimiento.monitoreo_errores: ninguno`. No hay Sentry ni equivalente. Hoy no
+existe visibilidad de errores en producción: te enteras cuando un usuario avisa.
+
+### 5 · Cero tests en el backend
+
+`verificadores.tests_backend: ninguno`. No existe un solo archivo de test en `backend/apps/`.
+
+Consecuencia directa sobre esta auditoría: **el punto 12 (cada fila de la matriz de roles tiene su
+test) y el test de fuga de `aislamiento-de-datos` salen como NO VERIFICABLE**, no como PASA.
+
+### 6 · Datos personales sin `Cache-Control: no-store`
+
+**Punto 18.** `GET /api/users/me/` responde solo con `Vary: origin`. Sin `Cache-Control`, un proxy
+o el propio navegador puede conservar el perfil del usuario.
+
+---
+
+## P2
+
+### 7 · 403 en vez de 404 sobre recurso ajeno
+
+**Punto 10.** `GET /api/users/{id}/` de otro usuario devuelve **403**, no 404. Confirma que el
+usuario existe, y permite contar usuarios por enumeración de ids.
+
+### 8 · Sin capa de servicios
+
+`backend.capa_de_servicios: ninguna`. No hay `services.py` ni `selectors.py` en ninguna app.
+
+`aislamiento-de-datos` lo señala como causa raíz, no como estilo: *"Toda lectura de un objeto por id
+pasa por un selector. Un `Model.objects.get(id=...)` directo en la vista es la forma canónica de
+saltarse el filtro. Un repo con `capa_de_servicios: ninguna` filtra mal por diseño, no por
+descuido."* El P0 de arriba es exactamente eso.
+
+### 9 · Sin CI
+
+`verificadores.ci: ninguno`. No hay `.github/workflows/`. Nada impide desplegar código que no
+compila o que rompe el lint.
+
+### 10 · Borrado físico en todo el repo
+
+`backend.borrado: fisico`. Ningún modelo tiene `deleted_at`. Borrar un curso con progreso de alumnos
+destruye el historial. Hoy `CourseDetailView.destroy` lo impide si hay inscripciones
+(`backend/apps/courses/views.py:218-224`), pero es una defensa puntual, no un patrón.
+
+---
+
+## PASA (con evidencia)
+
+| # | Punto | Evidencia |
+|---|---|---|
+| 6 | Las contraseñas débiles se rechazan | `12345678`, `password` y el propio correo → 400 |
+| 7 | La fuerza bruta se detiene sola | Segundo login fallido → **429** |
+| 5 | Contraseñas cifradas irreversiblemente | Hasher por defecto de Django, `AUTH_PASSWORD_VALIDATORS` con `min_length: 10` |
+| 11 | El rol sale del servidor | `PATCH /api/users/me/` con `role: admin` → 404, la ruta no acepta ese cambio |
+| 15 | La entrada no llega a la consulta | `search=%` y `search=_` → 0 resultados; `search=Relleno` → 22. Django escapa los comodines |
+| 17 | El error no es un mapa del sistema | Producción devuelve un 404 sobrio, sin traza ni `DEBUG` |
+| 21 | CORS no responde a origen ajeno | `Origin: https://atacante.example` → sin `Access-Control-Allow-Origin` |
+| 20, 22 | Sin secretos versionados ni en el historial | `git ls-files \| grep '\.env$'` → vacío; `git log -S` de la contraseña de Postgres → sin coincidencias |
+
+---
+
+## NO VERIFICABLE → van a `docs/05-despliegue.md`
+
+| Punto | Qué haría falta |
+|---|---|
+| 12 · Cada fila de la matriz de roles tiene test | No hay `proyecto.contrato` ni tests |
+| Test de fuga de `aislamiento-de-datos` | `verificadores.tests_backend: ninguno` |
+| 16 · Un archivo no es lo que dice su extensión | Requiere probar subida real contra Cloudinary; no se hizo para no escribir en la cuenta de producción |
+| 23, 25 · Datos sensibles en logs y notificaciones | Requiere provocar errores y notificaciones reales |
+| 19 · La app no arranca sin sus secretos | Requiere levantar sin `SECRET_KEY` en el entorno de Railway |
+
+---
+
+## Nota sobre el alcance de esta auditoría
+
+Se corrió sobre la rama `chore/adoptar-biblioteca`, que sale de `main`. **La rama
+`fix/student-course-visibility` está sin fusionar** y cambia dos cosas de este informe:
+
+- Añade `search_fields` a `SectionCoursesView`. Durante la auditoría ese endpoint **ignoraba el
+  parámetro `search` por completo** — un `search=xyzzy` devolvía los 27 cursos. No es una fuga por
+  comodín (Django escapa bien), es un filtro que no existía en `main`.
+- Añade validación al publicar, que cubre parte del punto 13.
+
+Ninguna de las dos toca el P0.
