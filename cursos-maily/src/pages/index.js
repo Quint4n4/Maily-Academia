@@ -1,0 +1,16 @@
+export { default as Auth } from './Auth';
+export { default as Dashboard } from './Dashboard';
+export { default as MyCourses } from './MyCourses';
+export { default as CourseView } from './CourseView';
+export { default as LessonView } from './LessonView';
+export { default as QuizView } from './QuizView';
+export { default as Certificates } from './Certificates';
+export { default as Profile } from './Profile';
+export { default as CoursesList } from './CoursesList';
+export { default as MailyDashboard } from './maily/MailyDashboard';
+export { default as MailyCourses } from './maily/MailyCourses';
+export { default as LongevityDashboard } from './longevity/LongevityDashboard';
+export { default as LongevityCourses } from './longevity/LongevityCourses';
+export { default as CorporativoDashboard } from './corporativo/CorporativoDashboard';
+export { default as CorporativoCourses } from './corporativo/CorporativoCourses';
+export { default as Survey } from './Survey';

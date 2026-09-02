@@ -1,0 +1,43 @@
+# Python / Django
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/**/*.pyo
+backend/.env
+backend/db.sqlite3
+backend/staticfiles/
+*.pyc
+*.pyo
+
+# Node / React
+cursos-maily/node_modules/
+cursos-maily/dist/
+cursos-maily/.env
+cursos-maily/.env.local
+cursos-maily/.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Subidas de usuario en desarrollo (no son parte del código)
+backend/media/
+
+# Variantes de entorno
+backend/.env.*
+!backend/.env.example
+
+# Config local de agentes
+.claude/settings.local.json
+cursos-maily/.claude/settings.local.json
+
+# Logs
+*.log
+
+# Variables de docker-compose en la raiz
+/.env

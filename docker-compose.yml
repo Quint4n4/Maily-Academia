@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: maily_academia_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-maily_academia}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?define DB_PASSWORD en .env de la raiz}
+    ports:
+      # 5432 del host ya lo ocupa otro proyecto; se expone en 5435.
+      - "5435:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-maily_academia}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: maily_academia_backend
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py seed_data &&
+             python manage.py runserver 0.0.0.0:8000"
+    ports:
+      # 8000 del host ya lo ocupa otro proyecto; se expone en 8020.
+      - "8020:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      # Dentro de la red de compose el host de la base es el servicio "db", no localhost.
+      DB_HOST: db
+      DB_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
+volumes:
+  pgdata:

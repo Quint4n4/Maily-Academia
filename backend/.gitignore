@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+db.sqlite3
+media/
+staticfiles/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
