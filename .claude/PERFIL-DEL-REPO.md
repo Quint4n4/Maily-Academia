@@ -18,7 +18,7 @@ siguiente revisión lo hereda como si alguien lo hubiera pensado.
 | Clave | Valor | Evidencia |
 |---|---|---|
 | `proyecto.nombre` | Maily Academia | — |
-| `proyecto.etapa` | `produccion` **[propuesto]** | Desplegado y en uso: `maily-academia-production-de9b.up.railway.app` sirve 26 cursos reales |
+| `proyecto.etapa` | `produccion` | Desplegado y en uso: `maily-academia-production-de9b.up.railway.app` sirve 26 cursos reales |
 | `proyecto.fecha_adopcion` | `2026-09-02` | Día en que se corrió el paso 5 |
 | `proyecto.raiz_backend` | `backend/` | `backend/manage.py` |
 | `proyecto.raiz_frontend` | `cursos-maily/` | `cursos-maily/package.json:1` |
@@ -33,7 +33,7 @@ datos existentes antes de proponer un cambio de esquema.
 
 | Clave | Valor | Evidencia |
 |---|---|---|
-| `aislamiento.ambito` | `sede` **[propuesto]** | Ver nota de abajo |
+| `aislamiento.ambito` | `sede` | Ver nota de abajo |
 | `aislamiento.nombre_de_negocio` | **academia** (3: Maily Academia, Longevity 360, Corporativo CAMSA) | `backend/apps/sections/models.py` |
 | `aislamiento.campo` | `section` | `backend/apps/courses/models.py:78` (Course), `:22` (Category) |
 | `aislamiento.mecanismo` | `manual-por-vista` | No hay manager filtrado; cada vista filtra a mano — p. ej. `backend/apps/sections/views.py:89` |
@@ -41,7 +41,7 @@ datos existentes antes de proponer un cambio de esquema.
 | `aislamiento.escape` | `ninguno` | No hay manager sin filtro porque no hay manager filtrado |
 | `aislamiento.origen` | `tabla-de-membresias` | `SectionMembership` en `backend/apps/sections/models.py:44` |
 | `aislamiento.test_de_fuga` | `ninguno` | No existe ningún test en el backend |
-| `aislamiento.ancla` | `ninguna` **[propuesto: definir una]** | Con `manual-por-vista` el ancla es lo único que hace repetible la auditoría, y no existe |
+| `aislamiento.ancla` | `AMBITO>>` — comentario a poner en cada vista que filtra por academia | Con `manual-por-vista` el ancla es lo único que hace repetible la auditoría, y no existe |
 
 ### Por qué `sede` y no `tenant`
 
@@ -141,7 +141,7 @@ Es el mismo riesgo en otro sitio.
 | `verificadores.tipos` | `ninguno` | El frontend es `.jsx` sin TypeScript; el backend no tiene mypy |
 | `verificadores.lint` | `cd cursos-maily && npm run lint` (solo frontend) | `cursos-maily/package.json`; el backend no tiene lint configurado |
 | `verificadores.ci` | `ninguno` | No hay `.github/workflows/` |
-| `verificadores.migraciones` | `solo-emanuel` **[propuesto]** | Decisión pendiente de confirmar |
+| `verificadores.migraciones` | `solo-emanuel` | Confirmado por Emanuel el 2026-09-03 |
 
 > **`tests_backend: ninguno` es la clave más cara de este perfil.** Todo punto de cualquier skill
 > cuyo verificador sea un test sale como `NO VERIFICABLE` y se acumula en `docs/05-despliegue.md`.
@@ -154,9 +154,9 @@ Es el mismo riesgo en otro sitio.
 
 | Clave | Valor | Evidencia |
 |---|---|---|
-| `cumplimiento.datos_sensibles` | `si: datos de alumnos identificables` **[propuesto]** | Nombre, email, avatar, progreso académico, certificados con nombre; y `stripe_customer_id` en `apps/users` |
+| `cumplimiento.datos_sensibles` | `si: datos de alumnos identificables` | Nombre, email, avatar, progreso académico, certificados con nombre; y `stripe_customer_id` en `apps/users` |
 | `cumplimiento.monitoreo_errores` | `ninguno` | Sin Sentry ni equivalente en `requirements.txt` |
-| `cumplimiento.registros_inmutables` | `ninguno` **[propuesto]** | Los certificados deberían serlo y hoy no hay nada que lo impida |
+| `cumplimiento.registros_inmutables` | `ninguno` | Los certificados deberían serlo y hoy no hay nada que lo impida |
 | `cumplimiento.estados_con_razon` | `ninguna` | No hay transiciones que exijan razón |
 | `cumplimiento.consulta_legal` | `pendiente` | Nunca se ha hecho |
 
@@ -176,16 +176,55 @@ Una desviación documentada aquí **pasa**. Una no documentada **bloquea**.
 
 ---
 
-## Claves sin decidir, y qué apagan
+## Decisiones confirmadas por Emanuel el 2026-09-03
 
-| Clave | Estado | Qué punto queda `NO VERIFICABLE` |
+Las seis claves que estaban `[propuesto]` quedaron decididas. Ninguna es ya una suposición.
+
+| Clave | Valor decidido |
+|---|---|
+| `proyecto.etapa` | `produccion` |
+| `aislamiento.ambito` | `sede` — el ámbito es la academia |
+| `aislamiento.ancla` | `AMBITO>>`, a poner como comentario en cada vista que filtra por academia |
+| `verificadores.migraciones` | `solo-emanuel` — ningún agente corre `makemigrations` ni `migrate` |
+| `cumplimiento.datos_sensibles` | `si: datos de alumnos identificables` |
+| `cumplimiento.registros_inmutables` | `ninguno` |
+
+### Vitrina pública: decidida el 2026-09-03
+
+**El catálogo se ve sin iniciar sesión.** Emanuel lo quiere como vitrina para captar alumnos.
+
+Eso **no** significa exponer el contenido. La frontera es:
+
+| Un anónimo SÍ ve | Un anónimo NO ve |
+|---|---|
+| Título, descripción, imagen, nivel, duración, precio, instructor | `video_url` de ninguna lección |
+| Cuántas lecciones y cuántos alumnos tiene | Los materiales de apoyo |
+| El temario: títulos de módulos y de lecciones | El progreso ni los datos de ningún alumno |
+
+Los campos de `CourseListSerializer` (`apps/courses/serializers.py:136-147`) ya son exactamente
+esa vitrina: no incluyen módulos ni videos. El problema está en `CourseDetailSerializer` (`:157`),
+que anida `modules → lessons → video_url`.
+
+**Qué academias tienen vitrina** — se controla con `allow_public_preview` por academia, no en el
+código. Propuesta pendiente de confirmar:
+
+| Academia | `allow_public_preview` | Por qué |
 |---|---|---|
-| `proyecto.etapa` | [propuesto] `produccion` | `db-schema`: si es `desarrollo`, no exige plan de datos al cambiar el esquema |
-| `aislamiento.ambito` | [propuesto] `sede` | `aislamiento-de-datos` entera: si fuera `ninguno`, la skill se declara `N/A` |
-| `aislamiento.ancla` | sin definir | La auditoría vista por vista de `aislamiento-de-datos` no es repetible sin ancla |
-| `verificadores.migraciones` | [propuesto] `solo-emanuel` | `db-schema`: decide si un agente puede correr `migrate` |
-| `cumplimiento.datos_sensibles` | [propuesto] | `security-checklist` §5 completa |
-| `cumplimiento.registros_inmutables` | [propuesto] `ninguno` | El punto de registros que no se editan ni borran |
+| Longevity 360 | `True` | Academia abierta de salud: es la que capta alumnos |
+| Maily Academia | `True` | Es el producto; su catálogo vende |
+| Corporativo CAMSA | `False` | Onboarding interno de empleados. Su catálogo no le sirve a nadie de fuera |
 
-Son seis decisiones, media hora de conversación. Hasta que se confirmen, las skills las tratan como
-huecos y no como hechos.
+---
+
+## 8 · Video
+
+| Clave | Valor | Evidencia |
+|---|---|---|
+| Proveedores declarados en el modelo | `youtube`, `bunny`, `cloudflare`, `mux`, `s3` | `backend/apps/courses/models.py:153-158` |
+| Proveedor en uso hoy | `youtube` (videos públicos) | Confirmado por Emanuel el 2026-09-03 |
+| Protección de la URL de video | **ninguna** | `cursos-maily/src/components/VideoPreview.jsx:16` — para todo proveedor que no sea YouTube usa la URL directa como `src` del iframe, sin token ni firma |
+
+> **Esta última fila es la que importa cuando lleguen los videos reales.** Hoy no hay daño porque
+> los videos son públicos en YouTube. Un video de pago servido por URL directa sin firmar es
+> público para cualquiera que tenga la URL, y el P0 de `docs/00-deuda.md` reparte exactamente esas
+> URLs a usuarios anónimos.

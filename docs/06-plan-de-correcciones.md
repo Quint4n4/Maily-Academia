@@ -31,104 +31,101 @@ cd ~/Desktop/Maily-Academia && git worktree add ../maily-s2 -b fix/logout-revoca
 
 ---
 
-## Sesión 0 · Decisiones tuyas (aquí, sin código)
+## Sesión 0 · Decisiones — CERRADA el 2026-09-03
 
-Seis claves del perfil están marcadas `[propuesto]`: las deduje del código y **se ven idénticas a
-las decididas**. Si no las confirmas, cada sesión que las consulte hereda una suposición con
-formato de hecho.
+Las seis claves `[propuesto]` quedaron confirmadas en `.claude/PERFIL-DEL-REPO.md`. Ninguna sesión
+tiene que adivinar ya.
 
-| Clave | Propuesto | Qué cambia si es otro valor |
-|---|---|---|
-| `proyecto.etapa` | `produccion` | En `desarrollo`, `db-schema` no exige plan de datos al cambiar el esquema |
-| `aislamiento.ambito` | `sede` | Con `ninguno`, `aislamiento-de-datos` se declara `N/A` y el P0 deja de ser P0 |
-| `aislamiento.ancla` | sin definir | Con `manual-por-vista` y sin ancla, la auditoría vista por vista no es repetible |
-| `verificadores.migraciones` | `solo-emanuel` | Decide si una sesión puede correr `migrate` sola |
-| `cumplimiento.datos_sensibles` | `si: datos de alumnos` | Con `ninguno`, la §5 entera de `security-checklist` se apaga |
-| `cumplimiento.registros_inmutables` | `ninguno` | Decide si los certificados emitidos se pueden editar |
+Y las tres respuestas que decidían el arreglo del P0:
 
-**Y una pregunta de negocio que decide el arreglo del P0:**
-
-> ¿El catálogo de cursos debe ser visible **sin iniciar sesión**, para captar alumnos?
-
-Los datos para decidir:
-
-- Hoy **ninguna** de las tres academias tiene `allow_public_preview=True`.
-- **Ninguna página pública del frontend consume `/api/courses/`.** `LandingHub` y `AcademyLanding`
-  son estáticas: no importan ni un servicio.
-- Los ocho consumidores de ese endpoint son pantallas autenticadas: `admin/CourseManagement`,
-  `instructor/*`, `MyCourses`.
-
-**Conclusión: cerrar el acceso anónimo no rompe nada hoy.** Si más adelante quieres catálogo
-público, el mecanismo correcto ya está construido y sin usar: `allow_public_preview` en `Section`,
-`CanViewSectionPreview` y `/api/sections/{slug}/preview/`.
-
-**Tercera pregunta, y esta es de daño real:** ¿los videos de YouTube de los cursos corporativos son
-públicos, o *no listados*? Si son no listados, la URL **es** la llave, y hoy está expuesta a
-cualquiera. Si son públicos, la fuga es de títulos y estructura, que es menos grave. Compruébalo en
-tu cuenta de YouTube antes de la sesión 1.
+1. **Vitrina pública: SÍ.** El catálogo se ve sin iniciar sesión, para captar alumnos.
+2. **Los videos de hoy son públicos en YouTube**, así que la fuga actual es de títulos, temario y
+   URLs de videos que ya eran públicos. Grave por lo que revela del cliente, no por el contenido.
+3. **Van a llegar videos reales** y hay que alojarlos. Eso abre la sesión 7.
 
 ---
 
-## Sesión 1 · P0 · Cerrar la fuga entre academias
+## Sesión 1 · P0 · Separar la vitrina del contenido
 
 **Rama:** `fix/course-catalog-isolation` (desde `main`) · **Prioridad: primera, sin discusión**
 
-Está en producción y expone contenido de Corporativo CAMSA, que es tu empleador.
+Con vitrina pública, el arreglo **no es cerrar el catálogo**: es trazar la frontera entre lo que
+vende y lo que se paga.
 
-### Alcance
+| Un anónimo SÍ debe ver | Un anónimo NO debe ver |
+|---|---|
+| Título, descripción, imagen, nivel, duración, precio, instructor | `video_url` de ninguna lección |
+| Cuántas lecciones y cuántos alumnos | Los materiales de apoyo |
+| El temario: títulos de módulos y lecciones | Nada de ninguna academia con `allow_public_preview=False` |
 
-- `CourseListCreateView.get_queryset` y `CourseDetailView.get_queryset`
-  (`backend/apps/courses/views.py:70` y `:193`): el anónimo solo ve cursos de secciones con
-  `allow_public_preview=True`; el autenticado, solo los de las academias donde tiene acceso.
-- **Reutilizar lo que existe.** No inventar un mecanismo nuevo: `allow_public_preview` y
-  `CanViewSectionPreview` ya están escritos.
-- Montar `pytest` + `pytest-django` (hoy no hay **ningún** test) y escribir el **test de fuga**:
-  un anónimo y un usuario sin membresía piden un curso de una academia cerrada y reciben 404.
-- 404, no 403: un 403 confirma que el curso existe.
+### Lo que ya está resuelto en el repo y hay que usar
+
+- `CourseListSerializer` (`apps/courses/serializers.py:136-147`) **ya es exactamente la vitrina**:
+  no incluye módulos ni videos. No hay que tocarlo.
+- `allow_public_preview` en `Section` y `CanViewSectionPreview` ya existen y no se usan.
+
+### El arreglo
+
+1. `CourseListCreateView.get_queryset` (`apps/courses/views.py:70`): el anónimo ve solo cursos
+   publicados de secciones con `allow_public_preview=True`. El autenticado, los de sus academias.
+2. `CourseDetailView` (`:193`): el problema real está aquí. `CourseDetailSerializer` anida
+   `modules → lessons → video_url` (`serializers.py:157`). Para un anónimo hay que servir un
+   serializer de ficha pública **con el temario y sin las URLs de video**. Para una academia sin
+   vitrina, 404.
+3. Poner el ancla `AMBITO>>` como comentario en cada vista que filtre por academia. Es la clave
+   `aislamiento.ancla` del perfil, y es lo que hace repetible la auditoría con
+   `mecanismo: manual-por-vista`.
+4. Montar `pytest` + `pytest-django` (hoy no hay **ningún** test) y escribir el test de fuga.
 
 ### Fuera de alcance
 
-El refactor a capa de servicios. Es la causa raíz, pero mover 92 vistas sin tests es temerario.
-Va en la sesión 6.
+El refactor a capa de servicios (sesión 6) y el alojamiento de video (sesión 7).
 
 ### Prompt de arranque
 
 ```
-Lee .claude/PERFIL-DEL-REPO.md y docs/00-deuda.md (sección P0), y carga las skills
-protocolo-de-revision, aislamiento-de-datos y django-backend.
+Lee .claude/PERFIL-DEL-REPO.md (completo, incluida la seccion de vitrina y la de
+video) y docs/00-deuda.md, seccion P0. Carga las skills protocolo-de-revision,
+aislamiento-de-datos y django-backend.
 
-Cierra el P0: GET /api/courses/ y GET /api/courses/{id}/ tienen AllowAny y su
-queryset solo filtra status='published', nunca por seccion ni membresia. Un
-anonimo obtiene modulos, lecciones y URLs de video de academias con
-require_credentials=True.
+Cierra el P0. GET /api/courses/ y GET /api/courses/{id}/ tienen AllowAny y su
+queryset solo filtra status='published', nunca por seccion ni membresia.
 
-Reutiliza el mecanismo que ya existe (allow_public_preview, CanViewSectionPreview);
-no inventes uno nuevo. Devuelve 404, no 403.
+El catalogo SI debe ser publico: es la vitrina para captar alumnos. Lo que no
+debe ser publico es el contenido. La frontera exacta esta en el perfil.
 
-Monta pytest + pytest-django y escribe el test de fuga. Hoy el repo no tiene
-ningun test: ese andamio lo usan las sesiones siguientes.
+- Lista: el anonimo ve cursos publicados de secciones con allow_public_preview.
+  CourseListSerializer ya es la vitrina correcta, no lo cambies.
+- Detalle: CourseDetailSerializer anida modules -> lessons -> video_url. Un
+  anonimo necesita la ficha con el temario y SIN las URLs de video. En una
+  academia sin vitrina, 404 (no 403).
+- Reutiliza allow_public_preview y CanViewSectionPreview: ya existen.
+- Pon el ancla AMBITO>> en cada vista que filtre por academia.
+- Monta pytest + pytest-django y escribe el test de fuga. El repo no tiene
+  ningun test; ese andamio lo usan las sesiones siguientes.
+
+verificadores.migraciones es solo-emanuel: no corras migrate. Si hace falta una
+migracion, dejala escrita y avisa.
 
 Rama fix/course-catalog-isolation desde main. No toques el frontend.
 ```
 
 ### Cómo lo verificamos aquí
 
-```bash
-curl -s "http://localhost:8020/api/courses/?page_size=100" | grep -o '"section_name":"[^"]*"' | sort -u
-```
-
 | Criterio | Esperado |
 |---|---|
-| Anónimo pide el catálogo | Solo secciones con `allow_public_preview=True` → hoy, **ninguna** |
-| Anónimo pide `/api/courses/6/` (corporativo) | **404** |
-| `estudiante1` (sin membresía en Longevity) pide un curso de Longevity | 200 — es la excepción E1 del perfil, es `public` |
+| Anónimo pide el catálogo | Solo cursos de academias con `allow_public_preview=True` |
+| Anónimo pide la ficha de un curso con vitrina | 200 **con temario y sin ningún `video_url`** |
+| Anónimo pide la ficha de un curso de Corporativo CAMSA | **404** |
+| `estudiante2` (miembro de Longevity) pide la ficha de un curso suyo | 200 **con** `video_url` |
 | `estudiante2` pide un curso de Corporativo | **404** |
-| Instructor sigue viendo sus propios cursos | 200 |
-| Las 8 pantallas autenticadas siguen funcionando | Sin regresión visible |
-| El test de fuga existe y pasa | `pytest` verde |
-| El test de fuga **falla** si se revierte el arreglo | Prueba de que el test sirve |
+| Instructor sigue viendo sus propios cursos completos | 200 |
+| `grep -rn "AMBITO>>" backend/` | Una línea por cada vista que filtra |
+| Las 8 pantallas autenticadas | Sin regresión |
+| El test de fuga | Verde. Y **rojo si se revierte el arreglo** |
 
-Ese último criterio es el que separa un test de un adorno.
+Ese último criterio es el que separa un test de un adorno. Y el segundo es el que separa una vitrina
+de una fuga: si algún `video_url` sale en la respuesta anónima, el arreglo no está hecho.
 
 ---
 
@@ -271,6 +268,102 @@ centralice el filtro de academia. No las nueve apps de golpe.
 
 ---
 
+## Sesión 7 · Alojar los videos reales
+
+**Rama:** `feat/video-bunny` · **Antes de que lleguen los videos, no después**
+
+Hoy el proveedor es YouTube con videos públicos. Van a llegar videos reales de CAMSA y necesitan
+un sitio donde el acceso se pueda controlar.
+
+### Recomendación: Bunny Stream
+
+Precios consultados el 2026-09-03 en la documentación oficial de cada proveedor.
+
+| | Bunny Stream | Cloudflare Stream |
+|---|---|---|
+| Almacenamiento | $0.01 / GB / mes | $5 por 1.000 minutos |
+| Entrega | $0.010 / GB (Europa y Norteamérica) · $0.005 / GB en red Volume | $1 por 1.000 minutos |
+| Codificación | Estándar incluida | Incluida |
+| Mínimo | $1 / mes | Prepago en tramos de $5 |
+| URLs firmadas | Sí, con token, incluido | Sí |
+| DRM | $99 / mes — **no lo necesitas** | Aparte |
+
+**El cálculo con tus números.** Asumo ~1 GB por hora vista, que es lo razonable con bitrate
+adaptativo cuando parte de la audiencia ve en 720p. Si tus videos son de pantalla y voz —lo típico
+de un curso clínico— pesan menos y sale más barato:
+
+| Escenario | Bunny | Cloudflare |
+|---|---|---|
+| **Arranque:** 20 h de catálogo, 50 alumnos × 5 h/mes | **~$3 / mes** | ~$20 / mes |
+| **Crecimiento:** 50 h de catálogo, 300 alumnos × 8 h/mes | **~$25 / mes** | ~$159 / mes |
+
+La diferencia no es el precio de lista: es **la unidad de cobro**. Cloudflare cobra por minuto
+entregado sin importar la calidad; Bunny cobra por GB. Un curso de voz y diapositivas pesa poco por
+minuto, así que pagar por GB te favorece. Si algún día publicas video de alta producción, esa
+ventaja se estrecha.
+
+**Y hay una razón que no es el precio:** el código ya declara `bunny` como proveedor
+(`backend/apps/courses/models.py:153`), así que el modelo de datos no cambia.
+
+### Por qué NO Cloudflare R2, aunque tu perfil lo prefiera para archivos
+
+R2 es almacenamiento de objetos. **No transcodifica ni genera HLS.** Servir un MP4 de 2 GB desde R2
+significa que el alumno descarga el archivo entero a una sola calidad: con conexión mexicana
+promedio, el video se corta. Video necesita bitrate adaptativo, y eso lo dan Stream y Bunny, no R2.
+R2 sigue siendo la respuesta correcta para PDFs y materiales de apoyo.
+
+**Mux** queda fuera por precio: es la opción de quien necesita analítica fina de reproducción y
+está dispuesto a pagarla. No es tu caso hoy.
+
+### El trabajo real de esta sesión no es elegir proveedor
+
+Es **firmar las URLs**. Hoy `VideoPreview.jsx:16` hace esto para todo proveedor que no sea YouTube:
+
+```javascript
+if (['bunny', 'cloudflare', 'mux', 's3'].includes(provider)) {
+  // usa la URL directamente como iframe src
+}
+```
+
+URL directa, sin token, sin expiración. **Un video de pago servido así es público para cualquiera
+que tenga la URL.** Y el P0 de la sesión 1 reparte exactamente esas URLs a usuarios anónimos.
+
+Con YouTube público eso no hace daño. Con videos reales de CAMSA, sí.
+
+### Alcance
+
+1. Crear la librería en Bunny Stream y activar **Embed View Token Authentication**.
+2. El token se firma **en el backend** (HMAC SHA256 sobre clave + id del video + expiración). La
+   clave nunca llega al navegador.
+3. Un endpoint que devuelva la URL firmada de una lección **solo si el usuario tiene acceso al
+   curso**. La firma no sustituye al permiso: lo complementa.
+4. `VideoPreview` consume la URL firmada en vez de construirla.
+5. Expiración corta (minutos, no días) y renovación mientras se ve la lección.
+6. Migrar los videos existentes, o dejar YouTube para los públicos y Bunny para los nuevos — el
+   modelo soporta ambos por lección.
+
+### Cómo lo verificamos aquí
+
+| Criterio | Esperado |
+|---|---|
+| Pedir la URL firmada sin acceso al curso | **403 o 404**, sin URL |
+| Abrir una URL firmada ya expirada | **403** de Bunny |
+| Buscar la clave de firma en el bundle: `grep -r "token" cursos-maily/dist/` | **No aparece** |
+| Un alumno con acceso ve la lección | Reproduce |
+| Copiar la URL firmada a una ventana anónima antes de que expire | Reproduce — **y esto es esperado**: la firma acota el tiempo, no la persona |
+
+Ese último criterio conviene entenderlo antes de prometer nada al cliente: **una URL firmada no
+impide compartir el video durante su ventana de validez.** Impide el acceso permanente y la
+indexación. Lo otro es DRM, cuesta $99/mes y casi nunca vale la pena.
+
+### Antes de contratar
+
+Verifica el precio en el panel de Bunny con tu propio consumo estimado. Los precios de arriba son
+de su documentación el 2026-09-03 y pueden cambiar. Y **repercute este costo al cliente**: hoy no
+lo haces con los ~$40/mes de Railway, y el video es el primer gasto que crece con el uso.
+
+---
+
 ## Queda fuera de este plan
 
 | Qué | Por qué | Cuándo |
@@ -295,6 +388,7 @@ Sesión 0 (decisiones)
          └─> Sesión 6 · capa de servicios     ← al final, necesita tests
 
 Sesión 5 · frontend  ← independiente del backend; espera mi auditoría
+Sesión 7 · video     ← antes de que lleguen los videos reales; depende de la 1
 ```
 
 Las sesiones 2, 3 y 4 son independientes entre sí: pueden ir en cualquier orden, o en paralelo con
