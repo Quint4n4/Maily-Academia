@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, BookOpen, Clock, ChevronDown, ChevronUp } from 'lucide-react';
-import { Card, Badge, Input } from '../components/ui';
+import { Card, Badge, Input, CourseThumbnail } from '../components/ui';
 import { SkeletonCard } from '../components/ui/SkeletonLoader';
 import courseService from '../services/courseService';
 import categoryService from '../services/categoryService';
@@ -49,7 +49,8 @@ const CategoryItem = ({ slug, name, count, checked, onSelect }) => (
       type="checkbox"
       checked={checked}
       onChange={() => onSelect(slug)}
-      className="rounded border-gray-300 dark:border-gray-600 text-maily focus:ring-maily"
+      aria-label={`Filtrar por ${name}`}
+      className="w-6 h-6 rounded border-gray-300 dark:border-gray-600 text-maily focus:ring-maily"
     />
     <button
       type="button"
@@ -294,7 +295,8 @@ const CoursesList = ({ sectionSlug }) => {
             }`}>
               <span className={`material-symbols-outlined opacity-50 text-sm ${ isC ? 'text-[#e6c364]' : '' }`}>search</span>
               <input 
-                type="text"
+                type="search"
+                aria-label="Buscar cursos"
                 placeholder="Buscar cursos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -307,7 +309,7 @@ const CoursesList = ({ sectionSlug }) => {
             </div>
             <div className="flex items-center gap-2 text-sm w-full sm:w-auto mt-2 sm:mt-0 justify-between sm:justify-start">
               <span className={`whitespace-nowrap sm:hidden lg:inline ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant/80' }`}>Mostrando <b>{filteredCourses.length}</b></span>
-              <select className={`bg-transparent border-none focus:ring-0 font-bold cursor-pointer text-sm outline-none px-2 py-1 rounded-md transition-colors ${
+              <select aria-label="Ordenar los cursos" className={`bg-transparent border-none focus:ring-0 font-bold cursor-pointer text-sm outline-none px-2 py-1 rounded-md transition-colors ${
                 isC ? 'text-[#e6c364] hover:bg-white/5' : 'text-on-surface hover:bg-surface-container-low'
               }`}>
                 <option value="recent">Más recientes</option>
@@ -400,11 +402,11 @@ const CoursesList = ({ sectionSlug }) => {
                   : 'bg-surface-container-lowest shadow-[0_40px_40px_-10px_rgba(27,28,25,0.04)] hover:shadow-[0_40px_60px_-10px_rgba(27,28,25,0.08)] border-outline-variant/10'
               }`}>
                 <div className="relative h-56 overflow-hidden">
-                  <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <CourseThumbnail src={course.thumbnail} alt={course.title} aspect="h-full" className="group-hover:scale-105 transition-transform duration-700" />
                   <span className={`absolute top-4 left-4 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm ${
                     isC
                       ? 'bg-[#141311] text-[#e6c364] border border-[rgba(230,195,100,0.2)]'
-                      : course.level === 'beginner' ? 'bg-emerald-600' : course.level === 'intermediate' ? 'bg-[#2a1800]' : 'bg-red-600'
+                      : course.level === 'beginner' ? 'bg-emerald-700' : course.level === 'intermediate' ? 'bg-[#2a1800]' : 'bg-red-600'
                   }`}>
                     {LEVEL_LABELS[course.level] || course.level}
                   </span>

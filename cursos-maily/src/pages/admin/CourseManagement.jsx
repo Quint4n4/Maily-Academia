@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Search, Trash2, Eye, Archive, RotateCcw, Edit, X } from 'lucide-react';
-import { Card, Button, Input, Badge, Pagination, Modal } from '../../components/ui';
+import { Card, Button, Input, Badge, Pagination, Modal, CourseThumbnail } from '../../components/ui';
 import { SkeletonTableRow } from '../../components/ui/SkeletonLoader';
 import courseService from '../../services/courseService';
 import userService from '../../services/userService';
@@ -172,7 +172,7 @@ const CourseManagement = () => {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-4 flex-1">
                     {course.thumbnail && (
-                      <img src={course.thumbnail} alt="" className="w-16 h-16 rounded-lg object-cover hidden sm:block" />
+                      <CourseThumbnail src={course.thumbnail} alt="" aspect="h-16" className="w-16 rounded-lg hidden sm:block" />
                     )}
                     <div>
                       <h3 className="font-semibold text-gray-900 dark:text-white">{course.title}</h3>

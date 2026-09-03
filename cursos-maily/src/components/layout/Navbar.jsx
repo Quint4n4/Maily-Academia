@@ -288,6 +288,7 @@ const Navbar = () => {
             {!isC && (
               <button
                 onClick={toggleTheme}
+                aria-label={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
                 className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
                 {isDark ? <Sun size={20} /> : <Moon size={20} />}
@@ -395,6 +396,8 @@ const Navbar = () => {
             {/* Mobile menu button */}
             <button
               onClick={() => setShowMobile(!showMobile)}
+              aria-label={showMobile ? 'Cerrar menú' : 'Abrir menú'}
+              aria-expanded={showMobile}
               className="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               {showMobile ? <X size={20} /> : <Menu size={20} />}

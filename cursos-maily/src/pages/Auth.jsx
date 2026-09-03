@@ -497,30 +497,30 @@ const Auth = () => {
 
             {/* Email Field */}
             <div className="space-y-1">
-              <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant ml-2">Credencial de acceso (Email)</label>
+              <label htmlFor="auth-email" className="text-xs font-bold uppercase tracking-widest text-on-surface-variant ml-2">Credencial de acceso (Email)</label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-on-surface-variant/40 group-focus-within:text-[var(--tw-colors-stitch-primary)] transition-colors">mail</span>
-                <input name="email" value={formData.email} onChange={handleInputChange} className={`w-full pl-11 sm:pl-14 pr-6 py-3 sm:py-4 bg-surface-container-low border-transparent focus:border-transparent focus:ring-0 rounded-lg text-on-surface placeholder:text-on-surface-variant/30 ambient-shadow focus:bg-surface-container-lowest transition-all text-sm sm:text-base ${errors.email ? 'ring-2 ring-error bg-error-container/20' : ''}`} placeholder={isLogin ? "ejemplo@camsa.world" : "correo@ejemplo.com"} type="email"/>
+                <input id="auth-email" autoComplete="email" aria-invalid={errors.email ? true : undefined} aria-describedby={errors.email ? 'auth-email-error' : undefined} name="email" value={formData.email} onChange={handleInputChange} className={`w-full pl-11 sm:pl-14 pr-6 py-3 sm:py-4 bg-surface-container-low border-transparent focus:border-transparent focus:ring-0 rounded-lg text-on-surface placeholder:text-on-surface-variant/30 ambient-shadow focus:bg-surface-container-lowest transition-all text-sm sm:text-base ${errors.email ? 'ring-2 ring-error bg-error-container/20' : ''}`} placeholder={isLogin ? "ejemplo@camsa.world" : "correo@ejemplo.com"} type="email"/>
               </div>
-              {errors.email && <p className="text-xs text-error mt-1 ml-2">{errors.email}</p>}
+              {errors.email && <p id="auth-email-error" role="alert" className="text-xs text-error mt-1 ml-2">{errors.email}</p>}
             </div>
 
             {/* Password Field */}
             <div className="space-y-1">
               <div className="flex justify-between items-center ml-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Contraseña</label>
+                <label htmlFor="auth-password" className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Contraseña</label>
                 {isLogin && (
                   <Link to="/forgot-password" className="text-[10px] sm:text-xs font-bold text-[#845400] hover:text-on-primary-container transition-colors">¿Olvidaste tu contraseña?</Link>
                 )}
               </div>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-on-surface-variant/40 group-focus-within:text-[var(--tw-colors-stitch-primary)] transition-colors">lock</span>
-                <input name="password" value={formData.password} onChange={handleInputChange} className={`w-full pl-11 sm:pl-14 pr-12 py-3 sm:py-4 bg-surface-container-low border-transparent focus:border-transparent focus:ring-0 rounded-lg text-on-surface placeholder:text-on-surface-variant/30 ambient-shadow focus:bg-surface-container-lowest transition-all text-sm sm:text-base tracking-widest ${errors.password ? 'ring-2 ring-error bg-error-container/20' : ''}`} placeholder="••••••••" type={showPassword ? "text" : "password"}/>
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant/60 hover:text-[var(--tw-colors-stitch-primary)] transition-colors focus:outline-none">
+                <input id="auth-password" autoComplete={isLogin ? 'current-password' : 'new-password'} aria-invalid={errors.password ? true : undefined} aria-describedby={errors.password ? 'auth-password-error' : undefined} name="password" value={formData.password} onChange={handleInputChange} className={`w-full pl-11 sm:pl-14 pr-12 py-3 sm:py-4 bg-surface-container-low border-transparent focus:border-transparent focus:ring-0 rounded-lg text-on-surface placeholder:text-on-surface-variant/30 ambient-shadow focus:bg-surface-container-lowest transition-all text-sm sm:text-base tracking-widest ${errors.password ? 'ring-2 ring-error bg-error-container/20' : ''}`} placeholder="••••••••" type={showPassword ? "text" : "password"}/>
+                <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={showPassword} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 min-w-[24px] min-h-[24px] flex items-center justify-center rounded text-on-surface-variant/60 hover:text-[var(--tw-colors-stitch-primary)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
                   <span className="material-symbols-outlined text-xl">{showPassword ? 'visibility_off' : 'visibility'}</span>
                 </button>
               </div>
-              {errors.password && <p className="text-xs text-error mt-1 ml-2 leading-tight">{errors.password}</p>}
+              {errors.password && <p id="auth-password-error" role="alert" className="text-xs text-error mt-1 ml-2 leading-tight">{errors.password}</p>}
               
               {/* Password Requirements Checklist (Register Only) */}
               <AnimatePresence>

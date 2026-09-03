@@ -1,4 +1,4 @@
-import { useState, isValidElement } from 'react';
+import { useState, useId, isValidElement } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -12,13 +12,22 @@ export const Input = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  // El <label> se pintaba sin htmlFor y el input sin id: parecia una etiqueta
+  // pero no lo era, asi que un lector de pantalla anunciaba "cuadro de edicion"
+  // sin decir de que. useId da un id estable y unico por instancia.
+  const idGenerado = useId();
+  const idCampo = props.id || idGenerado;
+  const idError = `${idCampo}-error`;
 
   const inputType = type === 'password' && showPassword ? 'text' : type;
 
   return (
     <div className={`relative ${className}`}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+        <label
+          htmlFor={idCampo}
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+        >
           {label}
         </label>
       )}
@@ -29,7 +38,10 @@ export const Input = ({
           </div>
         )}
         <motion.input
+          id={idCampo}
           type={inputType}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? idError : undefined}
           className={`
             w-full px-4 py-3 rounded-xl
             border-2 transition-all duration-200
@@ -51,11 +63,15 @@ export const Input = ({
           transition={{ duration: 0.2 }}
           {...props}
         />
+        {/* aria-label: sin nombre accesible el boton se anunciaba solo como "boton".
+            min-w/min-h: su area tactil era de 20x30, por debajo del minimo de 24x24. */}
         {type === 'password' && (
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            aria-pressed={showPassword}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 min-w-[24px] min-h-[24px] flex items-center justify-center rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             {showPassword ? (
               <EyeOff className="w-5 h-5" />
@@ -67,9 +83,11 @@ export const Input = ({
       </div>
       {error && (
         <motion.p
+          id={idError}
+          role="alert"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-1.5 text-sm text-red-500 dark:text-red-400"
+          className="mt-1.5 text-sm text-red-600 dark:text-red-400"
         >
           {error}
         </motion.p>
