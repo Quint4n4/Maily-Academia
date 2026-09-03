@@ -205,8 +205,8 @@ Los campos de `CourseListSerializer` (`apps/courses/serializers.py:136-147`) ya 
 esa vitrina: no incluyen módulos ni videos. El problema está en `CourseDetailSerializer` (`:157`),
 que anida `modules → lessons → video_url`.
 
-**Qué academias tienen vitrina** — se controla con `allow_public_preview` por academia, no en el
-código. Propuesta pendiente de confirmar:
+**Qué academias tienen vitrina** — confirmado por Emanuel el 2026-09-03. Se controla con
+`allow_public_preview` por academia, no en el código:
 
 | Academia | `allow_public_preview` | Por qué |
 |---|---|---|
