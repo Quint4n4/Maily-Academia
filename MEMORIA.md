@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-09-03 · Auditoría de interfaz y skill nueva
+
+`docs/07-auditoria-frontend.md`: 4 P1, 5 P2, 3 P3, todos medidos. Lo peor es texto negro sobre fondo
+oscuro con ratio 1.43 en el constructor y en el panel del instructor, por falta de la variante
+`dark:`; y el dorado de marca con texto negro (3.25 en tres pantallas), que se arregla poniendo el
+texto en blanco (6.46).
+
+**Esta sesión sí tocó el plugin.** Nació `revision-de-interfaz` (biblioteca v1.2.0, rama
+`feat/skill-revision-de-interfaz`), con sus diecisiete puntos sacados de los defectos de aquí, más
+`verificador.js`. Se agregaron tres claves a la plantilla del perfil: `frontend.temas`,
+`frontend.paleta` y `cumplimiento.nivel_accesibilidad`.
+
+El verificador encontró 12 fallos en `/instructor/dashboard`, una pantalla que la pasada manual no
+había recorrido.
+
 ## 2026-09-02 · Adopción de la biblioteca de skills
 
 **Este repo adoptó la biblioteca** (`biblioteca-de-skills@biblioteca-emanuel`).

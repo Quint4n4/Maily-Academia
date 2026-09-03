@@ -124,6 +124,9 @@ no persiste es peor que no tenerlo: aprueba el punto sin cumplirlo.
 | `frontend.transporte_del_ambito` | `parametro` — el slug va en la ruta | `courseService.listBySection` → `/sections/{slug}/courses/` |
 | `frontend.matriz_de_permisos` | `ninguna` | No existe archivo de matriz; los guards viven sueltos en `App.jsx` |
 | `frontend.espejo_de_modulos` | `ninguno` | No existe |
+| `frontend.temas` | `claro-y-oscuro` | `cursos-maily/src/context/ThemeContext.jsx` |
+| `frontend.paleta` | `cursos-maily/tailwind.config.js` | Ahí se corrige un color de marca en un solo sitio |
+| `cumplimiento.nivel_accesibilidad` | `ninguno` — nunca se fijó un objetivo | Ver `docs/07-auditoria-frontend.md` |
 
 `frontend.estado_servidor: ninguno` **no** vuelve `N/A` el cruce de caché de `auditoria-frontend`:
 sin caché de servidor, el dato de la academia anterior sobrevive en el estado de los componentes.

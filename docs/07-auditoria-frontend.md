@@ -64,6 +64,19 @@ sus usuarios** y que en tema oscuro tiene texto que no se lee.
 **Cómo se comprueba:** abrir el constructor en tema oscuro y leer el panel izquierdo.
 **Por qué es P1:** es la pantalla donde el instructor pasa la mayor parte de su tiempo.
 
+### F1b · El mismo fallo está en el panel del instructor
+
+Encontrado el 2026-09-03 al probar `verificador.js` de la skill `revision-de-interfaz`, en una
+pantalla que la pasada manual no había recorrido.
+
+`/instructor/dashboard` en tema oscuro: **12 fallos de contraste**, el peor con el mismo patrón que
+F1 — `rgb(0,0,0)` sobre `rgb(31,41,55)`, **ratio 1.43**, en los títulos de curso a 11px.
+
+El verificador calcula la corrección: ese mismo texto **en blanco daría 14.68**.
+
+Que una herramienta encontrara en una pantalla lo que una pasada a ojo no vio en otra es el
+argumento para que la revisión de interfaz se corra siempre con el verificador, no a criterio.
+
 ### F2 · El texto sobre el dorado de marca no alcanza el mínimo
 
 **Ratio 3.25:1** en `rgb(0,0,0)` sobre `rgb(132,84,0)`. Aparece en al menos tres sitios:
