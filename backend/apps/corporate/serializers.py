@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 from django.utils import timezone
 from rest_framework import serializers
+from apps.utils.limites_de_texto import LimitaTextoLibreMixin
 from .models import BenefitType, BenefitRequest, AvailabilitySchedule, AvailabilityException, Reservation, Notification
 
 
@@ -77,7 +78,7 @@ class ReservationSerializer(serializers.ModelSerializer):
         return obj.user.get_full_name() or obj.user.email
 
 
-class ReservationCreateSerializer(serializers.ModelSerializer):
+class ReservationCreateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     benefit_type_slug = serializers.SlugRelatedField(
         slug_field='slug',
         queryset=BenefitType.objects.filter(is_active=True),
@@ -194,7 +195,7 @@ class BenefitRequestSerializer(serializers.ModelSerializer):
         return obj.user.get_full_name() or obj.user.email
 
 
-class BenefitRequestCreateSerializer(serializers.ModelSerializer):
+class BenefitRequestCreateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     benefit_type_slug = serializers.SlugRelatedField(
         slug_field='slug',
         queryset=BenefitType.objects.filter(is_active=True, benefit_mode='request'),

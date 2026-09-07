@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-09-07 · Sesion 3: endurecer entrada y respuestas
+
+Tres puntos cerrados: limite de 20 000 caracteres en texto libre (mixin en el serializer,
+no en el modelo, para no pedir migracion), `Cache-Control: no-store` en toda respuesta
+autenticada, y 404 en vez de 403 sobre un certificado ajeno.
+
+**Un hallazgo del informe estaba mal.** Reporte que `/api/users/{id}/` filtraba
+existencia con su 403; no es cierto, el 403 es identico exista el usuario o no, y ademas
+es el correcto porque ese endpoint es solo de admin. Buscando el caso real aparecio uno
+peor: la descarga de certificados si confirmaba la existencia de documentos ajenos.
+
+La leccion: antes de arreglar un 403, comprobar si distingue. Un 403 que responde igual
+para lo que existe y lo que no, no filtra nada.
+
 ## 2026-09-07 · Sesion 2: cerrar sesion de verdad
 
 `POST /api/auth/logout/` no existia. Ahora revoca el refresh y comprueba que sea de quien

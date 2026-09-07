@@ -67,6 +67,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.users.middleware.AuditLogMiddleware',
+    # Debe ir DESPUES de AuthenticationMiddleware: necesita request.user resuelto.
+    'apps.utils.cache_headers.NoGuardarDatosPersonalesMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
