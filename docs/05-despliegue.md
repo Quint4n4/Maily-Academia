@@ -150,3 +150,6 @@ revisión los va a volver a levantar sola.
 | D9 | `SENTRY_DSN` configurado en Railway y llegando eventos | Crear el proyecto en sentry.io y pegar el DSN en las variables del servicio | nunca |
 | D10 | Un evento real de Sentry llega **sin datos personales** | Provocar un error en producción y leer el evento en el panel. Los filtros están probados con tests, pero solo un evento real confirma la cadena completa | nunca |
 | D11 | `allow_public_preview` activado en Longevity 360 | Admin de producción. Sin esto su catálogo no se ve sin login | nunca |
+| D12 | La librería de Bunny Stream existe y tiene Token Authentication activado | Crear la cuenta y la librería; activar la opción en Settings | nunca |
+| D13 | `BUNNY_STREAM_LIBRARY_ID` y `BUNNY_STREAM_TOKEN_KEY` en Railway | Copiarlos del panel de Bunny | nunca |
+| D14 | Una URL firmada real reproduce, y expirada da 403 | Subir un video de prueba y comprobarlo con el reloj en la mano | nunca |

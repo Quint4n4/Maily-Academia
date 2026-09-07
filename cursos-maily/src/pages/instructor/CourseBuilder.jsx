@@ -1694,7 +1694,7 @@ const CourseBuilder = () => {
                           value={lessonForm.video_url || ''}
                           onChange={(e) => setLessonForm({ ...lessonForm, video_url: e.target.value })}
                         />
-                        <VideoPreview url={lessonForm.video_url} provider={lessonForm.video_provider} />
+                        <VideoPreview lessonId={selectedLessonId} url={lessonForm.video_url} provider={lessonForm.video_provider} />
                       </div>
                     </div>
 

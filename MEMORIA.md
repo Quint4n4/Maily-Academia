@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-09-07 · Sesion 7: video firmado
+
+La URL de video ya no se construye en el navegador: se pide a
+`/api/courses/lessons/{id}/video/`, que comprueba el acceso al curso y firma la URL de
+Bunny en el servidor. La clave nunca sale del backend. YouTube se devuelve tal cual
+porque sus videos son publicos.
+
+El formato de la firma --SHA256(clave + video_id + expires)-- se verifico contra la
+documentacion de Bunny, y hay un test que lo recalcula a mano: si alguien cambia el orden
+de concatenacion, Bunny daria 403 en produccion y el test avisa antes.
+
+**Falta lo que no puedo hacer yo:** crear la cuenta de Bunny, activar Token
+Authentication y poner las dos variables en Railway. Hasta entonces todo sigue con
+YouTube igual que hoy.
+
+Matiz para no prometer de mas: una URL firmada no impide compartir el video mientras
+dure. Impide el acceso permanente y la indexacion.
+
 ## 2026-09-07 · Sesion 4: observabilidad
 
 La bitacora ya persiste: modelo `RegistroDeAuditoria`, consultable desde el admin en solo

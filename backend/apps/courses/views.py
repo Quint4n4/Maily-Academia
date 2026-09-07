@@ -15,6 +15,7 @@ from apps.users.models import SurveyResponse
 from apps.users.permissions import IsAdmin, IsAdminOrInstructor, IsInstructorOwner
 
 from .models import Category, Course, CourseMaterial, Module, Lesson
+from .video import VIGENCIA_POR_DEFECTO, VideoNoConfigurado, url_de_reproduccion
 from .permissions import CanDownloadCourseMaterial, CanListCourseMaterials, CanManageCourseMaterial
 from apps.progress.activity_logger import log_activity
 from .serializers import (
@@ -404,6 +405,56 @@ class UploadThumbnailView(APIView):
 # ---------------------------------------------------------------------------
 # Modules
 # ---------------------------------------------------------------------------
+
+class LessonVideoView(APIView):
+    """
+    GET /api/courses/lessons/{id}/video/ — URL de reproduccion de una leccion.
+
+    Existe para que la URL firmada se entregue SOLO a quien tiene acceso al
+    curso, y para que la clave de firma no salga nunca del servidor.
+
+    AMBITO>> el acceso se decide con la misma funcion que el detalle del curso,
+    para que no puedan divergir: si un dia una deja pasar a alguien y la otra no,
+    gana la mas laxa y nadie se entera.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        leccion = (
+            Lesson.objects
+            .select_related('module__course__section', 'module__course__instructor')
+            .filter(pk=pk)
+            .first()
+        )
+        # 404 y no 403: un 403 confirmaria que la leccion existe.
+        if leccion is None:
+            return Response({'detail': 'Lección no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        curso = leccion.module.course
+        if not puede_ver_el_contenido(request.user, curso):
+            return Response({'detail': 'Lección no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            url = url_de_reproduccion(leccion)
+        except VideoNoConfigurado as error:
+            # Configuracion del servidor, no culpa de quien pide: se dice claro
+            # en vez de devolver una URL que no reproduciria.
+            return Response({'detail': str(error)}, status=status.HTTP_501_NOT_IMPLEMENTED)
+
+        if not url:
+            return Response(
+                {'detail': 'Esta lección no tiene video asignado.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response({
+            'url': url,
+            'provider': leccion.video_provider or 'youtube',
+            # Para que el reproductor sepa cuando pedir otra antes de que caduque.
+            'expira_en': VIGENCIA_POR_DEFECTO if leccion.video_provider == 'bunny' else None,
+        })
+
 
 class ModuleCreateView(generics.CreateAPIView):
     """POST /api/courses/{course_id}/modules/ – create a module in a course."""
