@@ -14,3 +14,8 @@ dj-database-url>=2.1,<3.0
 whitenoise>=6.7,<7.0
 bleach>=6.0,<7.0
 stripe>=8.0,<9.0
+
+# Testing. El repo no tenia ningun test hasta el 2026-09-07; este es el andamio
+# que usan las sesiones siguientes del plan de correcciones.
+pytest>=8.0,<9.0
+pytest-django>=4.8,<5.0

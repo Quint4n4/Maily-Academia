@@ -21,7 +21,47 @@
 
 ---
 
-## P0 · El catálogo público expone academias con credenciales requeridas
+## P0 · CERRADO el 2026-09-07 · rama `fix/course-catalog-isolation`
+
+**Cómo se cerró.** `secciones_visibles_para(user)` en `backend/apps/courses/views.py` es ahora la
+única fuente de verdad de qué academias ve cada quien, y la aplican tanto el listado como el
+detalle. El detalle filtra por academia **antes** de buscar por id, así que el 404 sale solo: no
+hace falta fingirlo, y un 403 habría confirmado que el curso existe.
+
+Se separó **ver la vitrina** de **ver el contenido**: `CourseVitrinaSerializer` devuelve la ficha
+con el temario completo y sin ningún `video_url`. Quien tiene acceso real sigue recibiendo el
+detalle completo.
+
+**Verificado el 2026-09-07**, con 7 tests y contra la API local:
+
+| Criterio | Resultado |
+|---|---|
+| Anónimo, catálogo | Solo Longevity y Maily. Corporativo CAMSA no aparece en ninguna página |
+| Anónimo, ficha con vitrina | 200, temario visible, **0 `video_url`** |
+| Anónimo, curso de Corporativo | **404** ("No Course matches the given query") |
+| Alumno de Longevity, curso suyo | 200 **con** `video_url` |
+| Alumno sin membresía, curso de Corporativo | **404** |
+| Instructor, sus cursos | 27, sin cambios |
+| El test falla si se revierte el arreglo | Sí: 4 de 7 fallaban antes |
+
+**Efecto medido:** un anónimo pasó de ver **26 cursos de las tres academias** a ver solo los de las
+dos que tienen vitrina.
+
+### Hallazgo de esta sesión: el deploy revertía la configuración de vitrina
+
+`apps/sections/apps.py` enganchaba un `post_migrate` que hacía `update_or_create` de las tres
+academias con **todos** sus valores por defecto, incluidas `allow_public_preview` y
+`require_credentials`.
+
+Eso significa que activar la vitrina de una academia desde el admin **duraba hasta el siguiente
+deploy**. Ahora esas dos banderas solo se aplican al crear la academia por primera vez; el nombre y
+la descripción se siguen actualizando. La política se decide en el admin, no en el código.
+
+---
+
+## P0 original (para referencia)
+
+### El catálogo público expone academias con credenciales requeridas
 
 **Punto:** `aislamiento-de-datos` — los datos de un ámbito no llegan a otro.
 

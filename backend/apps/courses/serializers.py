@@ -179,6 +179,39 @@ class CourseDetailSerializer(serializers.ModelSerializer):
         return obj.instructor.get_full_name() or obj.instructor.username
 
 
+class LessonVitrinaSerializer(serializers.ModelSerializer):
+    """
+    Leccion tal y como la ve alguien que todavia no tiene acceso al curso.
+
+    Trae el temario --titulo y duracion-- porque eso es lo que vende el curso, y
+    deja fuera `video_url`: la URL del video ES el contenido. Con videos de
+    YouTube publicos parece inofensivo; el dia que los videos vivan en un
+    proveedor de pago, repartir esa URL es repartir el curso.
+
+    Ver docs/00-deuda.md (P0) y la seccion de vitrina del PERFIL-DEL-REPO.
+    """
+
+    class Meta:
+        model = Lesson
+        fields = ['id', 'title', 'description', 'duration', 'order']
+        read_only_fields = fields
+
+
+class ModuleVitrinaSerializer(serializers.ModelSerializer):
+    lessons = LessonVitrinaSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Module
+        fields = ['id', 'title', 'description', 'order', 'lessons']
+        read_only_fields = fields
+
+
+class CourseVitrinaSerializer(CourseDetailSerializer):
+    """Ficha publica de un curso: todo lo del detalle, con el temario sin videos."""
+
+    modules = ModuleVitrinaSerializer(many=True, read_only=True)
+
+
 class CourseCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating / updating a course."""
 

@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-09-07 · Fusion de las tres ramas y cierre del P0
+
+Las tres ramas entraron a `main` con `--no-ff`. Un solo conflicto, en
+`CoursesList.jsx`, resuelto combinando: una rama traía `Pagination` y la otra
+`CourseThumbnail`, y el contador usaba un nombre de variable que la otra rama había
+renombrado.
+
+**P0 cerrado** en `fix/course-catalog-isolation`. El backend estrena `pytest` —no tenía
+ningún test— con 7 casos de fuga entre academias. Un anónimo pasó de ver 26 cursos de
+las tres academias a ver solo los de las dos con vitrina.
+
+Salió un hallazgo que no estaba en la auditoría: el `post_migrate` de
+`apps/sections/apps.py` **revertía la configuración de vitrina en cada deploy**, porque
+hacía `update_or_create` con todas las banderas. Activar la vitrina desde el admin
+duraba hasta el siguiente despliegue.
+
+**Pendiente antes de desplegar:** activar `allow_public_preview` en Longevity 360 desde
+el admin de producción. En local ya está.
+
 ## 2026-09-03 · Auditoría de interfaz y skill nueva
 
 `docs/07-auditoria-frontend.md`: 4 P1, 5 P2, 3 P3, todos medidos. Lo peor es texto negro sobre fondo

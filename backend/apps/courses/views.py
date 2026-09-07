@@ -3,13 +3,14 @@ import tempfile
 from django.conf import settings as django_settings
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes as perm_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.sections.models import SectionMembership
+from apps.sections.models import Section, SectionMembership
 from apps.users.models import SurveyResponse
 from apps.users.permissions import IsAdmin, IsAdminOrInstructor, IsInstructorOwner
 
@@ -30,12 +31,79 @@ from .serializers import (
     ModuleSerializer,
     LessonCreateSerializer,
     LessonSerializer,
+    CourseVitrinaSerializer,
 )
 
 
 # ---------------------------------------------------------------------------
 # Courses
 # ---------------------------------------------------------------------------
+
+def secciones_visibles_para(user):
+    """
+    AMBITO>> Academias cuyo catalogo puede ver este usuario.
+
+    Es la unica fuente de verdad de "que academias veo". Antes no existia: la
+    lista y el detalle de cursos filtraban solo por `status`, asi que un usuario
+    sin cuenta obtenia el catalogo, el temario y las URLs de video de academias
+    con `require_credentials=True`. Es el P0 de docs/00-deuda.md.
+
+    - Anonimo: solo las que tienen vitrina publica (`allow_public_preview`).
+    - Autenticado: las de vitrina, las de tipo `public` --excepcion E1 del
+      PERFIL-DEL-REPO, declarada a proposito-- y aquellas donde tiene una
+      membresia activa y no expirada.
+    - Admin: todas.
+
+    El ambito NUNCA viene del cliente: sale de la tabla de membresias
+    (`aislamiento.origen: tabla-de-membresias`).
+    """
+    activas = Section.objects.filter(is_active=True)
+
+    if not user or not user.is_authenticated:
+        return activas.filter(allow_public_preview=True)
+
+    if getattr(user, 'role', None) == 'admin' or user.is_superuser:
+        return activas
+
+    ahora = timezone.now()
+    con_membresia = (
+        SectionMembership.objects
+        .filter(user=user, is_active=True)
+        .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=ahora))
+        .values_list('section_id', flat=True)
+    )
+    return activas.filter(
+        Q(allow_public_preview=True)
+        | Q(section_type=Section.SectionType.PUBLIC)
+        | Q(id__in=con_membresia)
+    )
+
+
+def puede_ver_el_contenido(user, course):
+    """
+    AMBITO>> Si este usuario tiene derecho al contenido del curso, no solo a su ficha.
+
+    Ver la vitrina y ver el contenido son cosas distintas: cualquiera puede leer
+    el temario de un curso con vitrina, pero las URLs de video solo salen para
+    quien tiene acceso real.
+    """
+    if not user or not user.is_authenticated:
+        return False
+    if getattr(user, 'role', None) == 'admin' or user.is_superuser:
+        return True
+    if course.instructor_id == user.id:
+        return True
+    if course.section_id is None:
+        return False
+
+    ahora = timezone.now()
+    return (
+        SectionMembership.objects
+        .filter(user=user, section_id=course.section_id, is_active=True)
+        .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=ahora))
+        .exists()
+    )
+
 
 def _instructor_section_ids(user):
     """Section IDs where the user has SectionMembership with role=instructor (for course create/list filter)."""
@@ -75,14 +143,20 @@ class CourseListCreateView(generics.ListCreateAPIView):
         )
         user = self.request.user
         role = getattr(user, 'role', None)
-        if not user.is_authenticated or role == 'student':
-            qs = qs.filter(status='published')
-        elif role == 'instructor':
-            section_ids = _instructor_section_ids(user)
-            qs = qs.filter(
-                Q(status='published') | (Q(instructor=user) & (Q(section__isnull=True) | Q(section_id__in=section_ids)))
-            )
-        # else: admin/superuser — no filtrar por status aquí; DjangoFilterBackend lo aplica
+
+        # AMBITO>> el catalogo se acota a las academias que este usuario puede ver.
+        if role != 'admin' and not user.is_superuser:
+            visibles = secciones_visibles_para(user)
+            if role == 'instructor':
+                # El instructor ve ademas sus propios cursos, publicados o no.
+                propias = _instructor_section_ids(user)
+                qs = qs.filter(
+                    Q(status='published', section__in=visibles)
+                    | (Q(instructor=user) & (Q(section__isnull=True) | Q(section_id__in=propias)))
+                )
+            else:
+                qs = qs.filter(status='published', section__in=visibles)
+        # admin/superuser — no se filtra aquí; DjangoFilterBackend aplica el status
 
         # Filtros adicionales por categoría y tags (Fase 3)
         category_slug = self.request.query_params.get('category')
@@ -194,7 +268,17 @@ class CourseDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_serializer_class(self):
         if self.request.method in ('PATCH', 'PUT'):
             return CourseCreateUpdateSerializer
+        # Quien no tiene acceso al contenido recibe la ficha de vitrina: mismo
+        # curso, con temario y sin las URLs de video.
+        objeto = getattr(self, '_curso', None)
+        if objeto is not None and not puede_ver_el_contenido(self.request.user, objeto):
+            return CourseVitrinaSerializer
         return CourseDetailSerializer
+
+    def get_object(self):
+        # Se guarda para que get_serializer_class decida con el curso en la mano.
+        self._curso = super().get_object()
+        return self._curso
 
     def get_queryset(self):
         qs = Course.objects.select_related('instructor', 'category').prefetch_related(
@@ -204,10 +288,23 @@ class CourseDetailView(generics.RetrieveUpdateDestroyAPIView):
             students_count=Count('enrollments'),
             materials_count=Count('materials', distinct=True),
         )
-        if self.request.method not in ('GET', 'HEAD', 'OPTIONS') and self.request.user.role == 'instructor':
-            section_ids = _instructor_section_ids(self.request.user)
+        user = self.request.user
+        role = getattr(user, 'role', None)
+
+        if self.request.method not in ('GET', 'HEAD', 'OPTIONS') and role == 'instructor':
+            section_ids = _instructor_section_ids(user)
+            return qs.filter(
+                Q(instructor=user) & (Q(section__isnull=True) | Q(section_id__in=section_ids))
+            )
+
+        # AMBITO>> en lectura, el curso tiene que estar en una academia visible.
+        # Se filtra ANTES de buscar por id, asi el 404 sale solo: un 403 confirmaria
+        # que el curso existe y permitiria contarlos por enumeracion de ids.
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS') and role != 'admin' and not user.is_superuser:
+            visibles = secciones_visibles_para(user)
             qs = qs.filter(
-                Q(instructor=self.request.user) & (Q(section__isnull=True) | Q(section_id__in=section_ids))
+                Q(status='published', section__in=visibles)
+                | (Q(instructor=user.id) if user.is_authenticated else Q(pk__in=[]))
             )
         return qs
 
