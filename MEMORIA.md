@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-09-07 · Sesion 4: observabilidad
+
+La bitacora ya persiste: modelo `RegistroDeAuditoria`, consultable desde el admin en solo
+lectura, con indices por actor y por recurso. Guarda el correo del actor ademas de su id
+para que el registro sobreviva al borrado del usuario.
+
+Sentry configurado pero **desactivado hasta que haya SENTRY_DSN**. Lo que importa no es
+el alta del servicio sino los filtros: un SDK sin configurar manda el cuerpo de la
+peticion, las cookies y las variables locales de la traza, donde vive la contrasena que
+causo el error.
+
+**Primera migracion de estas sesiones.** Emanuel autorizo correrla solo en local; en
+produccion la corre el. Anotada en docs/05-despliegue.md como D8.
+
 ## 2026-09-07 · Sesion 3: endurecer entrada y respuestas
 
 Tres puntos cerrados: limite de 20 000 caracteres en texto libre (mixin en el serializer,

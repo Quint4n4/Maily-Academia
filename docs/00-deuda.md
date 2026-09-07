@@ -141,7 +141,34 @@ La rotación sí revoca el refresh anterior (verificado: reusar uno rotado da 40
 lista negra"), pero eso solo cubre el uso normal. **Un refresh token copiado sigue siendo válido
 7 días y el usuario no tiene ninguna forma de invalidarlo.**
 
-### 2 · La bitácora de auditoría no persiste
+### 2 · CERRADO el 2026-09-07 · La bitácora de auditoría no persistía
+
+Modelo `RegistroDeAuditoria` en `apps/users/models.py`, poblado por
+`AuditLogMiddleware`. Consultable desde el admin en `/admin/users/registrodeauditoria/`,
+**en solo lectura**: una bitácora que se puede editar no prueba nada.
+
+Tres decisiones que conviene conocer:
+
+- **Se guarda el correo del actor además de su id.** Si la cuenta se borra o cambia de correo, el
+  registro tiene que seguir diciendo quién fue. Una bitácora que pierde al actor cuando se va el
+  empleado no sirve. Probado: al borrar el usuario, el registro sobrevive con `actor=None` y el
+  correo intacto.
+- **La ruta se parte en recurso e id** (`/api/courses/` + `34`), con índice sobre ambos. Así se
+  responden las dos preguntas que hacen de esto un requisito: *qué hizo esta persona* y *quién tocó
+  este recurso*.
+- **Un fallo al guardar no tumba la petición.** Perder un registro es malo; devolver un 500 porque
+  no se pudo auditar es peor.
+
+Se agregaron a `AUDIT_PATHS` tres rutas que faltaban y cambian lo que la gente ve o recibe:
+`/api/courses/` (publicar y despublicar), `/api/certificates/` (emitir un documento con el nombre
+de alguien) y `/api/instructor/`.
+
+**Requiere migración**: `users/0009_registro_de_auditoria`. Aplicada solo en local; en producción la
+corre Emanuel al desplegar.
+
+---
+
+### 2 · (original) La bitácora de auditoría no persiste
 
 **Punto 26** — queda registro de quién vio o cambió qué.
 
@@ -178,7 +205,32 @@ corporativo.
 Enviar 1 MB en `description` al crear un curso → **HTTP 201, se guardó**. `TextField` sin
 `max_length` ni validación en el serializer (`backend/apps/courses/models.py:88`).
 
-### 4 · Sin monitoreo de errores
+### 4 · CERRADO el 2026-09-07 · Sin monitoreo de errores
+
+`sentry-sdk` configurado en `config/observabilidad.py`. **Se activa solo si existe `SENTRY_DSN`**;
+sin esa variable la aplicación arranca igual y no envía nada, así que local y los tests no tocan el
+servicio.
+
+Lo que importa de ese archivo no es el alta, son los filtros. Un SDK sin configurar manda por
+defecto el cuerpo de la petición, las cookies y las variables locales de la traza — donde vive la
+contraseña que causó el error. El punto 24 pide que el monitoreo tampoco repita el dato sensible:
+
+| Qué se envía | Qué no |
+|---|---|
+| La excepción y su traza | Contraseñas, tokens, cabeceras de autorización |
+| El endpoint y el método | Correos, teléfonos, direcciones, nombres |
+| El **id** del usuario | Su correo, su IP, sus cookies |
+| Variables locales útiles (`course_id`) | Variables locales sensibles |
+
+6 tests cubren el filtrado, incluido el caso menos obvio: la contraseña dentro de las variables
+locales de un marco de la traza.
+
+**Pendiente tuyo:** crear el proyecto en sentry.io y poner `SENTRY_DSN` en Railway. No puedo crear
+cuentas. Hasta entonces, el código está listo y desactivado.
+
+---
+
+### 4 · (original) Sin monitoreo de errores
 
 **Punto 24.** `cumplimiento.monitoreo_errores: ninguno`. No hay Sentry ni equivalente. Hoy no
 existe visibilidad de errores en producción: te enteras cuando un usuario avisa.

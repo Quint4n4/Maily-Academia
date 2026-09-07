@@ -19,3 +19,7 @@ stripe>=8.0,<9.0
 # que usan las sesiones siguientes del plan de correcciones.
 pytest>=8.0,<9.0
 pytest-django>=4.8,<5.0
+
+# Monitoreo de errores. Sin esto uno se entera de un fallo cuando un usuario
+# avisa. Se envia SIN datos personales: ver config/observabilidad.py
+sentry-sdk[django]>=2.0,<3.0
