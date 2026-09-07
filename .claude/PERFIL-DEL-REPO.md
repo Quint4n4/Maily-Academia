@@ -81,7 +81,7 @@ en Longevity, recibe 200 y los cursos. Ver excepción E1.
 | `backend.autenticacion` | `jwt` | `backend/config/settings.py:150-152` (simplejwt) |
 | `backend.revocacion_de_sesion` | `si: logout + rotación + blacklist` | Verificado provocándolo el 2026-09-07 |
 | `backend.borrado` | `fisico` | Ningún modelo tiene `is_deleted` ni `deleted_at` |
-| `backend.bitacora_auditoria` | `AuditLogMiddleware` — **no persiste** | `backend/apps/users/middleware.py:25` |
+| `backend.bitacora_auditoria` | `RegistroDeAuditoria` — persiste, consultable en el admin | `backend/apps/users/models.py` |
 | `backend.tareas_asincronas` | `ninguna — en el hilo de la petición` | No hay Celery en el repo |
 
 ### `revocacion_de_sesion`: rellenado provocando el efecto, no leyendo `settings.py`
@@ -164,7 +164,7 @@ Es el mismo riesgo en otro sitio.
 | Clave | Valor | Evidencia |
 |---|---|---|
 | `cumplimiento.datos_sensibles` | `si: datos de alumnos identificables` | Nombre, email, avatar, progreso académico, certificados con nombre; y `stripe_customer_id` en `apps/users` |
-| `cumplimiento.monitoreo_errores` | `ninguno` | Sin Sentry ni equivalente en `requirements.txt` |
+| `cumplimiento.monitoreo_errores` | `sentry` — activo solo si hay `SENTRY_DSN` | `config/observabilidad.py` |
 | `cumplimiento.registros_inmutables` | `ninguno` | Los certificados deberían serlo y hoy no hay nada que lo impida |
 | `cumplimiento.estados_con_razon` | `ninguna` | No hay transiciones que exijan razón |
 | `cumplimiento.consulta_legal` | `pendiente` | Nunca se ha hecho |

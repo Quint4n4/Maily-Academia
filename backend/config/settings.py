@@ -28,6 +28,15 @@ if os.environ.get('DATABASE_URL'):
             CSRF_TRUSTED_ORIGINS = list(CSRF_TRUSTED_ORIGINS) + [origin]
 
 # ---------------------------------------------------------------------------
+# Monitoreo de errores
+# ---------------------------------------------------------------------------
+# Se activa solo si hay SENTRY_DSN en el entorno. Los filtros que quitan datos
+# personales estan en config/observabilidad.py, que es la parte que importa.
+from .observabilidad import iniciar_monitoreo  # noqa: E402
+
+MONITOREO_ACTIVO = iniciar_monitoreo()
+
+# ---------------------------------------------------------------------------
 # Application definition
 # ---------------------------------------------------------------------------
 INSTALLED_APPS = [

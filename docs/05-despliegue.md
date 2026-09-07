@@ -139,3 +139,14 @@ Origen: `docs/00-deuda.md`, sección "NO VERIFICABLE".
 
 **D6 y D7 no tienen skill de origen.** Se anotan igual para que no desaparezcan, pero ninguna
 revisión los va a volver a levantar sola.
+
+---
+
+## Añadidos el 2026-09-07 (sesión 4)
+
+| # | Punto | Qué haría falta | Comprobado |
+|---|---|---|---|
+| D8 | La migración `users/0009_registro_de_auditoria` está aplicada en producción | Correrla al desplegar. Es un `CreateModel`, reversible, sin datos que migrar | nunca |
+| D9 | `SENTRY_DSN` configurado en Railway y llegando eventos | Crear el proyecto en sentry.io y pegar el DSN en las variables del servicio | nunca |
+| D10 | Un evento real de Sentry llega **sin datos personales** | Provocar un error en producción y leer el evento en el panel. Los filtros están probados con tests, pero solo un evento real confirma la cadena completa | nunca |
+| D11 | `allow_public_preview` activado en Longevity 360 | Admin de producción. Sin esto su catálogo no se ve sin login | nunca |
