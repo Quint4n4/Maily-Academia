@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useProgress } from '../context/ProgressContext';
 import { useSection } from '../context/SectionContext';
 import { isCamsa } from '../theme/camsaTheme';
-import { Card, ProgressBar, Badge } from '../components/ui';
+import { Card, ProgressBar, Badge, CourseThumbnail } from '../components/ui';
 import { SkeletonStatCard, SkeletonCard } from '../components/ui/SkeletonLoader';
 import courseService from '../services/courseService';
 import api from '../services/api';
@@ -162,7 +162,7 @@ const Dashboard = () => {
             <span className={`px-4 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-4 inline-block shadow-sm ${
               isC ? 'bg-[rgba(201,168,76,0.15)] text-[#e6c364] border border-[rgba(201,168,76,0.2)]' : 'bg-primary-container text-on-primary-container'
             }`}>Dashboard Estudiante</span>
-            <h2 className={`text-3xl sm:text-5xl font-extrabold tracking-tight mb-4 ${ isC ? 'text-[#e6c364]' : '' }`}>¡Hola, {user?.firstName || user?.name?.split(' ')[0]}!</h2>
+            <h1 className={`text-3xl sm:text-5xl font-extrabold tracking-tight mb-4 ${ isC ? 'text-[#e6c364]' : '' }`}>¡Hola, {user?.firstName || user?.name?.split(' ')[0]}!</h1>
             <p className={`text-base sm:text-lg opacity-90 leading-relaxed font-medium ${ isC ? 'text-[#d0c5b2]' : '' }`}>
               {coursesInProgress.length > 0
                 ? `Has completado un ${coursesInProgress[0].progress_percent}% de tu curso activo. Tu enfoque en "${coursesInProgress[0].course_title}" está dando frutos — ¡sigue así!`
@@ -319,7 +319,7 @@ const Dashboard = () => {
                     isC ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)] hover:border-[rgba(230,195,100,0.35)]' : 'bg-surface-container-lowest border-outline-variant/20'
                   }`}>
                     <div className="h-40 sm:h-48 overflow-hidden relative">
-                      <img className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={course.title} src={course.thumbnail} />
+                      <CourseThumbnail src={course.thumbnail} alt={course.title} aspect="h-full" className="group-hover:scale-110 transition-transform duration-500" />
                       <span className={`absolute top-4 left-4 text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm ${
                         isC
                           ? 'bg-[#141311] text-[#e6c364] border border-[rgba(230,195,100,0.2)]'
@@ -342,7 +342,7 @@ const Dashboard = () => {
                         <span className={`flex items-center gap-1.5 ${
                           isC
                             ? (!course.price || Number(course.price) === 0) ? 'text-[#c9a84c]' : 'text-[#e6c364]'
-                            : (!course.price || Number(course.price) === 0) ? 'text-green-600' : 'text-stitch-primary'
+                            : (!course.price || Number(course.price) === 0) ? 'text-green-700 dark:text-green-400' : 'text-stitch-primary'
                         }`}>
                           {(!course.price || Number(course.price) === 0) ? 'GRATIS' : `$${Number(course.price).toFixed(2)}`}
                         </span>

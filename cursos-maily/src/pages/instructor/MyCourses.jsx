@@ -253,7 +253,7 @@ const MyCourses = () => {
                     <span className="flex items-center gap-1"><BookOpen className="w-4 h-4" />{c.total_lessons ?? 0}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-sm font-semibold ${(!c.price || Number(c.price) === 0) ? 'text-green-600 dark:text-green-400' : 'text-maily'}`}>
+                    <span className={`text-sm font-semibold ${(!c.price || Number(c.price) === 0) ? 'text-green-700 dark:text-green-400' : 'text-maily'}`}>
                       {(!c.price || Number(c.price) === 0) ? 'Gratis' : `$${Number(c.price).toFixed(2)}`}
                     </span>
                   </div>

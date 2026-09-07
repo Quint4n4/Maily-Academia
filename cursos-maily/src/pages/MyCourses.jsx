@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BookOpen, Play, Clock, Award } from 'lucide-react';
-import { Card, ProgressBar, Badge } from '../components/ui';
+import { Card, ProgressBar, Badge, CourseThumbnail } from '../components/ui';
 import { useProgress } from '../context/ProgressContext';
 import { useSection } from '../context/SectionContext';
 import { isCamsa } from '../theme/camsaTheme';
@@ -121,7 +121,7 @@ const MyCourses = () => {
                       >
                         <Card hover padding={false} className={`overflow-hidden h-full flex flex-col ${ isC ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)] shadow-none' : '' }`}>
                           {course?.thumbnail && (
-                            <img src={course.thumbnail} alt="" className="w-full aspect-video object-cover" />
+                            <CourseThumbnail src={course.thumbnail} alt="" />
                           )}
                           <div className="p-4 flex-1 flex flex-col">
                             <div className="flex items-start justify-between gap-2 mb-2">

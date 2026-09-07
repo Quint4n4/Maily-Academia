@@ -57,6 +57,11 @@ export default {
         "surface-dim": "#dbdad5",
         "on-surface": "#1b1c19",
         "stitch-primary": "#845400",
+        // Color del texto sobre stitch-primary. Faltaba en la paleta, asi que la
+        // clase text-on-primary no generaba nada y el texto caia a negro por
+        // herencia: 3.25:1 sobre el dorado, por debajo del minimo de 4.5.
+        // En blanco da 6.46:1. Medido el 2026-09-03, ver docs/07-auditoria-frontend.md
+        "on-primary": "#ffffff",
         "inverse-surface": "#30312e",
         "inverse-on-surface": "#f2f1ec",
         "on-primary-container": "#704700",

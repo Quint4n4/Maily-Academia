@@ -15,15 +15,50 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f8fafc;
+  /* El fondo tenia variante oscura y el color de texto no, asi que todo lo que
+     no declaraba su color explicitamente heredaba el negro del navegador. Sobre
+     #111827 eso da 1.43:1, muy por debajo del minimo de 4.5. Se veia en el panel
+     del instructor y en el constructor de cursos.
+     Ver docs/07-auditoria-frontend.md, F1 y F1b. */
+  color: #111827;
   min-height: 100vh;
 }
 
 .dark body {
   background-color: #111827;
+  color: #f3f4f6;   /* 15.6:1 sobre el fondo oscuro */
 }
 
 #root {
   min-height: 100vh;
+}
+
+/* El azul de marca (#2563eb) da 2.84:1 sobre el fondo oscuro, por debajo del
+   minimo de 4.5. Hay 56 usos de text-maily sin variante dark:, asi que en vez de
+   parchear cada uno se aclara aqui: #60a5fa da 5.77:1.
+
+   Va en @layer components a proposito: las utilidades de Tailwind (incluido
+   cualquier dark:text-* que un componente ya declare) se generan en @layer
+   utilities, que es posterior, asi que siguen ganando donde existan.
+
+   Solo se toca el color del texto. bg-maily se queda igual: aclararlo empeoraria
+   el contraste del texto blanco que va encima.
+   Ver docs/07-auditoria-frontend.md */
+@layer components {
+  .dark .text-maily {
+    color: #60a5fa;
+  }
+
+  /* NO aclarar aqui text-on-surface, text-on-surface-variant ni text-outline.
+     Se intento el 2026-09-03 y empeoro: esos tokens se usan tanto sobre el fondo
+     oscuro de la pagina como sobre fondos claros fijos (los botones de filtro del
+     catalogo, por ejemplo). Aclararlos arreglaba el primer caso y rompia el
+     segundo: "Principiante" paso de 1.04 a 1.74, igual de ilegible.
+
+     La paleta "Stitch" no tiene tema oscuro: se definio solo para claro y se
+     aplica en ambos. Eso no se arregla con el color del texto, hace falta darle
+     variante oscura tambien a los fondos. Queda anotado en
+     docs/07-auditoria-frontend.md como trabajo aparte. */
 }
 
 /* Custom scrollbar */
