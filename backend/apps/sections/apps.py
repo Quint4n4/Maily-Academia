@@ -31,7 +31,9 @@ class SectionsConfig(AppConfig):
                 'description': 'Academia abierta orientada al área de salud.',
                 'section_type': Section.SectionType.PUBLIC,
                 'require_credentials': False,
-                'allow_public_preview': False,
+                # Decision del 2026-09-03: Longevity y Maily tienen vitrina
+                # publica para captar alumnos; Corporativo CAMSA no, es interno.
+                'allow_public_preview': True,
                 'is_active': True,
             }
             corporate_defaults = {
@@ -43,18 +45,28 @@ class SectionsConfig(AppConfig):
                 'is_active': True,
             }
 
-            Section.objects.update_or_create(
-                slug='maily-academia',
-                defaults=maily_defaults,
-            )
-            longevity_section, _ = Section.objects.update_or_create(
-                slug='longevity-360',
-                defaults=longevity_defaults,
-            )
-            Section.objects.update_or_create(
-                slug='corporativo-camsa',
-                defaults=corporate_defaults,
-            )
+            # `allow_public_preview` y `require_credentials` son POLITICA, no
+            # identidad: se deciden en el admin, no en el codigo. Antes iban en
+            # los defaults de update_or_create, asi que cada deploy revertia lo
+            # que se hubiera configurado. Ahora solo se aplican al crear la
+            # academia por primera vez; despues manda lo que diga la base.
+            politica = ('require_credentials', 'allow_public_preview')
+
+            def crear_o_actualizar(slug, defaults):
+                iniciales = dict(defaults)
+                identidad = {k: v for k, v in defaults.items() if k not in politica}
+                seccion, creada = Section.objects.get_or_create(
+                    slug=slug, defaults=iniciales,
+                )
+                if not creada:
+                    for campo, valor in identidad.items():
+                        setattr(seccion, campo, valor)
+                    seccion.save(update_fields=list(identidad))
+                return seccion
+
+            crear_o_actualizar('maily-academia', maily_defaults)
+            longevity_section = crear_o_actualizar('longevity-360', longevity_defaults)
+            crear_o_actualizar('corporativo-camsa', corporate_defaults)
 
             # Solo asignar cursos cuando se hayan aplicado las migraciones del app `courses`
             if sender.label != 'courses':
