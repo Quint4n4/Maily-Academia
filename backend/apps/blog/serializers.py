@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from apps.utils.limites_de_texto import LimitaTextoLibreMixin
 
 from apps.utils.sanitize import sanitize_html
 from .models import BlogPost
@@ -35,7 +36,7 @@ class BlogPostDetailSerializer(serializers.ModelSerializer):
         return obj.author.get_full_name() or obj.author.username
 
 
-class BlogPostCreateUpdateSerializer(serializers.ModelSerializer):
+class BlogPostCreateUpdateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     class Meta:
         model = BlogPost
         fields = ['id', 'title', 'content', 'excerpt', 'cover_image', 'status', 'published_at']

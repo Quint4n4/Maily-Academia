@@ -1,6 +1,8 @@
 from django.db.models import Count
 from rest_framework import serializers
 
+from apps.utils.limites_de_texto import LimitaTextoLibreMixin
+
 from apps.sections.models import Section
 
 from .models import Category, Course, CourseMaterial, Module, Lesson
@@ -84,7 +86,7 @@ class LessonSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
-class LessonCreateSerializer(serializers.ModelSerializer):
+class LessonCreateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     """Used when creating lessons within a module context."""
 
     video_url = serializers.URLField(required=False, allow_blank=True, default='')
@@ -112,7 +114,7 @@ class ModuleSerializer(serializers.ModelSerializer):
             return None
 
 
-class ModuleCreateSerializer(serializers.ModelSerializer):
+class ModuleCreateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     """Used when creating modules within a course context."""
 
     class Meta:
@@ -212,7 +214,7 @@ class CourseVitrinaSerializer(CourseDetailSerializer):
     modules = ModuleVitrinaSerializer(many=True, read_only=True)
 
 
-class CourseCreateUpdateSerializer(serializers.ModelSerializer):
+class CourseCreateUpdateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     """Serializer for creating / updating a course."""
 
     category_id = serializers.PrimaryKeyRelatedField(
@@ -415,7 +417,7 @@ class CourseMaterialUploadSerializer(serializers.ModelSerializer):
         )
 
 
-class CourseMaterialUpdateSerializer(serializers.ModelSerializer):
+class CourseMaterialUpdateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     """Solo título, descripción y orden para PATCH."""
 
     class Meta:

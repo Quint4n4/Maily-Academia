@@ -151,7 +151,27 @@ No escribe en base de datos. En Railway los logs se rotan.
 La skill es explícita: *"Una bitácora que no se puede consultar por recurso y por actor no responde
 la pregunta que la hace requisito: quién vio este expediente."*
 
-### 3 · Campos de texto sin límite
+### 3 · CERRADO el 2026-09-07 · Campos de texto sin límite
+
+`LimitaTextoLibreMixin` en `apps/utils/limites_de_texto.py` recorre los campos del serializer al
+construirse y pone un tope de **20 000 caracteres** a todo texto libre que no declare uno. Al ser
+automático, un campo nuevo queda protegido sin que nadie se acuerde.
+
+Se aplica en el serializer y no en el modelo **a propósito**: cambiar el modelo pide migración, y
+aquí las corre solo Emanuel (`verificadores.migraciones: solo-emanuel`). Esto protege la vía por la
+que entran los datos —la API— sin tocar el esquema.
+
+Aplicado a 9 serializers de escritura: cursos, módulos, lecciones, materiales, blog, Q&A y
+corporativo.
+
+| Comprobación | Resultado |
+|---|---|
+| 1 MB en la descripción de un curso | **400** — "Este campo no puede superar los 20 000 caracteres" |
+| 2 000 caracteres legítimos | **201** — el límite no estorba |
+
+---
+
+### 3 · (original) Campos de texto sin límite
 
 **Punto 14** — ningún campo de texto es ilimitado.
 
@@ -170,7 +190,23 @@ existe visibilidad de errores en producción: te enteras cuando un usuario avisa
 Consecuencia directa sobre esta auditoría: **el punto 12 (cada fila de la matriz de roles tiene su
 test) y el test de fuga de `aislamiento-de-datos` salen como NO VERIFICABLE**, no como PASA.
 
-### 6 · Datos personales sin `Cache-Control: no-store`
+### 6 · CERRADO el 2026-09-07 · Datos personales sin `Cache-Control: no-store`
+
+`NoGuardarDatosPersonalesMiddleware` marca como no almacenable **toda respuesta a una petición
+autenticada**. La regla es amplia a propósito: si la petición trae credenciales, la respuesta es de
+alguien. Lo público sigue siendo cacheable porque se pide sin autenticación.
+
+Con este volumen de tráfico la caché no compra casi nada, y una fuga de perfil en una computadora
+compartida —alguien pulsa "atrás" y ve el perfil del anterior— cuesta mucho más.
+
+| Comprobación | Resultado |
+|---|---|
+| `GET /api/auth/me/` autenticado | `Cache-Control: no-store, no-cache, must-revalidate, private` |
+| `GET /api/courses/` anónimo | Sin `no-store` — la caché pública sigue viva |
+
+---
+
+### 6 · (original) Datos personales sin `Cache-Control: no-store`
 
 **Punto 18.** `GET /api/users/me/` responde solo con `Vary: origin`. Sin `Cache-Control`, un proxy
 o el propio navegador puede conservar el perfil del usuario.
@@ -179,7 +215,31 @@ o el propio navegador puede conservar el perfil del usuario.
 
 ## P2
 
-### 7 · 403 en vez de 404 sobre recurso ajeno
+### 7 · CORREGIDO el 2026-09-07 · el hallazgo original estaba mal, y había otro peor
+
+**Lo que reporté era un falso positivo.** `/api/users/{id}/` es solo de admin, así que su 403 es
+correcto según la propia regla: *403 = tu rol no puede hacer esta acción*. Y lo comprobé: el 403 es
+**idéntico** exista el usuario o no, así que no se puede enumerar nada.
+
+**Pero buscando el caso real apareció uno peor.** `CertificateDownloadView` buscaba el certificado
+por id y devolvía 403 si era de otra persona
+(`apps/certificates/views.py:129`, antes del arreglo). Ese 403 sí confirmaba la existencia, y
+permitía contar por enumeración de ids cuántos certificados hay emitidos y a cuántas personas.
+Sobre un documento con el nombre completo de alguien, confirmar la existencia ya es información.
+
+Arreglado filtrando el dueño **en la consulta** y no después, que es como ya lo hacía
+`ReservationDetailView`. Así el 404 sale solo, sin fingirlo.
+
+| Comprobación | Resultado |
+|---|---|
+| Certificado ajeno | **404** |
+| Certificado inexistente | **404** — indistinguible del anterior |
+| Certificado propio | 200 |
+| `/api/users/{id}/` existente vs inexistente, como alumno | 403 y 403 — sin fuga |
+
+---
+
+### 7 · (original) 403 en vez de 404 sobre recurso ajeno
 
 **Punto 10.** `GET /api/users/{id}/` de otro usuario devuelve **403**, no 404. Confirma que el
 usuario existe, y permite contar usuarios por enumeración de ids.

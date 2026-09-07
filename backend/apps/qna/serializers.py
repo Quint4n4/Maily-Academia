@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from apps.utils.limites_de_texto import LimitaTextoLibreMixin
 
 from apps.utils.sanitize import sanitize_html
 from .models import QnAQuestion, QnAAnswer
@@ -34,7 +35,7 @@ class QnAQuestionSerializer(serializers.ModelSerializer):
         return obj.user.get_full_name() or obj.user.username
 
 
-class QnAQuestionCreateSerializer(serializers.ModelSerializer):
+class QnAQuestionCreateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     class Meta:
         model = QnAQuestion
         fields = ['id', 'title', 'body']
@@ -44,7 +45,7 @@ class QnAQuestionCreateSerializer(serializers.ModelSerializer):
         return sanitize_html(value)
 
 
-class QnAAnswerCreateSerializer(serializers.ModelSerializer):
+class QnAAnswerCreateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     class Meta:
         model = QnAAnswer
         fields = ['id', 'body']
