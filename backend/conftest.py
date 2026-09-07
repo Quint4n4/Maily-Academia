@@ -13,6 +13,22 @@ from apps.courses.models import Course, Module, Lesson
 from apps.users.models import User
 
 
+@pytest.fixture(autouse=True)
+def _sin_throttling_acumulado():
+    """
+    El login tiene limite de intentos por IP y DRF lo guarda en el cache. Entre
+    tests eso se acumula: un archivo con varios logins empieza a recibir 429 a
+    mitad de camino y los tests fallan en conjunto aunque pasen aislados.
+
+    Se limpia el cache antes de cada test. El limite en si se prueba aparte, en
+    el test que le corresponde.
+    """
+    from django.core.cache import cache
+    cache.clear()
+    yield
+    cache.clear()
+
+
 @pytest.fixture
 def api():
     return APIClient()

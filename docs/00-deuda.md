@@ -110,7 +110,27 @@ volvió a mirar que sirviera las tres academias.
 
 ## P1
 
-### 1 · Cerrar sesión no cierra la sesión
+### 1 · CERRADO el 2026-09-07 · Cerrar sesión ya cierra la sesión
+
+`POST /api/auth/logout/` revoca el refresh, comprueba que el token pertenezca a quien lo presenta
+—sin eso, cualquier usuario autenticado podría revocar la sesión de otro con solo tener su
+refresh— y el frontend lo llama antes de limpiar el navegador.
+
+**Verificado provocándolo**, que es lo que exige el punto 3 de `security-checklist`:
+
+| Comprobación | Resultado |
+|---|---|
+| El refresh antes de cerrar sesión | 200 |
+| El mismo refresh después de cerrar sesión desde la interfaz | **401 "El token está en lista negra"** |
+| Cerrar sesión con el backend apagado | La sesión local se cierra igual, sin colgarse |
+| Un usuario intentando revocar el refresh de otro | La sesión de la víctima sigue viva |
+| Cerrar sesión dos veces | No revienta |
+
+6 tests en `apps/users/tests/test_revocacion_de_sesion.py`. Los 6 fallaban antes.
+
+---
+
+### 1 · (original) Cerrar sesión no cierra la sesión
 
 **Punto 3 de `security-checklist`** — la sesión se puede revocar de verdad.
 

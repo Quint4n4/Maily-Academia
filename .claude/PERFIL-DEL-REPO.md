@@ -79,12 +79,18 @@ en Longevity, recibe 200 y los cursos. Ver excepción E1.
 | `backend.envoltura_respuesta` | `drf-plano` | `backend/config/settings.py:150`; sin envoltura propia salvo dos vistas de analytics |
 | `backend.paginacion` | `drf: count/next/previous` — `PAGE_SIZE: 20` | `backend/config/settings.py:156-157` |
 | `backend.autenticacion` | `jwt` | `backend/config/settings.py:150-152` (simplejwt) |
-| `backend.revocacion_de_sesion` | `si: rotación + blacklist` — **pero no hay logout** | Ver nota |
+| `backend.revocacion_de_sesion` | `si: logout + rotación + blacklist` | Verificado provocándolo el 2026-09-07 |
 | `backend.borrado` | `fisico` | Ningún modelo tiene `is_deleted` ni `deleted_at` |
 | `backend.bitacora_auditoria` | `AuditLogMiddleware` — **no persiste** | `backend/apps/users/middleware.py:25` |
 | `backend.tareas_asincronas` | `ninguna — en el hilo de la petición` | No hay Celery en el repo |
 
 ### `revocacion_de_sesion`: rellenado provocando el efecto, no leyendo `settings.py`
+
+> **Actualizado el 2026-09-07.** Ya existe `POST /api/auth/logout/`: revoca el refresh, comprueba
+> que el token sea de quien lo presenta, y el frontend lo llama antes de limpiar el navegador.
+> Verificado cerrando sesión desde la interfaz: el refresh pasa de 200 a **401 "El token está en
+> lista negra"**. Lo de abajo es el estado anterior, que se conserva porque explica por qué este
+> campo no se rellena leyendo la configuración.
 
 `ROTATE_REFRESH_TOKENS` y `BLACKLIST_AFTER_ROTATION` están en `True`
 (`backend/config/settings.py:178-179`) y `token_blacklist` sí está instalado (`:43`).
