@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-09-07 · Sesion 6: capa de selectores
+
+`apps/courses/selectors.py` es la puerta unica por la que se lee un curso. Migrados el
+listado, el detalle, el catalogo por academia, los recomendados, la inscripcion y el video.
+Los 46 tests que ya existian siguieron pasando en cada paso: esa era la red que hacia
+posible el refactor, y por eso esta sesion iba al final.
+
+**Encontro tres fugas que el P0 no cubria**, todas de la misma clase: el filtro estaba en
+unas vistas y faltaba en las de al lado.
+
+- `EnrollView`: un alumno se inscribia en un curso de otra academia sabiendo el id (201).
+- `RecommendedCoursesView`: recomendaba cursos de academias cerradas; la academia solo se
+  acotaba si el cliente mandaba ?section=, o sea, la decidia el cliente.
+- `CourseProgressView`: un id inexistente daba 500.
+
+Es exactamente lo que decia `aislamiento-de-datos`: un repo sin capa de selectores filtra
+mal por diseno, no por descuido. Cerrar el P0 en la lectura no bastaba.
+
 ## 2026-09-07 · Sesion 7: video firmado
 
 La URL de video ya no se construye en el navegador: se pide a

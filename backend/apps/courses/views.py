@@ -2,6 +2,7 @@ import os
 import tempfile
 from django.conf import settings as django_settings
 from django.db.models import Count, Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, status
@@ -10,11 +11,16 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.sections.models import Section, SectionMembership
+from apps.sections.models import SectionMembership
 from apps.users.models import SurveyResponse
 from apps.users.permissions import IsAdmin, IsAdminOrInstructor, IsInstructorOwner
 
 from .models import Category, Course, CourseMaterial, Module, Lesson
+from .selectors import (
+    cursos_visibles_para,
+    leccion_accesible_o_404,
+    puede_ver_el_contenido,
+)
 from .video import VIGENCIA_POR_DEFECTO, VideoNoConfigurado, url_de_reproduccion
 from .permissions import CanDownloadCourseMaterial, CanListCourseMaterials, CanManageCourseMaterial
 from apps.progress.activity_logger import log_activity
@@ -39,72 +45,6 @@ from .serializers import (
 # ---------------------------------------------------------------------------
 # Courses
 # ---------------------------------------------------------------------------
-
-def secciones_visibles_para(user):
-    """
-    AMBITO>> Academias cuyo catalogo puede ver este usuario.
-
-    Es la unica fuente de verdad de "que academias veo". Antes no existia: la
-    lista y el detalle de cursos filtraban solo por `status`, asi que un usuario
-    sin cuenta obtenia el catalogo, el temario y las URLs de video de academias
-    con `require_credentials=True`. Es el P0 de docs/00-deuda.md.
-
-    - Anonimo: solo las que tienen vitrina publica (`allow_public_preview`).
-    - Autenticado: las de vitrina, las de tipo `public` --excepcion E1 del
-      PERFIL-DEL-REPO, declarada a proposito-- y aquellas donde tiene una
-      membresia activa y no expirada.
-    - Admin: todas.
-
-    El ambito NUNCA viene del cliente: sale de la tabla de membresias
-    (`aislamiento.origen: tabla-de-membresias`).
-    """
-    activas = Section.objects.filter(is_active=True)
-
-    if not user or not user.is_authenticated:
-        return activas.filter(allow_public_preview=True)
-
-    if getattr(user, 'role', None) == 'admin' or user.is_superuser:
-        return activas
-
-    ahora = timezone.now()
-    con_membresia = (
-        SectionMembership.objects
-        .filter(user=user, is_active=True)
-        .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=ahora))
-        .values_list('section_id', flat=True)
-    )
-    return activas.filter(
-        Q(allow_public_preview=True)
-        | Q(section_type=Section.SectionType.PUBLIC)
-        | Q(id__in=con_membresia)
-    )
-
-
-def puede_ver_el_contenido(user, course):
-    """
-    AMBITO>> Si este usuario tiene derecho al contenido del curso, no solo a su ficha.
-
-    Ver la vitrina y ver el contenido son cosas distintas: cualquiera puede leer
-    el temario de un curso con vitrina, pero las URLs de video solo salen para
-    quien tiene acceso real.
-    """
-    if not user or not user.is_authenticated:
-        return False
-    if getattr(user, 'role', None) == 'admin' or user.is_superuser:
-        return True
-    if course.instructor_id == user.id:
-        return True
-    if course.section_id is None:
-        return False
-
-    ahora = timezone.now()
-    return (
-        SectionMembership.objects
-        .filter(user=user, section_id=course.section_id, is_active=True)
-        .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=ahora))
-        .exists()
-    )
-
 
 def _instructor_section_ids(user):
     """Section IDs where the user has SectionMembership with role=instructor (for course create/list filter)."""
@@ -137,27 +77,10 @@ class CourseListCreateView(generics.ListCreateAPIView):
         return CourseListSerializer
 
     def get_queryset(self):
-        qs = Course.objects.select_related('instructor', 'category').annotate(
-            total_lessons=Count('modules__lessons'),
-            students_count=Count('enrollments'),
-            materials_count=Count('materials', distinct=True),
-        )
-        user = self.request.user
-        role = getattr(user, 'role', None)
-
-        # AMBITO>> el catalogo se acota a las academias que este usuario puede ver.
-        if role != 'admin' and not user.is_superuser:
-            visibles = secciones_visibles_para(user)
-            if role == 'instructor':
-                # El instructor ve ademas sus propios cursos, publicados o no.
-                propias = _instructor_section_ids(user)
-                qs = qs.filter(
-                    Q(status='published', section__in=visibles)
-                    | (Q(instructor=user) & (Q(section__isnull=True) | Q(section_id__in=propias)))
-                )
-            else:
-                qs = qs.filter(status='published', section__in=visibles)
-        # admin/superuser — no se filtra aquí; DjangoFilterBackend aplica el status
+        # AMBITO>> el filtro de academia vive en el selector, no aqui. Antes esta
+        # vista traia su propia copia de la regla, y la de al lado --EnrollView--
+        # no la traia: por ahi se colaba una inscripcion en una academia ajena.
+        qs = cursos_visibles_para(self.request.user, con_conteos=True)
 
         # Filtros adicionales por categoría y tags (Fase 3)
         category_slug = self.request.query_params.get('category')
@@ -170,12 +93,10 @@ class CourseListCreateView(generics.ListCreateAPIView):
             if tags:
                 qs = qs.filter(tags__contains=tags)
 
-        # Los annotate() de arriba fuerzan un GROUP BY, y Django descarta el
-        # Meta.ordering del modelo cuando agrupa. Sin ORDER BY explicito
-        # PostgreSQL devuelve las filas en orden arbitrario y la paginacion
-        # deja de ser determinista: un curso puede salir en dos paginas o en
-        # ninguna. Se reafirma aqui el orden declarado en Course.Meta.
-        return qs.order_by('-created_at')
+        # El orden lo fija el selector: los annotate() fuerzan un GROUP BY y
+        # Django descarta el Meta.ordering al agrupar, con lo que la paginacion
+        # deja de ser determinista.
+        return qs
 
     filterset_fields = ['level', 'status', 'instructor']
     search_fields = ['title', 'description']
@@ -219,9 +140,14 @@ class RecommendedCoursesView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        base_qs = Course.objects.filter(status=Course.Status.PUBLISHED)
+        # AMBITO>> se parte del selector. Antes se partia de TODOS los cursos
+        # publicados y la academia solo se acotaba si el cliente mandaba
+        # ?section=..., asi que sin ese parametro se recomendaban cursos de
+        # academias a las que el alumno no tiene acceso.
+        base_qs = cursos_visibles_para(user).filter(status=Course.Status.PUBLISHED)
 
-        # Filtrar por sección si se proporciona (evita mezclar cursos de academias distintas)
+        # El cliente puede ELEGIR una de sus academias; no puede ampliar el
+        # conjunto, porque el selector ya lo acoto.
         section_slug = self.request.query_params.get('section')
         if section_slug:
             base_qs = base_qs.filter(section__slug=section_slug)
@@ -282,32 +208,21 @@ class CourseDetailView(generics.RetrieveUpdateDestroyAPIView):
         return self._curso
 
     def get_queryset(self):
-        qs = Course.objects.select_related('instructor', 'category').prefetch_related(
-            'modules__lessons', 'modules__quiz',
-        ).annotate(
-            total_lessons=Count('modules__lessons'),
-            students_count=Count('enrollments'),
-            materials_count=Count('materials', distinct=True),
-        )
         user = self.request.user
         role = getattr(user, 'role', None)
 
         if self.request.method not in ('GET', 'HEAD', 'OPTIONS') and role == 'instructor':
-            section_ids = _instructor_section_ids(user)
-            return qs.filter(
-                Q(instructor=user) & (Q(section__isnull=True) | Q(section_id__in=section_ids))
+            # Escritura: solo sus propios cursos, y solo en sus academias.
+            return Course.objects.filter(
+                Q(instructor=user) & (Q(section__isnull=True) | Q(section_id__in=_instructor_section_ids(user)))
             )
 
-        # AMBITO>> en lectura, el curso tiene que estar en una academia visible.
-        # Se filtra ANTES de buscar por id, asi el 404 sale solo: un 403 confirmaria
-        # que el curso existe y permitiria contarlos por enumeracion de ids.
-        if self.request.method in ('GET', 'HEAD', 'OPTIONS') and role != 'admin' and not user.is_superuser:
-            visibles = secciones_visibles_para(user)
-            qs = qs.filter(
-                Q(status='published', section__in=visibles)
-                | (Q(instructor=user.id) if user.is_authenticated else Q(pk__in=[]))
-            )
-        return qs
+        # AMBITO>> lectura: el selector ya filtra por academia ANTES de buscar por
+        # id, asi que el 404 sale solo. Un 403 confirmaria que el curso existe y
+        # permitiria contarlos por enumeracion.
+        return cursos_visibles_para(user, con_conteos=True).prefetch_related(
+            'modules__lessons', 'modules__quiz',
+        )
 
     def perform_update(self, serializer):
         user = self.request.user
@@ -421,18 +336,11 @@ class LessonVideoView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
-        leccion = (
-            Lesson.objects
-            .select_related('module__course__section', 'module__course__instructor')
-            .filter(pk=pk)
-            .first()
-        )
-        # 404 y no 403: un 403 confirmaria que la leccion existe.
-        if leccion is None:
-            return Response({'detail': 'Lección no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
-
-        curso = leccion.module.course
-        if not puede_ver_el_contenido(request.user, curso):
+        # AMBITO>> el selector decide el acceso y lanza 404 si no lo hay. Un 403
+        # confirmaria que la leccion existe.
+        try:
+            leccion = leccion_accesible_o_404(request.user, pk)
+        except Http404:
             return Response({'detail': 'Lección no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
 
         try:

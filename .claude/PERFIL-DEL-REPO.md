@@ -75,7 +75,7 @@ en Longevity, recibe 200 y los cursos. Ver excepción E1.
 |---|---|---|
 | `backend.framework` | Django 5.1 + DRF 3.15 | `backend/requirements.txt:1-2` |
 | `backend.forma_de_vistas` | `apiview-y-path` | 92 usos de `generics.`/`APIView`, 0 ViewSets ni routers |
-| `backend.capa_de_servicios` | `ninguna` | No existe `services.py` ni `selectors.py` en ninguna app; la lógica vive en las vistas |
+| `backend.capa_de_servicios` | `parcial: selectors en apps/courses` | `apps/courses/selectors.py` centraliza la lectura de cursos; el resto de apps sigue en las vistas |
 | `backend.envoltura_respuesta` | `drf-plano` | `backend/config/settings.py:150`; sin envoltura propia salvo dos vistas de analytics |
 | `backend.paginacion` | `drf: count/next/previous` — `PAGE_SIZE: 20` | `backend/config/settings.py:156-157` |
 | `backend.autenticacion` | `jwt` | `backend/config/settings.py:150-152` (simplejwt) |
