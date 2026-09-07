@@ -65,7 +65,7 @@ class SectionPreviewCoursesView(generics.ListAPIView):
             total_lessons=Count('modules__lessons'),
             students_count=Count('enrollments'),
         )
-        return qs
+        return qs.order_by('-created_at')
 
 
 class SectionCoursesView(generics.ListAPIView):
@@ -113,7 +113,15 @@ class SectionCoursesView(generics.ListAPIView):
             if tags:
                 qs = qs.filter(tags__contains=tags)
 
-        return qs
+        # Igual que en CourseListCreateView: el annotate() descarta el
+        # Meta.ordering, asi que el orden se reafirma explicitamente.
+        return qs.order_by('-created_at')
+
+    # El catalogo viene paginado, asi que buscar y filtrar tiene que ocurrir
+    # en el servidor: hacerlo en el navegador solo miraria la pagina cargada.
+    filterset_fields = ['level']
+    search_fields = ['title', 'description']
+    ordering_fields = ['created_at', 'title', 'rating']
 
 
 class MySectionsView(generics.ListAPIView):
