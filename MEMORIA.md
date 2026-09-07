@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-09-07 · Sesion 2: cerrar sesion de verdad
+
+`POST /api/auth/logout/` no existia. Ahora revoca el refresh y comprueba que sea de quien
+lo presenta. El frontend lo llama antes de limpiar el navegador, y si el servidor no
+responde cierra la sesion local igual: un logout que se cuelga deja al usuario dentro de
+la sesion que acaba de pedir cerrar, justo en una computadora prestada.
+
+Verificado desde la interfaz: el refresh pasa de 200 a 401 "El token esta en lista negra".
+
+De paso salio un problema de infraestructura de tests: el limite de intentos de login se
+acumulaba entre tests y los hacia fallar en conjunto aunque pasaran aislados. El conftest
+limpia el cache antes de cada test.
+
 ## 2026-09-07 · Fusion de las tres ramas y cierre del P0
 
 Las tres ramas entraron a `main` con `--no-ff`. Un solo conflicto, en

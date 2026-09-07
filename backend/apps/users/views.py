@@ -11,6 +11,8 @@ from rest_framework import generics, parsers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .models import PasswordResetToken, Profile, SurveyResponse
@@ -33,6 +35,62 @@ User = get_user_model()
 # ---------------------------------------------------------------------------
 # Auth endpoints (public)
 # ---------------------------------------------------------------------------
+
+class LogoutView(APIView):
+    """
+    POST /api/auth/logout/ — cierra la sesion de verdad.
+
+    Hasta el 2026-09-07 este endpoint no existia. `ROTATE_REFRESH_TOKENS` y
+    `BLACKLIST_AFTER_ROTATION` estaban en True y `token_blacklist` instalado, asi
+    que leyendo `settings.py` parecia que habia revocacion, pero no habia forma
+    de invocarla: cerrar sesion solo limpiaba el almacenamiento del navegador y
+    el refresh token seguia valido en el servidor durante 7 dias.
+
+    Punto 3 de `security-checklist`. Ver docs/00-deuda.md.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        crudo = request.data.get('refresh')
+        if not crudo:
+            return Response(
+                {'detail': 'Falta el token de refresco.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            token = RefreshToken(crudo)
+        except TokenError:
+            # Token invalido, caducado o ya revocado. No se distingue el motivo a
+            # proposito: decirlo confirmaria si un token dado existe o no.
+            return Response(
+                {'detail': 'El token de refresco no es valido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # El token tiene que ser de quien lo presenta. Sin esta comprobacion,
+        # cualquier usuario autenticado podria revocar la sesion de otro con solo
+        # tener su refresh.
+        if str(token.get('user_id')) != str(request.user.id):
+            return Response(
+                {'detail': 'El token de refresco no es valido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            token.blacklist()
+        except AttributeError:
+            # Solo ocurre si `token_blacklist` no esta en INSTALLED_APPS. Es un
+            # fallo de configuracion, no del usuario: sin la app instalada no hay
+            # revocacion posible y decir 205 seria mentir.
+            return Response(
+                {'detail': 'La revocacion de sesiones no esta habilitada en el servidor.'},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+
+        return Response(status=status.HTTP_205_RESET_CONTENT)
+
 
 class SecureLoginView(TokenObtainPairView):
     """Login con rate limiting y bloqueo de cuenta por intentos fallidos."""
