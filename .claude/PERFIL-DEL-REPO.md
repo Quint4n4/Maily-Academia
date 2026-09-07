@@ -231,7 +231,7 @@ que anida `modules → lessons → video_url`.
 |---|---|---|
 | Proveedores declarados en el modelo | `youtube`, `bunny`, `cloudflare`, `mux`, `s3` | `backend/apps/courses/models.py:153-158` |
 | Proveedor en uso hoy | `youtube` (videos públicos) | Confirmado por Emanuel el 2026-09-03 |
-| Protección de la URL de video | **ninguna** | `cursos-maily/src/components/VideoPreview.jsx:16` — para todo proveedor que no sea YouTube usa la URL directa como `src` del iframe, sin token ni firma |
+| Protección de la URL de video | Firmada en el servidor para Bunny; YouTube tal cual por ser público | `backend/apps/courses/video.py` |
 
 > **Esta última fila es la que importa cuando lleguen los videos reales.** Hoy no hay daño porque
 > los videos son públicos en YouTube. Un video de pago servido por URL directa sin firmar es

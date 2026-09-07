@@ -28,6 +28,15 @@ if os.environ.get('DATABASE_URL'):
             CSRF_TRUSTED_ORIGINS = list(CSRF_TRUSTED_ORIGINS) + [origin]
 
 # ---------------------------------------------------------------------------
+# Video
+# ---------------------------------------------------------------------------
+# Bunny Stream. Sin estas variables el proveedor `bunny` no se puede usar y la
+# API lo dice con un error claro, en vez de devolver una URL que no reproduce.
+# La clave de firma NUNCA se envia al navegador: ver apps/courses/video.py
+BUNNY_STREAM_LIBRARY_ID = config('BUNNY_STREAM_LIBRARY_ID', default='')
+BUNNY_STREAM_TOKEN_KEY = config('BUNNY_STREAM_TOKEN_KEY', default='')
+
+# ---------------------------------------------------------------------------
 # Monitoreo de errores
 # ---------------------------------------------------------------------------
 # Se activa solo si hay SENTRY_DSN en el entorno. Los filtros que quitan datos

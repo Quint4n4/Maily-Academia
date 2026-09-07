@@ -268,7 +268,51 @@ centralice el filtro de academia. No las nueve apps de golpe.
 
 ---
 
-## Sesión 7 · Alojar los videos reales
+## Sesión 7 · HECHA el 2026-09-07 · Alojar los videos reales
+
+**Lo que quedó listo, probado con 13 tests:**
+
+- `apps/courses/video.py` firma la URL de Bunny en el servidor:
+  `SHA256_HEX(clave + video_id + expires)`, con `expires` en segundos UNIX y vigencia de 10
+  minutos. El formato se verificó contra la documentación de Bunny el 2026-09-07, y un test lo
+  recalcula a mano: si alguien cambia el orden de concatenación, Bunny devolvería 403 en producción
+  y el test lo dice antes.
+- `GET /api/courses/lessons/{id}/video/` entrega la URL **solo a quien tiene acceso al curso**,
+  usando la misma función que el detalle del curso para que no puedan divergir. Sin acceso: 404.
+  Anónimo: 401.
+- `VideoPreview` pide la URL al servidor en lugar de construirla, y la **renueva sola un minuto
+  antes de que caduque** para que no se corte a mitad de la lección.
+- YouTube se devuelve tal cual: sus videos son públicos y firmarlos no aporta nada.
+- Un proveedor sin firma implementada (`mux`, `cloudflare`, `s3`) devuelve un error claro en vez de
+  una URL que no reproduciría.
+
+| Criterio | Resultado |
+|---|---|
+| Alumno sin acceso pide la URL | **404**, sin URL |
+| Anónimo | **401** |
+| Lección ajena vs inexistente | Mismo 404 |
+| Alumno con acceso | 200 con `token=` y `expires=` |
+| La clave de firma en el bundle | **No aparece** |
+| YouTube sigue reproduciendo | Sí, sin cambios |
+| Sin credenciales de Bunny | 501 con el motivo, no una URL rota |
+
+**Lo que no pude hacer y te toca:**
+
+1. Crear la cuenta en bunny.net y la librería de Stream — no puedo crear cuentas.
+2. Activar **Embed View Token Authentication** en la librería.
+3. Poner `BUNNY_STREAM_LIBRARY_ID` y `BUNNY_STREAM_TOKEN_KEY` en Railway.
+4. Subir un video real y cambiar el `video_provider` de esa lección a `bunny`, con el id del video
+   en `video_url`.
+
+Hasta el paso 3, todo sigue funcionando con YouTube exactamente como hoy.
+
+**Y un matiz que conviene entender antes de prometérselo al cliente:** una URL firmada **no impide
+compartir el video durante su ventana de validez**. Impide el acceso permanente y la indexación.
+Lo otro es DRM, cuesta 99 USD/mes en Bunny, y casi nunca vale la pena.
+
+---
+
+## Sesión 7 · (original) Alojar los videos reales
 
 **Rama:** `feat/video-bunny` · **Antes de que lleguen los videos, no después**
 

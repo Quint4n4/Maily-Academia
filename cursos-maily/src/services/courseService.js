@@ -17,6 +17,19 @@ export const courseService = {
     return data;
   },
 
+  /**
+   * URL de reproduccion de una leccion.
+   *
+   * Se pide al servidor en vez de construirla en el navegador: para los
+   * proveedores de pago la URL va firmada, y la clave de firma no puede salir
+   * del backend. El servidor comprueba ademas que este usuario tenga acceso al
+   * curso antes de entregarla.
+   */
+  async urlDeVideo(lessonId) {
+    const { data } = await api.get(`/courses/lessons/${lessonId}/video/`);
+    return data;
+  },
+
   async getById(id) {
     const { data } = await api.get(`/courses/${id}/`);
     return data;

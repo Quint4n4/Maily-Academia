@@ -18,4 +18,5 @@ urlpatterns = [
     path('modules/<int:module_id>/lessons/', views.LessonCreateView.as_view(), name='lesson-create'),
     path('modules/<int:module_id>/lessons/reorder/', views.reorder_lessons, name='lesson-reorder'),
     path('lessons/<int:pk>/', views.LessonDetailView.as_view(), name='lesson-detail'),
+    path('lessons/<int:pk>/video/', views.LessonVideoView.as_view(), name='lesson-video'),
 ]

@@ -247,7 +247,7 @@ const CourseView = () => {
                 </div>
               ) : !isEnrolled && firstLesson ? (
                 <div className="rounded-2xl overflow-hidden shadow-2xl aspect-video ring-2 ring-white/20">
-                  <VideoPreview url={firstLesson.video_url} provider={firstLesson.video_provider} />
+                  <VideoPreview lessonId={firstLesson.id} url={firstLesson.video_url} provider={firstLesson.video_provider} />
                 </div>
               ) : null}
             </div>
