@@ -5,6 +5,49 @@
 
 ---
 
+## 2026-09-15 · DESPLEGADO a produccion
+
+Las siete sesiones de correccion estan en produccion y verificadas. Lo que cambio, medido
+contra la API publica:
+
+| | antes | ahora |
+|---|---|---|
+| Cursos visibles a un anonimo | 26, de las tres academias | 22, solo de las que tienen vitrina |
+| Corporativo CAMSA a un anonimo | 4 cursos | **0** |
+| POST /api/auth/logout/ | 404 | 401 (existe y revoca) |
+| Ficha publica de un curso | traia las URLs de video | temario completo, **0 video_url** |
+
+### Como se desplego, y los tres tropiezos
+
+**El repo local no tenia remoto.** Se habia creado con `git init` el 2026-09-02 sobre una
+copia de la carpeta, asi que su historia no tenia ancestro comun con la de
+`Quint4n4/Maily-Academia`, que es de donde despliega Railway. Se unieron con un merge
+`--allow-unrelated-histories` en vez de forzar el push: los 20 commits de febrero y marzo
+siguen ahi. **El repo local ya quedo conectado a `origin/main`**, asi que esto no se
+repite.
+
+**El push fallo la primera vez.** `gh` tenia dos cuentas y estaba activa
+`EmanuelRealGamboa`, que no tiene permiso de escritura en el repo. Se cambio a `Quint4n4`
+para el push y se restauro la cuenta activa despues.
+
+**El primer despliegue del backend fallo en el healthcheck.** Build y deploy pasaron, la
+migracion 0009 se aplico --la tabla existe-- y aun asi el servicio no entro a servir. La
+causa: `healthcheckPath` apuntaba a `/admin/`, que responde 302, y `SECURE_SSL_REDIRECT`
+convertia ese 302 en un 301 hacia el dominio publico, que desde la red interna de Railway
+no resuelve.
+
+Se arreglo de dos formas: `SECURE_SSL_REDIRECT=False` como variable, y el healthcheck
+pasa a `/api/sections/`, que responde 200 sin redirigir y de paso comprueba que la base
+responde. **Railway hizo lo correcto**: se nego a promover un contenedor que no respondia
+y dejo el viejo sirviendo, asi que el sitio nunca se cayo.
+
+### Un cambio que esta en produccion y no en el repo
+
+`allow_public_preview` de Longevity 360 se activo **con un UPDATE directo a la base**, a
+peticion de Emanuel. No paso por la API, asi que **no quedo en la bitacora de auditoria**.
+Si algun dia se restaura un backup anterior al 2026-09-15, esa casilla vuelve a cero y el
+catalogo de Longevity desaparece sin que nada lo explique.
+
 ## 2026-09-07 · Sesion 6: capa de selectores
 
 `apps/courses/selectors.py` es la puerta unica por la que se lee un curso. Migrados el

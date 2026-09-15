@@ -8,7 +8,31 @@
 
 ---
 
-## Primer despliegue tras las sesiones de corrección — preparado el 2026-09-15
+## Primer despliegue: HECHO el 2026-09-15
+
+Desplegado y verificado. Lo que se aprendió, para el siguiente:
+
+- **El despliegue lo dispara `git push` a `main` de `Quint4n4/Maily-Academia`**, no
+  `railway up`. Los dos servicios se despliegan a la vez: no hay forma de hacer primero el
+  backend y comprobar, como decía la guía de abajo. Quedó un rato con frontend nuevo y
+  backend viejo, y funcionó por cómo están escritos los degradados, no por diseño.
+- **La migración corre sola**: `start.sh` ejecuta `migrate --noinput` al arrancar.
+- **El healthcheck no debe depender de una redirección.** Ver la entrada del 2026-09-15 en
+  `MEMORIA.md`.
+- **`gh` tiene dos cuentas.** La que puede escribir en el repo es `Quint4n4`.
+
+### Pendientes tras este despliegue
+
+| # | Qué | Estado |
+|---|---|---|
+| — | `SENTRY_DSN` en Railway | **abierto** — sentry.io estaba caído el día del despliegue |
+| — | Un evento real de Sentry llega sin datos personales | abierto, depende del anterior |
+| — | Cuenta de Bunny Stream y sus dos variables | abierto, antes de subir videos reales |
+| — | `SECURE_SSL_REDIRECT` activado correctamente | abierto. Railway ya fuerza HTTPS en su proxy, así que no es urgente; si se activa, hay que excluir la ruta del healthcheck |
+
+---
+
+## Guía original (preparada antes del despliegue)
 
 `main` quedó listo: **29 commits, 55 tests en verde, frontend compilando**. Producción sigue con el
 código del 1 de septiembre, así que este despliegue lleva siete sesiones de cambios juntas.
