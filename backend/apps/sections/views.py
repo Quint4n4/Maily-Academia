@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from apps.courses.models import Course
+from apps.courses.selectors import cursos_visibles_para
 from apps.courses.serializers import CourseListSerializer
 from apps.users.permissions import IsAdmin, IsSuperAdmin
 
@@ -86,21 +87,10 @@ class SectionCoursesView(generics.ListAPIView):
         if section is None:
             section = get_object_or_404(Section, slug=self.kwargs['slug'], is_active=True)
 
-        qs = Course.objects.filter(section=section).select_related(
-            'instructor',
-            'category',
-        ).annotate(
-            total_lessons=Count('modules__lessons'),
-            students_count=Count('enrollments'),
-        )
-
-        user = self.request.user
-        if user.role == 'student':
-            qs = qs.filter(status='published')
-        elif user.role == 'instructor':
-            from django.db.models import Q
-
-            qs = qs.filter(Q(status='published') | Q(instructor=user))
+        # AMBITO>> se parte del selector y se acota a esta academia. Antes esta
+        # vista traia su propia copia de la regla de visibilidad; dos copias de
+        # la misma regla acaban divergiendo, y la que gana es la mas laxa.
+        qs = cursos_visibles_para(self.request.user, con_conteos=True).filter(section=section)
 
         # Filtros adicionales por categoría y tags (Fase 3)
         category_slug = self.request.query_params.get('category')
@@ -113,9 +103,8 @@ class SectionCoursesView(generics.ListAPIView):
             if tags:
                 qs = qs.filter(tags__contains=tags)
 
-        # Igual que en CourseListCreateView: el annotate() descarta el
-        # Meta.ordering, asi que el orden se reafirma explicitamente.
-        return qs.order_by('-created_at')
+        # El orden lo fija el selector.
+        return qs
 
     # El catalogo viene paginado, asi que buscar y filtrar tiene que ocurrir
     # en el servidor: hacerlo en el navegador solo miraria la pagina cargada.

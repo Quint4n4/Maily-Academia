@@ -129,15 +129,15 @@ Origen: `docs/00-deuda.md`, sección "NO VERIFICABLE".
 
 | # | Punto | Skill de origen | Qué haría falta | Comprobado |
 |---|---|---|---|---|
-| D1 | Cada fila de la matriz de roles tiene su test | `security-checklist` #12 | Un `docs/02-contrato.md` con la matriz, y tests en el backend | nunca |
-| D2 | El test de fuga entre academias existe y falla si se rompe el filtro | `aislamiento-de-datos` | `verificadores.tests_backend` distinto de `ninguno` | nunca |
-| D3 | Un archivo no es lo que dice su extensión | `security-checklist` #16 | Probar subida de un ejecutable renombrado a `.jpg` sin escribir en la cuenta de Cloudinary de producción | nunca |
-| D4 | Los datos sensibles no aparecen en logs ni notificaciones | `security-checklist` #23, #25 | Provocar errores y notificaciones reales y leer la salida | nunca |
-| D5 | La aplicación no arranca sin sus secretos | `security-checklist` #19 | Quitar `SECRET_KEY` en Railway y ver si arranca con un valor por defecto | nunca |
-| D6 | La restauración del backup de Railway funciona | — *(punto sin skill de origen)* | Restaurar un backup en una base vacía y comprobar los datos | nunca |
-| D7 | El `CLOUDINARY_URL` de producción no es el mismo que el del `.env` local | — *(punto sin skill de origen)* | Comparar el valor en el panel de Railway con `backend/.env` | nunca |
+| D23 | Cada fila de la matriz de roles tiene su test | `security-checklist` #12 | Un `docs/02-contrato.md` con la matriz, y tests en el backend | nunca |
+| D24 | El test de fuga entre academias existe y falla si se rompe el filtro | `aislamiento-de-datos` | `verificadores.tests_backend` distinto de `ninguno` | nunca |
+| D25 | Un archivo no es lo que dice su extensión | `security-checklist` #16 | Probar subida de un ejecutable renombrado a `.jpg` sin escribir en la cuenta de Cloudinary de producción | nunca |
+| D26 | Los datos sensibles no aparecen en logs ni notificaciones | `security-checklist` #23, #25 | Provocar errores y notificaciones reales y leer la salida | nunca |
+| D27 | La aplicación no arranca sin sus secretos | `security-checklist` #19 | Quitar `SECRET_KEY` en Railway y ver si arranca con un valor por defecto | nunca |
+| D28 | La restauración del backup de Railway funciona | — *(punto sin skill de origen)* | Restaurar un backup en una base vacía y comprobar los datos | nunca |
+| D29 | El `CLOUDINARY_URL` de producción no es el mismo que el del `.env` local | — *(punto sin skill de origen)* | Comparar el valor en el panel de Railway con `backend/.env` | nunca |
 
-**D6 y D7 no tienen skill de origen.** Se anotan igual para que no desaparezcan, pero ninguna
+**Los dos últimos de esa tabla no tienen skill de origen.** Se anotan igual para que no desaparezcan, pero ninguna
 revisión los va a volver a levantar sola.
 
 ---
@@ -146,10 +146,10 @@ revisión los va a volver a levantar sola.
 
 | # | Punto | Qué haría falta | Comprobado |
 |---|---|---|---|
-| D8 | La migración `users/0009_registro_de_auditoria` está aplicada en producción | Correrla al desplegar. Es un `CreateModel`, reversible, sin datos que migrar | nunca |
-| D9 | `SENTRY_DSN` configurado en Railway y llegando eventos | Crear el proyecto en sentry.io y pegar el DSN en las variables del servicio | nunca |
-| D10 | Un evento real de Sentry llega **sin datos personales** | Provocar un error en producción y leer el evento en el panel. Los filtros están probados con tests, pero solo un evento real confirma la cadena completa | nunca |
-| D11 | `allow_public_preview` activado en Longevity 360 | Admin de producción. Sin esto su catálogo no se ve sin login | nunca |
-| D12 | La librería de Bunny Stream existe y tiene Token Authentication activado | Crear la cuenta y la librería; activar la opción en Settings | nunca |
-| D13 | `BUNNY_STREAM_LIBRARY_ID` y `BUNNY_STREAM_TOKEN_KEY` en Railway | Copiarlos del panel de Bunny | nunca |
-| D14 | Una URL firmada real reproduce, y expirada da 403 | Subir un video de prueba y comprobarlo con el reloj en la mano | nunca |
+| D30 | La migración `users/0009_registro_de_auditoria` está aplicada en producción | Correrla al desplegar. Es un `CreateModel`, reversible, sin datos que migrar | nunca |
+| D31 | `SENTRY_DSN` configurado en Railway y llegando eventos | Crear el proyecto en sentry.io y pegar el DSN en las variables del servicio | nunca |
+| D32 | Un evento real de Sentry llega **sin datos personales** | Provocar un error en producción y leer el evento en el panel. Los filtros están probados con tests, pero solo un evento real confirma la cadena completa | nunca |
+| D33 | `allow_public_preview` activado en Longevity 360 | Admin de producción. Sin esto su catálogo no se ve sin login | nunca |
+| D34 | La librería de Bunny Stream existe y tiene Token Authentication activado | Crear la cuenta y la librería; activar la opción en Settings | nunca |
+| D35 | `BUNNY_STREAM_LIBRARY_ID` y `BUNNY_STREAM_TOKEN_KEY` en Railway | Copiarlos del panel de Bunny | nunca |
+| D36 | Una URL firmada real reproduce, y expirada da 403 | Subir un video de prueba y comprobarlo con el reloj en la mano | nunca |

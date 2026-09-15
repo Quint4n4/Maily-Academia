@@ -246,7 +246,21 @@ de la skill nueva se contesta con una acción, no con una opinión — si al esc
 
 ---
 
-## Sesión 6 · P2 · La causa raíz
+## Sesión 6 · HECHA el 2026-09-07 · La causa raíz
+
+`apps/courses/selectors.py` centraliza la lectura de cursos. Migradas seis vistas. Los 46 tests
+previos siguieron pasando en cada paso, y el comportamiento de la API quedó idéntico salvo donde
+había fuga.
+
+**Encontró tres fugas que el P0 no cubría** — el detalle está en `docs/00-deuda.md`, punto 8.
+
+Quedan sin migrar las otras siete apps (`quizzes`, `progress` salvo lo tocado, `qna`,
+`certificates`, `blog`, `corporate`, `users`). El plan decía empezar por `courses` y `sections`, y
+eso se hizo; ampliarlo ahora sería el mismo trabajo sin la urgencia que tenían estas.
+
+---
+
+## Sesión 6 · (original) P2 · La causa raíz
 
 **Rama:** `refactor/service-layer` (desde `main`) · **Después de las sesiones 1 a 4**
 

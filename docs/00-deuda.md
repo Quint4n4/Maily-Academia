@@ -296,7 +296,34 @@ Arreglado filtrando el dueño **en la consulta** y no después, que es como ya l
 **Punto 10.** `GET /api/users/{id}/` de otro usuario devuelve **403**, no 404. Confirma que el
 usuario existe, y permite contar usuarios por enumeración de ids.
 
-### 8 · Sin capa de servicios
+### 8 · CERRADO el 2026-09-07 · Sin capa de servicios
+
+`apps/courses/selectors.py` es ahora la puerta única por la que se lee un curso. Siete funciones:
+`secciones_visibles_para`, `puede_ver_el_contenido`, `cursos_visibles_para`,
+`curso_visible_o_404`, `curso_inscribible_o_404`, `leccion_accesible_o_404` y el auxiliar de
+membresías.
+
+Migradas: el listado de cursos, el detalle, el listado por academia, los recomendados, la
+inscripción y el video de una lección. **Los 46 tests que ya existían siguieron pasando en cada
+paso** — esa era la red que hacía posible el refactor.
+
+### Y encontró tres fugas que el P0 no cubría
+
+Es la prueba de lo que la skill decía: *un repo con `capa_de_servicios: ninguna` filtra mal por
+diseño, no por descuido*. El P0 cerró la lectura del catálogo, y estas tres se quedaron fuera
+porque cada vista decidía sola.
+
+| Dónde | Qué pasaba | Ahora |
+|---|---|---|
+| `EnrollView` | Un alumno **se inscribía** en un curso de otra academia sabiendo el id: HTTP **201** | 404 |
+| `RecommendedCoursesView` | Recomendaba cursos de academias cerradas. La academia solo se acotaba si el cliente mandaba `?section=`, es decir, la decidía el cliente | Parte del selector; el cliente puede elegir entre las suyas, no ampliar |
+| `CourseProgressView` | Un id inexistente devolvía **500** | 404 |
+
+Las tres estaban a una vista de distancia de las que sí filtraban.
+
+---
+
+### 8 · (original) Sin capa de servicios
 
 `backend.capa_de_servicios: ninguna`. No hay `services.py` ni `selectors.py` en ninguna app.
 
