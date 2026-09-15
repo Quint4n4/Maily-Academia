@@ -7,7 +7,15 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "sh start.sh"
-healthcheckPath = "/admin/"
-healthcheckTimeout = 60
+# /admin/ responde 302 hacia /admin/login/, asi que el healthcheck dependia de
+# que el redirect se resolviera bien. El 2026-09-15 eso tumbo un despliegue: con
+# SECURE_SSL_REDIRECT activo el 302 pasaba a ser un 301 hacia el dominio publico,
+# que desde dentro de la red de Railway no resuelve.
+#
+# /api/sections/ es mejor healthcheck: responde 200 sin redirigir, no pide
+# autenticacion, y al consultar las academias comprueba de paso que la base
+# responde. Un healthcheck que no toca la base puede dar verde con la base caida.
+healthcheckPath = "/api/sections/"
+healthcheckTimeout = 120
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
