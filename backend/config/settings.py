@@ -230,11 +230,25 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 SECURE_BROWSER_XSS_FILTER = True  # Legacy; modern browsers use CSP
 
-# HSTS: only enable in production (HTTPS). Enable when DEBUG=False and using HTTPS.
+# En produccion todo va por HTTPS. `manage.py check --deploy` con DEBUG=False
+# seguia avisando de estas cuatro, y son las que protegen la sesion del admin de
+# Django, que si usa cookies (la API usa JWT). Puntos D5, D6 y D7 de
+# docs/05-despliegue.md. Revisado el 2026-09-15, antes del primer despliegue.
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+    # Railway termina el TLS en su proxy y pasa el esquema original en esta
+    # cabecera. Sin esto Django cree que la peticion llego por HTTP y, con
+    # SECURE_SSL_REDIRECT activo, redirige en bucle.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
+
+    # Las cookies del admin solo viajan cifradas y no se leen desde JavaScript.
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
 
 # ---------------------------------------------------------------------------
 # Cloudinary (upload de imágenes desde backend)

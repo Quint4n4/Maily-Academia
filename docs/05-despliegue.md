@@ -8,6 +8,81 @@
 
 ---
 
+## Primer despliegue tras las sesiones de corrección — preparado el 2026-09-15
+
+`main` quedó listo: **29 commits, 55 tests en verde, frontend compilando**. Producción sigue con el
+código del 1 de septiembre, así que este despliegue lleva siete sesiones de cambios juntas.
+
+### Antes de tocar Railway
+
+**1 · Comprueba la `SECRET_KEY` de producción.** La del `.env` local mide 44 caracteres y empieza
+por `django-insecure`, que es la que Django genera sola. Si la de Railway es esa misma, cámbiala
+antes de desplegar: esa clave firma los tokens de sesión y los JWT.
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(64))"
+```
+
+Ojo: **al cambiarla se invalidan todas las sesiones activas.** Todo el mundo tendrá que volver a
+entrar. Hazlo a una hora en que eso no moleste.
+
+**2 · Ten a mano la vuelta atrás.** Antes de desplegar, anota en qué commit está Railway ahora.
+
+### El orden, y por qué es ese
+
+| # | Paso | Por qué aquí |
+|---|---|---|
+| 1 | `SENTRY_DSN` en Railway | Primero, para que si algo del despliegue falla te enteres por Sentry y no por un usuario |
+| 2 | Desplegar **solo el backend** | Si algo sale mal, sabes en qué mitad está |
+| 3 | Correr la migración `users/0009_registro_de_auditoria` | La bitácora no funciona sin su tabla. Es un `CreateModel`, reversible, sin datos que migrar |
+| 4 | **Activar `allow_public_preview` en Longevity 360** | Admin de producción. Ver la advertencia de abajo |
+| 5 | Comprobar el backend (abajo) | Antes de tocar el frontend |
+| 6 | Desplegar el frontend | |
+| 7 | Comprobar la interfaz | |
+
+### La advertencia que importa
+
+> **Si despliegas y olvidas el paso 4, el catálogo de Longevity 360 deja de verse sin iniciar
+> sesión.** Va a parecer que el despliegue rompió la vitrina, y lo único que falta es una casilla
+> en el admin.
+
+Hasta ahora el `post_migrate` forzaba esa bandera en cada despliegue; eso se corrigió, así que desde
+este despliegue el valor que pongas en el admin **se queda**.
+
+### Qué comprobar tras el paso 2
+
+```bash
+B=https://maily-academia-production-de9b.up.railway.app
+
+# 1 · La fuga entre academias, cerrada: NO debe salir Corporativo CAMSA
+curl -s "$B/api/courses/?page=2" | grep -o '"section_name":"[^"]*"' | sort -u
+
+# 2 · El logout existe: debe dar 401 (falta autenticación), ya no 404
+curl -s -o /dev/null -w "%{http_code}\n" -X POST "$B/api/auth/logout/" \
+  -H "Content-Type: application/json" -d '{}'
+
+# 3 · La ficha pública de un curso NO debe traer ninguna URL de video
+curl -s "$B/api/courses/30/" | grep -c video_url    # esperado: 0
+```
+
+Si el 1 sigue mostrando Corporativo CAMSA, el despliegue no tomó: revisa que Railway esté
+construyendo desde el commit correcto.
+
+### Qué comprobar tras el paso 6
+
+- Entrar como alumno y ver el catálogo: los cursos más nuevos deben salir **primero**, y debe haber
+  paginación al final de la lista.
+- Cerrar sesión y comprobar que no puedes volver atrás con el botón del navegador.
+- Abrir el constructor de cursos en **tema oscuro**: el panel izquierdo debe leerse.
+
+### Lo que NO entra en este despliegue
+
+Bunny Stream. El código está listo pero desactivado: sin `BUNNY_STREAM_LIBRARY_ID` y
+`BUNNY_STREAM_TOKEN_KEY` todo sigue funcionando con YouTube exactamente como hoy. Se activa cuando
+crees la cuenta.
+
+---
+
 ## Cómo se usa
 
 1. Toda revisión que produzca un `NO VERIFICABLE` **añade el punto aquí** si no está ya. Ese es el
