@@ -8,3 +8,4 @@ export { Pagination } from './Pagination';
 export { default as SkeletonLoader, SkeletonCard, SkeletonText, SkeletonAvatar, SkeletonButton, SkeletonTableRow, SkeletonStatCard } from './SkeletonLoader';
 export { default as ToastContainer } from './Toast';
 export { default as DateRangePicker } from './DateRangePicker';
+export { CourseThumbnail } from './CourseThumbnail';

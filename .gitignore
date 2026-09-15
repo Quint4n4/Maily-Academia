@@ -24,3 +24,20 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Subidas de usuario en desarrollo (no son parte del código)
+backend/media/
+
+# Variantes de entorno
+backend/.env.*
+!backend/.env.example
+
+# Config local de agentes
+.claude/settings.local.json
+cursos-maily/.claude/settings.local.json
+
+# Logs
+*.log
+
+# Variables de docker-compose en la raiz
+/.env

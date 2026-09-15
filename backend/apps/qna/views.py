@@ -28,6 +28,7 @@ class QuestionListView(generics.ListAPIView):
             .select_related('user')
             .prefetch_related('answers__user')
             .annotate(answers_count=Count('answers'))
+            .order_by('-created_at')
         )
 
 

@@ -1,6 +1,17 @@
 import api, { setTokens } from './api';
 
 export const authService = {
+  /**
+   * Cierra la sesion en el SERVIDOR: pone el refresh en la lista negra para que
+   * no sirva aunque alguien tenga una copia.
+   *
+   * Hasta el 2026-09-07 esto no existia y cerrar sesion solo limpiaba el
+   * sessionStorage del navegador, con lo que el refresh seguia valido 7 dias.
+   */
+  async logout(refresh) {
+    await api.post('/auth/logout/', { refresh });
+  },
+
   async login(email, password) {
     const { data } = await api.post('/auth/login/', { email, password });
     setTokens(data.access, data.refresh);

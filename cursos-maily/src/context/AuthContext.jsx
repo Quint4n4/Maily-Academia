@@ -143,7 +143,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Se avisa al servidor para que revoque el refresh; si no se puede, la
+    // sesion local se cierra igual. Un logout que se cuelga porque el backend no
+    // responde es peor que uno incompleto: deja al usuario dentro de la sesion
+    // que acaba de pedir cerrar, justo en una computadora prestada.
+    const refresh = getRefreshToken();
+    if (refresh) {
+      try {
+        await authService.logout(refresh);
+      } catch {
+        // El servidor no respondio o el token ya no valia. Se sigue: limpiar
+        // aqui es lo unico que este dispositivo puede garantizar.
+      }
+    }
     clearTokens();
     setUser(null);
   };

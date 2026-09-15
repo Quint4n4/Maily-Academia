@@ -1,4 +1,7 @@
+from django.db.models import Count
 from rest_framework import serializers
+
+from apps.utils.limites_de_texto import LimitaTextoLibreMixin
 
 from apps.sections.models import Section
 
@@ -83,7 +86,7 @@ class LessonSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
-class LessonCreateSerializer(serializers.ModelSerializer):
+class LessonCreateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     """Used when creating lessons within a module context."""
 
     video_url = serializers.URLField(required=False, allow_blank=True, default='')
@@ -111,7 +114,7 @@ class ModuleSerializer(serializers.ModelSerializer):
             return None
 
 
-class ModuleCreateSerializer(serializers.ModelSerializer):
+class ModuleCreateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     """Used when creating modules within a course context."""
 
     class Meta:
@@ -178,7 +181,40 @@ class CourseDetailSerializer(serializers.ModelSerializer):
         return obj.instructor.get_full_name() or obj.instructor.username
 
 
-class CourseCreateUpdateSerializer(serializers.ModelSerializer):
+class LessonVitrinaSerializer(serializers.ModelSerializer):
+    """
+    Leccion tal y como la ve alguien que todavia no tiene acceso al curso.
+
+    Trae el temario --titulo y duracion-- porque eso es lo que vende el curso, y
+    deja fuera `video_url`: la URL del video ES el contenido. Con videos de
+    YouTube publicos parece inofensivo; el dia que los videos vivan en un
+    proveedor de pago, repartir esa URL es repartir el curso.
+
+    Ver docs/00-deuda.md (P0) y la seccion de vitrina del PERFIL-DEL-REPO.
+    """
+
+    class Meta:
+        model = Lesson
+        fields = ['id', 'title', 'description', 'duration', 'order']
+        read_only_fields = fields
+
+
+class ModuleVitrinaSerializer(serializers.ModelSerializer):
+    lessons = LessonVitrinaSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Module
+        fields = ['id', 'title', 'description', 'order', 'lessons']
+        read_only_fields = fields
+
+
+class CourseVitrinaSerializer(CourseDetailSerializer):
+    """Ficha publica de un curso: todo lo del detalle, con el temario sin videos."""
+
+    modules = ModuleVitrinaSerializer(many=True, read_only=True)
+
+
+class CourseCreateUpdateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     """Serializer for creating / updating a course."""
 
     category_id = serializers.PrimaryKeyRelatedField(
@@ -213,6 +249,44 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
             'tags',
         ]
         read_only_fields = ['id']
+
+    def validate_status(self, value):
+        """Impide publicar un curso sin contenido.
+
+        El panel del instructor ya avisa de los requisitos, pero esa validacion
+        vive en el navegador y se salta con una peticion directa a la API. Un
+        curso publicado y vacio aparece en el catalogo del alumno y no tiene
+        nada dentro, asi que la regla se aplica aqui.
+        """
+        if value != Course.Status.PUBLISHED:
+            return value
+
+        course = self.instance
+        if course is None:
+            # Alta: todavia no existen modulos, no se puede crear publicado.
+            raise serializers.ValidationError(
+                'Un curso nuevo no puede crearse publicado. Agrega al menos un '
+                'modulo con una leccion y despues publicalo.'
+            )
+
+        if not course.modules.exists():
+            raise serializers.ValidationError(
+                'El curso necesita al menos un modulo antes de publicarse.'
+            )
+
+        # annotate + filter resuelve esto en UNA consulta; recorrer los modulos
+        # y preguntar por sus lecciones haria una consulta por modulo (N+1).
+        modulos_vacios = list(
+            course.modules.annotate(n_lessons=Count('lessons'))
+            .filter(n_lessons=0)
+            .values_list('title', flat=True)
+        )
+        if modulos_vacios:
+            raise serializers.ValidationError(
+                'Estos modulos no tienen lecciones: ' + ', '.join(modulos_vacios) + '.'
+            )
+
+        return value
 
 
 # ---------------------------------------------------------------------------
@@ -343,7 +417,7 @@ class CourseMaterialUploadSerializer(serializers.ModelSerializer):
         )
 
 
-class CourseMaterialUpdateSerializer(serializers.ModelSerializer):
+class CourseMaterialUpdateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     """Solo título, descripción y orden para PATCH."""
 
     class Meta:

@@ -6,6 +6,7 @@ import { Card, Button, Input, Modal, Badge } from '../../components/ui';
 import ImageCropModal from '../../components/ImageCropModal';
 import { useAuth } from '../../context/AuthContext';
 import courseService from '../../services/courseService';
+import { useToast } from '../../context/ToastContext';
 import { uploadCourseThumbnail } from '../../services/uploadService';
 
 const LEVEL_LABELS = { beginner: 'Principiante', intermediate: 'Intermedio', advanced: 'Avanzado' };
@@ -18,6 +19,7 @@ const LEVEL_OPTIONS = [
 const MyCourses = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -135,11 +137,19 @@ const MyCourses = () => {
   };
 
   const handleTogglePublish = async (c) => {
+    const newStatus = c.status === 'published' ? 'draft' : 'published';
     try {
-      const newStatus = c.status === 'published' ? 'draft' : 'published';
       await courseService.update(c.id, { status: newStatus });
       load();
-    } catch { /* empty */ }
+      toast.success(newStatus === 'published' ? 'Curso publicado' : 'Curso despublicado');
+    } catch (err) {
+      // Mismo motivo que en CourseBuilder: un fallo silencioso aqui hace que
+      // el instructor crea que el curso ya es visible para sus alumnos.
+      const detalle = err?.response?.data?.status?.[0]
+        || err?.response?.data?.detail
+        || 'No se pudo cambiar el estado del curso. Inténtalo de nuevo.';
+      toast.error(detalle, 6000, newStatus === 'published' ? 'No se publicó' : 'No se despublicó');
+    }
   };
 
   if (loading) {
@@ -243,7 +253,7 @@ const MyCourses = () => {
                     <span className="flex items-center gap-1"><BookOpen className="w-4 h-4" />{c.total_lessons ?? 0}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-sm font-semibold ${(!c.price || Number(c.price) === 0) ? 'text-green-600 dark:text-green-400' : 'text-maily'}`}>
+                    <span className={`text-sm font-semibold ${(!c.price || Number(c.price) === 0) ? 'text-green-700 dark:text-green-400' : 'text-maily'}`}>
                       {(!c.price || Number(c.price) === 0) ? 'Gratis' : `$${Number(c.price).toFixed(2)}`}
                     </span>
                   </div>

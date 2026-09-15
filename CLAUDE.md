@@ -8,15 +8,23 @@ Maily Academia is a multi-section e-learning platform with three portals (Maily 
 
 **Language:** The codebase, comments, commit messages, and documentation are in Spanish.
 
-## Tech Stack
+## Repo profile — read this first
 
-- **Frontend:** React 19 + Vite 5.4 + Tailwind CSS 3.4 (`cursos-maily/`)
-- **Backend:** Django 5.1 + Django REST Framework 3.15 (`backend/`)
-- **Database:** PostgreSQL 16
-- **Auth:** JWT (access 2h, refresh 7d with rotation)
-- **Images:** Cloudinary
-- **PDF Certificates:** ReportLab (backend), jspdf/html2canvas (frontend)
-- **Deployment:** Railway (both services), Docker Compose for local dev
+The facts about this repo (stack, isolation model, auth, verifiers, compliance) live in
+**`.claude/PERFIL-DEL-REPO.md`**, which is what the review skills read.
+
+**This file does not repeat a single value from the profile. If they differ, the profile wins.**
+
+This file keeps what the profile cannot hold: the *why* behind a decision, inherited traps, and
+what is in production and must not be touched.
+
+Not in the profile because it is prose, not a fact:
+
+- **Images go through Cloudinary and PDF certificates through ReportLab** (backend) plus
+  jspdf/html2canvas (frontend). The local `.env` holds real Cloudinary credentials — check whether
+  they are the same account as production before uploading anything from a dev machine.
+- **Both services deploy to Railway.** The frontend is `elegant-victory-production.up.railway.app`;
+  the backend is `maily-academia-production-de9b.up.railway.app`. They are separate services.
 
 ## Development Commands
 
@@ -40,12 +48,38 @@ python manage.py runserver            # Dev server on localhost:8000
 python manage.py makemigrations <app> # Create migration for specific app
 ```
 
-### Docker (full stack)
+### Docker (backend + database) — recommended for local dev
 ```bash
-docker-compose up    # PostgreSQL + Django backend with auto-migrations
+docker compose up -d          # PostgreSQL + Django, runs migrations and seed_data
+docker compose logs -f backend
+docker compose down           # stop; add -v to also wipe the database volume
 ```
 
-The frontend connects to `localhost:8000` in dev. CORS is configured for `localhost:5173`.
+**Local ports.** Ports 5432 and 8000 are taken by other projects on this machine,
+so this stack publishes different ones:
+
+| Service | Container port | Host port | URL |
+|---|---|---|---|
+| PostgreSQL | 5432 | **5435** | `postgresql://postgres@localhost:5435/maily_academia` |
+| Django | 8000 | **8020** | http://localhost:8020 — API at `/api/`, docs at `/api/docs/` |
+| Vite | — | 5173 | http://localhost:5173 |
+
+The frontend reads `VITE_API_URL` from `cursos-maily/.env.local`, set to
+`http://localhost:8020/api`. CORS is configured for `localhost:5173`.
+
+`docker-compose.yml` reads `DB_NAME` / `DB_USER` / `DB_PASSWORD` from a `.env`
+file at the repository root (not versioned); they must match `backend/.env`.
+
+### Seed accounts (`seed_data`)
+
+| Role | Email | Password | Section |
+|---|---|---|---|
+| admin | admin@maily.com | Admin12345! | all |
+| instructor | maria.garcia@maily.com | Profesor12345! | maily-academia |
+| instructor | carlos.rodriguez@maily.com | Profesor12345! | longevity-360 |
+| instructor | ana.martinez@maily.com | Profesor12345! | corporativo-camsa |
+| student | estudiante1@maily.com | Estudiante12345! | maily-academia, corporativo-camsa |
+| student | estudiante2@maily.com | Estudiante12345! | longevity-360 |
 
 ## Architecture
 

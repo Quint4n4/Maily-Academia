@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BookOpen, Clock, Users, ChevronDown, ChevronRight, Play, Lock, Award, DollarSign, CheckCircle, Paperclip } from 'lucide-react';
-import { Badge, Button, ProgressBar } from '../components/ui';
+import { Badge, Button, ProgressBar, CourseThumbnail } from '../components/ui';
 import VideoPreview from '../components/VideoPreview';
 import PaymentModal from '../components/PaymentModal';
 import courseService from '../services/courseService';
@@ -243,11 +243,11 @@ const CourseView = () => {
             <div className="w-full lg:w-96 flex-shrink-0">
               {course.thumbnail ? (
                 <div className="rounded-2xl overflow-hidden shadow-2xl aspect-video ring-2 ring-white/20">
-                  <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
+                  <CourseThumbnail src={course.thumbnail} alt={course.title} aspect="h-full" />
                 </div>
               ) : !isEnrolled && firstLesson ? (
                 <div className="rounded-2xl overflow-hidden shadow-2xl aspect-video ring-2 ring-white/20">
-                  <VideoPreview url={firstLesson.video_url} provider={firstLesson.video_provider} />
+                  <VideoPreview lessonId={firstLesson.id} url={firstLesson.video_url} provider={firstLesson.video_provider} />
                 </div>
               ) : null}
             </div>

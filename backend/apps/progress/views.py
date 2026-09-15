@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.courses.models import Course, Lesson
+from apps.courses.selectors import curso_inscribible_o_404
 from apps.users.permissions import IsAdmin, IsAdminOrInstructor
 
 from .models import Enrollment, LessonProgress, Purchase
@@ -43,8 +44,10 @@ class EnrollView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
-        course_id = self.kwargs['course_id']
-        course = Course.objects.get(pk=course_id)
+        # AMBITO>> pasa por el selector: antes hacia Course.objects.get(pk=...) a
+        # pelo, con lo que un alumno de una academia podia inscribirse en un curso
+        # de otra sabiendo el id, y un id inexistente devolvia 500 en vez de 404.
+        course = curso_inscribible_o_404(request.user, self.kwargs['course_id'])
 
         if course.price and course.price > 0:
             return Response(
@@ -65,7 +68,7 @@ class EnrollView(generics.CreateAPIView):
             request.user,
             'course_enrolled',
             'course',
-            course_id,
+            course.id,
             {'course_title': course.title},
         )
         return Response(
@@ -234,7 +237,8 @@ class CourseProgressView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, course_id):
-        course = Course.objects.get(pk=course_id)
+        # get_object_or_404 en vez de get(): un id inexistente devolvia 500.
+        course = get_object_or_404(Course, pk=course_id)
         if not Enrollment.objects.filter(user=request.user, course=course).exists():
             return Response(
                 {'detail': 'No estás inscrito en este curso.'},

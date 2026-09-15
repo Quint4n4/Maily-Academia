@@ -2,7 +2,9 @@ import os
 import tempfile
 from django.conf import settings as django_settings
 from django.db.models import Count, Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes as perm_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -14,6 +16,12 @@ from apps.users.models import SurveyResponse
 from apps.users.permissions import IsAdmin, IsAdminOrInstructor, IsInstructorOwner
 
 from .models import Category, Course, CourseMaterial, Module, Lesson
+from .selectors import (
+    cursos_visibles_para,
+    leccion_accesible_o_404,
+    puede_ver_el_contenido,
+)
+from .video import VIGENCIA_POR_DEFECTO, VideoNoConfigurado, url_de_reproduccion
 from .permissions import CanDownloadCourseMaterial, CanListCourseMaterials, CanManageCourseMaterial
 from apps.progress.activity_logger import log_activity
 from .serializers import (
@@ -30,6 +38,7 @@ from .serializers import (
     ModuleSerializer,
     LessonCreateSerializer,
     LessonSerializer,
+    CourseVitrinaSerializer,
 )
 
 
@@ -68,21 +77,10 @@ class CourseListCreateView(generics.ListCreateAPIView):
         return CourseListSerializer
 
     def get_queryset(self):
-        qs = Course.objects.select_related('instructor', 'category').annotate(
-            total_lessons=Count('modules__lessons'),
-            students_count=Count('enrollments'),
-            materials_count=Count('materials', distinct=True),
-        )
-        user = self.request.user
-        role = getattr(user, 'role', None)
-        if not user.is_authenticated or role == 'student':
-            qs = qs.filter(status='published')
-        elif role == 'instructor':
-            section_ids = _instructor_section_ids(user)
-            qs = qs.filter(
-                Q(status='published') | (Q(instructor=user) & (Q(section__isnull=True) | Q(section_id__in=section_ids)))
-            )
-        # else: admin/superuser — no filtrar por status aquí; DjangoFilterBackend lo aplica
+        # AMBITO>> el filtro de academia vive en el selector, no aqui. Antes esta
+        # vista traia su propia copia de la regla, y la de al lado --EnrollView--
+        # no la traia: por ahi se colaba una inscripcion en una academia ajena.
+        qs = cursos_visibles_para(self.request.user, con_conteos=True)
 
         # Filtros adicionales por categoría y tags (Fase 3)
         category_slug = self.request.query_params.get('category')
@@ -94,6 +92,10 @@ class CourseListCreateView(generics.ListCreateAPIView):
             tags = [t.strip() for t in tags_param.split(',') if t.strip()]
             if tags:
                 qs = qs.filter(tags__contains=tags)
+
+        # El orden lo fija el selector: los annotate() fuerzan un GROUP BY y
+        # Django descarta el Meta.ordering al agrupar, con lo que la paginacion
+        # deja de ser determinista.
         return qs
 
     filterset_fields = ['level', 'status', 'instructor']
@@ -138,9 +140,14 @@ class RecommendedCoursesView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        base_qs = Course.objects.filter(status=Course.Status.PUBLISHED)
+        # AMBITO>> se parte del selector. Antes se partia de TODOS los cursos
+        # publicados y la academia solo se acotaba si el cliente mandaba
+        # ?section=..., asi que sin ese parametro se recomendaban cursos de
+        # academias a las que el alumno no tiene acceso.
+        base_qs = cursos_visibles_para(user).filter(status=Course.Status.PUBLISHED)
 
-        # Filtrar por sección si se proporciona (evita mezclar cursos de academias distintas)
+        # El cliente puede ELEGIR una de sus academias; no puede ampliar el
+        # conjunto, porque el selector ya lo acoto.
         section_slug = self.request.query_params.get('section')
         if section_slug:
             base_qs = base_qs.filter(section__slug=section_slug)
@@ -188,22 +195,34 @@ class CourseDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_serializer_class(self):
         if self.request.method in ('PATCH', 'PUT'):
             return CourseCreateUpdateSerializer
+        # Quien no tiene acceso al contenido recibe la ficha de vitrina: mismo
+        # curso, con temario y sin las URLs de video.
+        objeto = getattr(self, '_curso', None)
+        if objeto is not None and not puede_ver_el_contenido(self.request.user, objeto):
+            return CourseVitrinaSerializer
         return CourseDetailSerializer
 
+    def get_object(self):
+        # Se guarda para que get_serializer_class decida con el curso en la mano.
+        self._curso = super().get_object()
+        return self._curso
+
     def get_queryset(self):
-        qs = Course.objects.select_related('instructor', 'category').prefetch_related(
-            'modules__lessons', 'modules__quiz',
-        ).annotate(
-            total_lessons=Count('modules__lessons'),
-            students_count=Count('enrollments'),
-            materials_count=Count('materials', distinct=True),
-        )
-        if self.request.method not in ('GET', 'HEAD', 'OPTIONS') and self.request.user.role == 'instructor':
-            section_ids = _instructor_section_ids(self.request.user)
-            qs = qs.filter(
-                Q(instructor=self.request.user) & (Q(section__isnull=True) | Q(section_id__in=section_ids))
+        user = self.request.user
+        role = getattr(user, 'role', None)
+
+        if self.request.method not in ('GET', 'HEAD', 'OPTIONS') and role == 'instructor':
+            # Escritura: solo sus propios cursos, y solo en sus academias.
+            return Course.objects.filter(
+                Q(instructor=user) & (Q(section__isnull=True) | Q(section_id__in=_instructor_section_ids(user)))
             )
-        return qs
+
+        # AMBITO>> lectura: el selector ya filtra por academia ANTES de buscar por
+        # id, asi que el 404 sale solo. Un 403 confirmaria que el curso existe y
+        # permitiria contarlos por enumeracion.
+        return cursos_visibles_para(user, con_conteos=True).prefetch_related(
+            'modules__lessons', 'modules__quiz',
+        )
 
     def perform_update(self, serializer):
         user = self.request.user
@@ -301,6 +320,49 @@ class UploadThumbnailView(APIView):
 # ---------------------------------------------------------------------------
 # Modules
 # ---------------------------------------------------------------------------
+
+class LessonVideoView(APIView):
+    """
+    GET /api/courses/lessons/{id}/video/ — URL de reproduccion de una leccion.
+
+    Existe para que la URL firmada se entregue SOLO a quien tiene acceso al
+    curso, y para que la clave de firma no salga nunca del servidor.
+
+    AMBITO>> el acceso se decide con la misma funcion que el detalle del curso,
+    para que no puedan divergir: si un dia una deja pasar a alguien y la otra no,
+    gana la mas laxa y nadie se entera.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        # AMBITO>> el selector decide el acceso y lanza 404 si no lo hay. Un 403
+        # confirmaria que la leccion existe.
+        try:
+            leccion = leccion_accesible_o_404(request.user, pk)
+        except Http404:
+            return Response({'detail': 'Lección no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            url = url_de_reproduccion(leccion)
+        except VideoNoConfigurado as error:
+            # Configuracion del servidor, no culpa de quien pide: se dice claro
+            # en vez de devolver una URL que no reproduciria.
+            return Response({'detail': str(error)}, status=status.HTTP_501_NOT_IMPLEMENTED)
+
+        if not url:
+            return Response(
+                {'detail': 'Esta lección no tiene video asignado.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response({
+            'url': url,
+            'provider': leccion.video_provider or 'youtube',
+            # Para que el reproductor sepa cuando pedir otra antes de que caduque.
+            'expira_en': VIGENCIA_POR_DEFECTO if leccion.video_provider == 'bunny' else None,
+        })
+
 
 class ModuleCreateView(generics.CreateAPIView):
     """POST /api/courses/{course_id}/modules/ – create a module in a course."""

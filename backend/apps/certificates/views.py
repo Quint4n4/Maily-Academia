@@ -121,13 +121,23 @@ class CertificateDownloadView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
+        # El dueno se filtra en la CONSULTA, no despues: asi un certificado ajeno
+        # y uno inexistente dan la misma respuesta. Antes se buscaba por pk y se
+        # devolvia 403 si era de otro, con lo que el 403 confirmaba que existia y
+        # permitia contar por enumeracion de ids cuantos certificados hay emitidos
+        # y a cuantas personas. Sobre un documento con el nombre completo de
+        # alguien, confirmar la existencia ya es informacion.
+        #
+        # Punto 10 de security-checklist: 403 = tu rol no puede hacer esta accion,
+        # 404 = ese dato no existe para ti.
+        certificados = Certificate.objects.select_related('user', 'course', 'course__instructor')
+        if request.user.role != 'admin':
+            certificados = certificados.filter(user=request.user)
+
         try:
-            certificate = Certificate.objects.select_related('user', 'course', 'course__instructor').get(pk=pk)
+            certificate = certificados.get(pk=pk)
         except Certificate.DoesNotExist:
             return Response({'detail': 'Certificado no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
-
-        if certificate.user != request.user and request.user.role != 'admin':
-            return Response({'detail': 'No tienes permiso para descargar este certificado.'}, status=status.HTTP_403_FORBIDDEN)
 
         # Ruta a la plantilla de imagen del certificado
         template_path = Path(settings.BASE_DIR) / 'static' / 'certificates' / 'maily_template.png'

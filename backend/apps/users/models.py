@@ -2,6 +2,7 @@ import uuid
 from datetime import date, timedelta
 
 from django.contrib.auth.models import AbstractUser
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -296,3 +297,58 @@ class PasswordResetToken(models.Model):
     def __str__(self):
         status = 'válido' if self.is_valid else 'inválido'
         return f'Token para {self.user.email} ({status})'
+
+
+class RegistroDeAuditoria(models.Model):
+    """
+    Quien hizo que, sobre que, y cuando.
+
+    Hasta el 2026-09-07 esto era un `logger.info` y nada mas: en Railway los logs
+    se rotan, asi que no habia registro consultable. El punto 26 de
+    `security-checklist` es explicito: una bitacora que no se puede consultar por
+    recurso y por actor no responde la pregunta que la hace requisito.
+
+    Se guarda el id del actor y ademas su correo como texto: si la cuenta se borra
+    o cambia de correo, el registro tiene que seguir diciendo quien fue. Una
+    bitacora que pierde al actor cuando se va el empleado no sirve para nada.
+    """
+
+    class Accion(models.TextChoices):
+        CREAR = 'crear', 'Crear'
+        ACTUALIZAR = 'actualizar', 'Actualizar'
+        BORRAR = 'borrar', 'Borrar'
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,   # el registro sobrevive al borrado del usuario
+        null=True, blank=True,
+        related_name='acciones_auditadas',
+        verbose_name='actor',
+    )
+    actor_email = models.EmailField('correo del actor', blank=True, default='')
+    accion = models.CharField('accion', max_length=20, choices=Accion.choices)
+    recurso = models.CharField(
+        'recurso', max_length=255,
+        help_text='Ruta del endpoint, sin el id: /api/courses/',
+    )
+    recurso_id = models.CharField('id del recurso', max_length=64, blank=True, default='')
+    metodo = models.CharField('metodo HTTP', max_length=10)
+    ruta = models.CharField('ruta completa', max_length=500)
+    codigo_respuesta = models.PositiveSmallIntegerField('codigo de respuesta')
+    ip = models.GenericIPAddressField('IP', null=True, blank=True)
+    creado = models.DateTimeField('fecha', auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'registro de auditoria'
+        verbose_name_plural = 'registros de auditoria'
+        ordering = ['-creado']
+        indexes = [
+            # Las dos preguntas que esta tabla existe para responder:
+            #   "que hizo esta persona"  y  "quien toco este recurso"
+            models.Index(fields=['actor', '-creado'], name='audit_actor_fecha_idx'),
+            models.Index(fields=['recurso', 'recurso_id', '-creado'], name='audit_recurso_idx'),
+        ]
+
+    def __str__(self):
+        quien = self.actor_email or 'anonimo'
+        return f'{quien} {self.accion} {self.recurso}{self.recurso_id} ({self.creado:%Y-%m-%d %H:%M})'

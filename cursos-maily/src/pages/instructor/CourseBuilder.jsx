@@ -10,6 +10,7 @@ import { Card, Button, Input, Badge, Modal } from '../../components/ui';
 import ImageCropModal from '../../components/ImageCropModal';
 import VideoPreview from '../../components/VideoPreview';
 import courseService from '../../services/courseService';
+import { useToast } from '../../context/ToastContext';
 import quizService from '../../services/quizService';
 import materialService from '../../services/materialService';
 import { uploadCourseThumbnail } from '../../services/uploadService';
@@ -33,6 +34,7 @@ const QUESTION_TYPES = [
 const CourseBuilder = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -227,7 +229,14 @@ const CourseBuilder = () => {
       await courseService.update(courseId, { status: newStatus });
       showSaved(newStatus === 'published' ? 'Curso publicado' : 'Curso despublicado');
       await loadCourse();
-    } catch { /* empty */ }
+    } catch (err) {
+      // El backend rechaza publicar un curso sin modulos o con modulos vacios.
+      // Sin este aviso el instructor cree que publico y el alumno no ve nada.
+      const detalle = err?.response?.data?.status?.[0]
+        || err?.response?.data?.detail
+        || 'No se pudo cambiar el estado del curso. Inténtalo de nuevo.';
+      toast.error(detalle, 6000, newStatus === 'published' ? 'No se publicó' : 'No se despublicó');
+    }
     setSaving(false);
   };
 
@@ -757,14 +766,16 @@ const CourseBuilder = () => {
                         <button
                           onClick={(e) => { e.stopPropagation(); moveModule(mod.id, -1); }}
                           disabled={mi === 0}
-                          className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-30"
+                          aria-label={`Subir el módulo ${mod.title}`}
+                          className="p-1.5 min-w-[24px] min-h-[24px] flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-30"
                         >
                           <ChevronUp size={12} />
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); moveModule(mod.id, 1); }}
                           disabled={mi === modules.length - 1}
-                          className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-30"
+                          aria-label={`Bajar el módulo ${mod.title}`}
+                          className="p-1.5 min-w-[24px] min-h-[24px] flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-30"
                         >
                           <ChevronDown size={12} />
                         </button>
@@ -777,7 +788,8 @@ const CourseBuilder = () => {
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); deleteModule(mod.id); }}
-                        className="p-1 text-gray-400 hover:text-red-500 rounded"
+                        aria-label={`Eliminar el módulo ${mod.title}`}
+                        className="p-1.5 min-w-[24px] min-h-[24px] flex items-center justify-center text-gray-400 hover:text-red-600 rounded"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -799,12 +811,14 @@ const CourseBuilder = () => {
                             <button
                               onClick={(e) => { e.stopPropagation(); moveLesson(mod.id, les.id, -1); }}
                               disabled={li === 0}
-                              className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-30"
+                              aria-label={`Subir la lección ${les.title}`}
+                              className="p-1.5 min-w-[24px] min-h-[24px] flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-30"
                             >
                               <ChevronUp size={10} />
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); moveLesson(mod.id, les.id, 1); }}
+                              aria-label={`Bajar la lección ${les.title}`}
                               disabled={li === (mod.lessons || []).length - 1}
                               className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-30"
                             >
@@ -815,7 +829,8 @@ const CourseBuilder = () => {
                           <span className="flex-1 truncate">{les.title}</span>
                           <button
                             onClick={(e) => { e.stopPropagation(); deleteLesson(les.id); }}
-                            className="p-0.5 text-gray-400 hover:text-red-500 rounded opacity-0 group-hover:opacity-100"
+                            aria-label={`Eliminar la lección ${les.title}`}
+                            className="p-1.5 min-w-[24px] min-h-[24px] flex items-center justify-center text-gray-400 hover:text-red-600 rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                           >
                             <Trash2 size={12} />
                           </button>
@@ -855,8 +870,9 @@ const CourseBuilder = () => {
                       onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })}
                     />
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
+                      <label htmlFor="curso-descripcion" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
                       <textarea
+                        id="curso-descripcion"
                         rows={4}
                         className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-maily/50 focus:border-maily transition-all"
                         value={courseForm.description || ''}
@@ -865,8 +881,9 @@ const CourseBuilder = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nivel</label>
+                        <label htmlFor="curso-nivel" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nivel</label>
                         <select
+                          id="curso-nivel"
                           className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                           value={courseForm.level || 'beginner'}
                           onChange={(e) => setCourseForm({ ...courseForm, level: e.target.value })}
@@ -1677,7 +1694,7 @@ const CourseBuilder = () => {
                           value={lessonForm.video_url || ''}
                           onChange={(e) => setLessonForm({ ...lessonForm, video_url: e.target.value })}
                         />
-                        <VideoPreview url={lessonForm.video_url} provider={lessonForm.video_provider} />
+                        <VideoPreview lessonId={selectedLessonId} url={lessonForm.video_url} provider={lessonForm.video_provider} />
                       </div>
                     </div>
 

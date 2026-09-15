@@ -1,0 +1,19 @@
+# El repo se empezo en Windows y quedaron archivos con CRLF mezclados con otros
+# en LF. Cualquier herramienta que reescriba un archivo entero cambia sus finales
+# de linea, y git marca el archivo completo como modificado: un cambio de 5 lineas
+# aparece como 229. Paso tres veces en la sesion del 2026-09-03.
+#
+# A partir de aqui, git normaliza a LF al guardar y no vuelve a ocurrir.
+* text=auto eol=lf
+
+# Binarios: que git no los toque
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.mp4  binary
+*.pdf  binary
+*.ico  binary
+*.woff  binary
+*.woff2 binary
