@@ -5,7 +5,7 @@ import {
   Phone, Building2, ShieldCheck, GraduationCap, UserPlus, CheckCircle2,
   AlertCircle, Download,
 } from 'lucide-react';
-import { Card, Button, Input, Modal, Badge, Pagination } from '../../components/ui';
+import { Card, Button, Input, SidePanel, Badge, Pagination } from '../../components/ui';
 import { SkeletonTableRow } from '../../components/ui/SkeletonLoader';
 import userService from '../../services/userService';
 import adminService from '../../services/adminService';
@@ -588,7 +588,7 @@ const UserManagement = () => {
       />
 
       {/* ── Modal Crear Profesor ─────────────────────────────────────────── */}
-      <Modal isOpen={showInstructorModal} onClose={() => setShowInstructorModal(false)} title="Crear nuevo Profesor">
+      <SidePanel isOpen={showInstructorModal} onClose={() => setShowInstructorModal(false)} title="Crear nuevo Profesor" size="lg">
         <form onSubmit={handleCreateInstructor} className="space-y-4">
           {instrError && <p className="text-red-500 text-sm">{instrError}</p>}
           <Input label="Email" type="email" required value={instrForm.email} onChange={(e) => setInstrForm({ ...instrForm, email: e.target.value })} />
@@ -631,10 +631,10 @@ const UserManagement = () => {
             <Button type="submit" loading={instrSaving}>Crear Profesor</Button>
           </div>
         </form>
-      </Modal>
+      </SidePanel>
 
       {/* ── Modal Crear Estudiante ────────────────────────────────────────── */}
-      <Modal isOpen={showStudentModal} onClose={() => { setShowStudentModal(false); setStudentErrors({}); }} title="Crear nuevo Estudiante">
+      <SidePanel isOpen={showStudentModal} onClose={() => { setShowStudentModal(false); setStudentErrors({}); }} title="Crear nuevo Estudiante" size="lg">
         <form onSubmit={handleCreateStudent} className="space-y-4" noValidate>
 
           {/* Email */}
@@ -839,10 +839,10 @@ const UserManagement = () => {
             <Button type="submit" loading={studentSaving} icon={<UserPlus size={16} />}>Crear Estudiante</Button>
           </div>
         </form>
-      </Modal>
+      </SidePanel>
 
       {/* ── Modal Editar Usuario ──────────────────────────────────────────── */}
-      <Modal
+      <SidePanel
         isOpen={editModal.open}
         onClose={() => setEditModal({ open: false, user: null })}
         title={`Editar usuario: ${editModal.user?.first_name} ${editModal.user?.last_name}`}
@@ -900,10 +900,10 @@ const UserManagement = () => {
             <Button type="submit" loading={editSaving}>Guardar cambios</Button>
           </div>
         </form>
-      </Modal>
+      </SidePanel>
 
       {/* ── Modal Gestionar Acceso (estudiante) ──────────────────────────── */}
-      <Modal
+      <SidePanel
         isOpen={accessModal.open}
         onClose={() => setAccessModal({ open: false, user: null })}
         title="Gestionar acceso a academias"
@@ -982,10 +982,10 @@ const UserManagement = () => {
             </div>
           </div>
         )}
-      </Modal>
+      </SidePanel>
 
       {/* ── Modal Cambiar Contraseña ──────────────────────────────────────── */}
-      <Modal
+      <SidePanel
         isOpen={passwordModal.open}
         onClose={() => setPasswordModal({ open: false, user: null })}
         title="Cambiar contraseña"
@@ -1015,7 +1015,7 @@ const UserManagement = () => {
             <Button type="submit" loading={passwordSaving}>Cambiar contraseña</Button>
           </div>
         </form>
-      </Modal>
+      </SidePanel>
     </div>
   );
 };
