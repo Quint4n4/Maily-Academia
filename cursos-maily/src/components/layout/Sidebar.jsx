@@ -259,8 +259,28 @@ const Sidebar = ({ plegada = false, onAlternarPlegado }) => {
           // aqui: el nombre sale al pasar el raton sobre el logo.
           title={plegada ? (logoInfo.academia || 'Maily Academia') : undefined}
         >
+          {/*
+            El ancho del logo hay que acotarlo, y no es un detalle estetico.
+
+            Medidos: Maily es 240x240 --cuadrado, 36px de ancho a `h-9`--, pero
+            Longevity 360 es 4451x762 y a esa misma altura mide 210px, y
+            Corporativo CAMSA (1024x289) mide 128px mas el marco negro. La
+            cabecera desplegada tiene 232px utiles: Longevity se los comia casi
+            todos y al nombre le quedaban 22px, que es el "L." truncado que se
+            veia. Plegada, con 48px, el de CAMSA se salia por encima del
+            contenido.
+
+            `object-contain` con un `max-w` encaja cualquier proporcion dentro
+            de la caja sin deformar: un logotipo alargado baja de alto en vez de
+            crecer a lo ancho. El limite se relaja en el movil, donde la barra
+            se abre entera aunque en el escritorio este plegada.
+          */}
           <div className={`rounded-lg overflow-hidden shrink-0 ${logoInfo.bg ? 'bg-black p-1' : 'bg-white/70 dark:bg-white/10'}`}>
-            <img src={logoInfo.src} alt="" className="h-9 w-auto object-contain" />
+            <img
+              src={logoInfo.src}
+              alt=""
+              className={`h-9 w-auto object-contain ${plegada ? 'max-w-[88px] lg:max-w-[52px]' : 'max-w-[88px]'}`}
+            />
           </div>
 
           {/* El nombre se oculta con `lg:hidden` y no con un `!plegada &&`:
