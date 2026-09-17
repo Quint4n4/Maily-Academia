@@ -2,9 +2,12 @@ from django.urls import path
 
 from . import views
 from . import views_admin_analytics
+from . import views_admin_coupons
 
 urlpatterns = [
     path('admin/purchases/', views.AdminPurchasesView.as_view(), name='admin-purchases'),
+    path('admin/coupons/', views_admin_coupons.AdminCouponListCreateView.as_view(), name='admin-coupons'),
+    path('admin/coupons/<int:pk>/', views_admin_coupons.AdminCouponDetailView.as_view(), name='admin-coupon-detail'),
     path('admin/analytics/revenue/', views_admin_analytics.AdminRevenueAnalyticsView.as_view(), name='admin-analytics-revenue'),
     path('admin/analytics/users/', views_admin_analytics.AdminUsersAnalyticsView.as_view(), name='admin-analytics-users'),
     path('admin/analytics/courses/', views_admin_analytics.AdminCoursesAnalyticsView.as_view(), name='admin-analytics-courses'),

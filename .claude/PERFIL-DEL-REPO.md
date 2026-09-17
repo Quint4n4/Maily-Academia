@@ -3,7 +3,11 @@
 > Único lugar donde viven los hechos locales. Ninguna skill de la biblioteca menciona una ruta,
 > una librería, un campo ni una app: todas las piden aquí.
 >
-> Repo: `Maily-Academia` · Última actualización: `2026-09-02`
+> Repo: `Maily-Academia` · Última actualización: `2026-09-17`
+>
+> Cambios del 2026-09-17, todos medidos contra el repo y no deducidos:
+> `verificadores.tests_backend` (de `ninguno` a 103 tests), `aislamiento.test_de_fuga` (de `ninguno`
+> a los del catálogo), `backend.capa_de_servicios` (ahora también los cupones de `apps/progress`).
 
 **`CLAUDE.md` apunta aquí y no repite ni un valor. Si difieren, gana este archivo.**
 
@@ -40,7 +44,7 @@ datos existentes antes de proponer un cambio de esquema.
 | `aislamiento.modelo_base` | `ninguno` | Ningún modelo hereda de una base con ámbito |
 | `aislamiento.escape` | `ninguno` | No hay manager sin filtro porque no hay manager filtrado |
 | `aislamiento.origen` | `tabla-de-membresias` | `SectionMembership` en `backend/apps/sections/models.py:44` |
-| `aislamiento.test_de_fuga` | `ninguno` | No existe ningún test en el backend |
+| `aislamiento.test_de_fuga` | `si` — `backend/apps/courses/tests/test_aislamiento_catalogo.py` (7 casos) y `test_selectores.py` (9) | Cubren el **catálogo de cursos**: anónimo, alumno sin membresía, inscripción, recomendados y progreso. **No** cubren quizzes, certificados, Q&A, blog ni corporate |
 | `aislamiento.ancla` | `AMBITO>>` — comentario a poner en cada vista que filtra por academia | Con `manual-por-vista` el ancla es lo único que hace repetible la auditoría, y no existe |
 
 ### Por qué `sede` y no `tenant`
@@ -75,7 +79,7 @@ en Longevity, recibe 200 y los cursos. Ver excepción E1.
 |---|---|---|
 | `backend.framework` | Django 5.1 + DRF 3.15 | `backend/requirements.txt:1-2` |
 | `backend.forma_de_vistas` | `apiview-y-path` | 92 usos de `generics.`/`APIView`, 0 ViewSets ni routers |
-| `backend.capa_de_servicios` | `parcial: selectors en apps/courses` | `apps/courses/selectors.py` centraliza la lectura de cursos; el resto de apps sigue en las vistas |
+| `backend.capa_de_servicios` | `parcial: apps/courses y los cupones de apps/progress` | `apps/courses/selectors.py` centraliza la lectura de cursos; `apps/progress/{selectors,services}.py` hacen lo propio **solo para cupones** — el resto de `progress` (compras, pagos, inscripciones) sigue en las vistas, igual que las demás apps |
 | `backend.envoltura_respuesta` | `drf-plano` | `backend/config/settings.py:150`; sin envoltura propia salvo dos vistas de analytics |
 | `backend.paginacion` | `drf: count/next/previous` — `PAGE_SIZE: 20` | `backend/config/settings.py:156-157` |
 | `backend.autenticacion` | `jwt` | `backend/config/settings.py:150-152` (simplejwt) |
@@ -145,17 +149,28 @@ Es el mismo riesgo en otro sitio.
 | Clave | Valor | Evidencia |
 |---|---|---|
 | `verificadores.entorno` | `docker compose exec -T backend` | `docker-compose.yml` |
-| `verificadores.tests_backend` | `ninguno` | **No existe un solo test en `backend/apps/`** |
+| `verificadores.tests_backend` | `docker compose exec -T backend pytest` — **103 tests, todos en verde** | 8 archivos en `backend/apps/{courses,users,progress}/tests/`; fixtures comunes en `backend/conftest.py` |
 | `verificadores.tests_frontend` | `ninguno` | No hay vitest, jest ni testing-library |
 | `verificadores.tipos` | `ninguno` | El frontend es `.jsx` sin TypeScript; el backend no tiene mypy |
 | `verificadores.lint` | `cd cursos-maily && npm run lint` (solo frontend) | `cursos-maily/package.json`; el backend no tiene lint configurado |
 | `verificadores.ci` | `ninguno` | No hay `.github/workflows/` |
 | `verificadores.migraciones` | `solo-emanuel` | Confirmado por Emanuel el 2026-09-03 |
 
-> **`tests_backend: ninguno` es la clave más cara de este perfil.** Todo punto de cualquier skill
-> cuyo verificador sea un test sale como `NO VERIFICABLE` y se acumula en `docs/05-despliegue.md`.
-> Eso es una lectura correcta del estado del repo, no un fallo del checklist — pero significa que
-> hoy la mayor parte del checklist de seguridad no se puede contestar.
+> **Actualizado el 2026-09-17. Esta clave era `ninguno` y ya no lo es.** Lo de abajo se conserva
+> porque explica qué desbloquea el cambio.
+>
+> ~~**`tests_backend: ninguno` es la clave más cara de este perfil.** Todo punto de cualquier skill
+> cuyo verificador sea un test sale como `NO VERIFICABLE` y se acumula en `docs/05-despliegue.md`.~~
+>
+> Del 2026-09-02 al 2026-09-17 el backend pasó de 0 a 103 tests. **Los puntos cuyo verificador es un
+> test ya se pueden contestar**, así que una revisión que hoy los marque `NO VERIFICABLE` por esta
+> clave está leyendo un perfil viejo. Lo que cubren: aislamiento entre academias, selectores de
+> curso, video firmado, revocación de sesión, endurecimiento de entrada, observabilidad y el CRUD de
+> cupones. Lo que **no** cubren: el panel de administración salvo cupones, quizzes, certificados,
+> Q&A, blog y corporate — ahí el `NO VERIFICABLE` sigue siendo la respuesta correcta.
+>
+> Los puntos ya anotados en `docs/05-despliegue.md` por esta causa (D23, D24) **no se cierran
+> solos**: hay que volver a levantarlos contra los tests que ahora existen.
 
 ---
 

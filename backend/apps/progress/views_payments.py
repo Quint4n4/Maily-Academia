@@ -169,9 +169,16 @@ class CreatePaymentIntentView(APIView):
             defaults=purchase_defaults,
         )
 
-        # Incrementar uso del cupón de forma atómica
-        if coupon:
-            Coupon.objects.filter(pk=coupon.pk).update(current_uses=F('current_uses') + 1)
+        # AQUÍ NO SE INCREMENTA `current_uses`. Hasta el 2026-09-17 sí se hacía, y
+        # contaba intentos de pago en vez de ventas: este endpoint solo abre un
+        # PaymentIntent, y el alumno todavía puede abandonar el formulario o que
+        # le rechacen la tarjeta. Como el contador nunca bajaba y este endpoint
+        # se puede llamar varias veces para la misma compra (el
+        # `update_or_create` de arriba reutiliza la fila), un cupón con
+        # `max_uses` podía agotarse sin una sola venta cobrada.
+        #
+        # El incremento vive ahora en `StripeWebhookView._handle_payment_succeeded`,
+        # junto al `paid_at` que marca el cobro de verdad.
 
         response_data = {
             'client_secret': intent.client_secret,
@@ -273,6 +280,19 @@ class StripeWebhookView(APIView):
         purchase.stripe_charge_id = charge_data.get('id', '')
         purchase.receipt_url = charge_data.get('receipt_url', '')
         purchase.save()
+
+        # Un uso del cupón = una venta cobrada. Se cuenta aquí, no al abrir el
+        # PaymentIntent, para que un carrito abandonado o una tarjeta rechazada
+        # no gasten un uso (ver la nota en `CreatePaymentIntentView`).
+        #
+        # No se cuenta dos veces: este método sale antes por el `return` de
+        # arriba si la compra ya estaba COMPLETED, y además `post()` descarta el
+        # evento repetido de Stripe por su `stripe_event_id` único. El `F()` deja
+        # la suma en la base y no pisa lo que otra petición haya escrito.
+        if purchase.coupon_id:
+            Coupon.objects.filter(pk=purchase.coupon_id).update(
+                current_uses=F('current_uses') + 1,
+            )
 
         # Crear enrollment automáticamente
         enrollment, _ = Enrollment.objects.get_or_create(
