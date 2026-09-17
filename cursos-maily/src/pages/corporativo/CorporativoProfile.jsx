@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { CAMSA } from '../../theme/camsaTheme';
-import corporateService from '../../services/corporateService';
 import ImageCropModal from '../../components/ImageCropModal';
 import { User, Camera, Phone, Building, AlertCircle, CheckCircle } from 'lucide-react';
 import api from '../../services/api';
@@ -34,8 +33,10 @@ export default function CorporativoProfile() {
   });
 
   useEffect(() => {
-    corporateService.getCorporateProfile()
-      .then((data) => {
+    // Antes pasaba por corporateService, que solo envolvia esta misma llamada.
+    // Esa capa se fue con los beneficios; el perfil del empleado vive en `users`.
+    api.get('/auth/me/')
+      .then(({ data }) => {
         setPersonalData({
           firstName: data.first_name || '',
           lastName: data.last_name || '',

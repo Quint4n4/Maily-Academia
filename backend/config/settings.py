@@ -71,7 +71,6 @@ INSTALLED_APPS = [
     'apps.qna',
     'apps.blog',
     'apps.certificates',
-    'apps.corporate',
 ]
 
 MIDDLEWARE = [
