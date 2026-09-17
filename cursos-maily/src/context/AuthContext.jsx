@@ -161,6 +161,15 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  /**
+   * Refresca solo la foto tras subirla. El avatar no pasa por `updateProfile`:
+   * se sube aparte a /auth/me/avatar/ y lo unico que vuelve es la URL nueva.
+   */
+  const updateAvatar = useCallback((url) => {
+    if (!url) return;
+    setUser((prev) => (prev ? { ...prev, avatar: url } : prev));
+  }, []);
+
   const updateProfile = async (updates) => {
     try {
       const updated = await authService.updateProfile(updates);
@@ -212,6 +221,7 @@ export const AuthProvider = ({ children }) => {
       register,
       logout,
       updateProfile,
+      updateAvatar,
       markSurveyCompleted,
       getDashboardPath,
     }}>

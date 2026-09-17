@@ -17,12 +17,21 @@ const createImage = (url) =>
  * offset: {x, y} en px (desplazamiento desde el centro del container)
  * zoom: factor de escala sobre el "fit inicial"
  */
-async function renderCrop({ imageSrc, containerSize, offset, zoom, outputWidth = 1280 }) {
+async function renderCrop({ imageSrc, containerSize, offset, zoom, outputWidth = 1280, aspect = 16 / 9, cubrir = false }) {
   const img = await createImage(imageSrc);
   const { w: containerW, h: containerH } = containerSize;
 
-  // Escala "fit" inicial: imagen contenida completamente en el container
-  const fitScale = Math.min(containerW / img.width, containerH / img.height);
+  // Dos formas de encajar la imagen en el recuadro:
+  //
+  //   contener (min): cabe entera y sobran huecos, que se rellenan de negro.
+  //   cubrir   (max): llena el recuadro y sobra imagen, que se recorta.
+  //
+  // Para un avatar hay que cubrir. Con `contener`, una foto vertical deja dos
+  // barras negras grabadas en el JPEG, y esas barras se ven dentro del circulo
+  // por mucho que el circulo este bien hecho: no son un fallo del CSS, vienen
+  // dentro del archivo.
+  const encajar = cubrir ? Math.max : Math.min;
+  const fitScale = encajar(containerW / img.width, containerH / img.height);
   const currentScale = fitScale * zoom;
 
   // Centro de la imagen en coordenadas del container
@@ -45,7 +54,8 @@ async function renderCrop({ imageSrc, containerSize, offset, zoom, outputWidth =
   const dWidth = sWidth * currentScale;
   const dHeight = sHeight * currentScale;
 
-  const aspect = 16 / 9;
+  // Antes aqui habia un `const aspect = 16 / 9` fijo que pisaba el prop del
+  // componente: se podia pedir un recorte cuadrado y salia panoramico igual.
   const outputHeight = Math.round(outputWidth / aspect);
 
   const scaleToOutput = outputWidth / containerW;
@@ -72,7 +82,18 @@ async function renderCrop({ imageSrc, containerSize, offset, zoom, outputWidth =
   });
 }
 
-export default function ImageCropModal({ isOpen, imageFile, onComplete, onCancel, aspect = 16 / 9 }) {
+export default function ImageCropModal({
+  isOpen,
+  imageFile,
+  onComplete,
+  onCancel,
+  aspect = 16 / 9,
+  cubrir = false,
+  circular = false,
+  outputWidth = 1280,
+  titulo = 'Imagen del curso',
+  nombreArchivo = 'thumbnail.jpg',
+}) {
   const [imageSrc, setImageSrc] = useState(null);
   const [imgNaturalSize, setImgNaturalSize] = useState(null); // { w, h }
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -107,7 +128,8 @@ export default function ImageCropModal({ isOpen, imageFile, onComplete, onCancel
     if (!containerRef.current || !imgNaturalSize) return { x, y };
     const containerW = containerRef.current.offsetWidth;
     const containerH = containerRef.current.offsetHeight;
-    const fitScale = Math.min(containerW / imgNaturalSize.w, containerH / imgNaturalSize.h);
+    const encajar = cubrir ? Math.max : Math.min;
+    const fitScale = encajar(containerW / imgNaturalSize.w, containerH / imgNaturalSize.h);
     const scale = fitScale * currentZoom;
     const imgDisplayW = imgNaturalSize.w * scale;
     const imgDisplayH = imgNaturalSize.h * scale;
@@ -120,7 +142,7 @@ export default function ImageCropModal({ isOpen, imageFile, onComplete, onCancel
       x: Math.max(-maxX, Math.min(maxX, x)),
       y: Math.max(-maxY, Math.min(maxY, y)),
     };
-  }, [imgNaturalSize]);
+  }, [imgNaturalSize, cubrir]);
 
   // ── Mouse drag ──
   const handleMouseDown = (e) => {
@@ -222,9 +244,9 @@ export default function ImageCropModal({ isOpen, imageFile, onComplete, onCancel
         w: containerRef.current.offsetWidth,
         h: containerRef.current.offsetHeight,
       };
-      const blob = await renderCrop({ imageSrc, containerSize, offset, zoom });
+      const blob = await renderCrop({ imageSrc, containerSize, offset, zoom, outputWidth, aspect, cubrir });
       if (!blob) throw new Error('No blob');
-      const file = new File([blob], 'thumbnail.jpg', { type: 'image/jpeg' });
+      const file = new File([blob], nombreArchivo, { type: 'image/jpeg' });
       onComplete(file);
       onCancel();
     } catch (e) {
@@ -247,28 +269,32 @@ export default function ImageCropModal({ isOpen, imageFile, onComplete, onCancel
     // Imagen contenida completamente con zoom 1
     width: '100%',
     height: '100%',
-    objectFit: 'contain',
+    objectFit: cubrir ? 'cover' : 'contain',
     objectPosition: 'center',
     userSelect: 'none',
     pointerEvents: 'none',
   };
 
   return (
-    <Modal isOpen={true} onClose={onCancel} title="Imagen del curso" size="lg" showClose={true}>
+    <Modal isOpen={true} onClose={onCancel} title={titulo} size="lg" showClose={true}>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
         Arrastra la imagen para reposicionarla. Usa la rueda del ratón o el deslizador para hacer zoom.
       </p>
 
-      {/* Recuadro 16:9 interactivo */}
+      {/* Recuadro interactivo. Su proporcion es la que se va a guardar: el
+          recorte se calcula con el tamano real de este div, asi que lo que se ve
+          aqui es lo que queda en el archivo. Para un avatar, cuadrado. */}
       {imageSrc && (
         <div
           ref={containerRef}
-          className="w-full aspect-video bg-gray-900 rounded-xl overflow-hidden mb-4 relative cursor-grab active:cursor-grabbing select-none"
+          className={`w-full bg-gray-900 overflow-hidden mb-4 relative cursor-grab active:cursor-grabbing select-none ${
+            circular ? 'rounded-full mx-auto max-w-[280px]' : 'rounded-xl'
+          }`}
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onWheel={handleWheel}
-          style={{ touchAction: 'none' }}
+          style={{ touchAction: 'none', aspectRatio: String(aspect) }}
         >
           <img
             src={imageSrc}
