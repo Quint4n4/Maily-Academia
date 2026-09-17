@@ -25,8 +25,6 @@ urlpatterns = [
     path('api/certificates/', include('apps.certificates.urls')),
     path('api/payments/', include('apps.progress.urls_payments')),
     path('api/instructor/', include('apps.progress.urls_instructor')),
-    path('api/corporate/', include('apps.corporate.urls')),
-    path('api/admin/corporate/', include('apps.corporate.urls_admin')),
     # API documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

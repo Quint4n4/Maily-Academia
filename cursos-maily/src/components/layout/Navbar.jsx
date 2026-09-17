@@ -21,8 +21,6 @@ import {
   Tag,
   ChevronDown,
   ArrowLeftRight,
-  Calendar,
-  Gift,
   Bell,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -92,7 +90,6 @@ const Navbar = () => {
           { to: '/admin/users', label: 'Usuarios', icon: Users },
           { to: '/admin/courses', label: 'Cursos', icon: BookOpen },
           { to: '/admin/coupons', label: 'Cupones', icon: Tag },
-          { to: '/admin/corporate/benefits', label: 'Corporativo', icon: Gift },
           { to: '/admin/promo-videos', label: 'Videos Maily', icon: Video },
         ];
       case 'instructor':
@@ -110,8 +107,6 @@ const Navbar = () => {
           return [
             { to: '/corporativo/dashboard', label: 'Inicio', icon: Home },
             { to: '/corporativo/courses', label: 'Cursos', icon: BookOpen },
-            { to: '/corporativo/benefits', label: 'Beneficios', icon: Gift },
-            { to: '/corporativo/reservations', label: 'Mis Citas', icon: Calendar },
             { to: '/corporativo/profile', label: 'Mi Perfil', icon: User },
           ];
         }

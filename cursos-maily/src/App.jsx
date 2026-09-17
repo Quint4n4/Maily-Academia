@@ -49,14 +49,6 @@ import DropoutAnalysis from './pages/instructor/DropoutAnalysis';
 import PaymentHistory from './pages/PaymentHistory';
 // Páginas corporativas
 import CorporativoProfile from './pages/corporativo/CorporativoProfile';
-import CorporativoBenefits from './pages/corporativo/CorporativoBenefits';
-import CorporativoBooking from './pages/corporativo/CorporativoBooking';
-import CorporativoCalendar from './pages/corporativo/CorporativoCalendar';
-import CorporativoReservations from './pages/corporativo/CorporativoReservations';
-// Páginas admin corporativo
-import BenefitManagement from './pages/admin/BenefitManagement';
-import ScheduleManagement from './pages/admin/ScheduleManagement';
-import ReservationManagement from './pages/admin/ReservationManagement';
 
 // Redirige estudiantes de /dashboard a su dashboard por sección
 const StudentDashboardRedirect = ({ children }) => {
@@ -156,9 +148,6 @@ function AppRoutes() {
         <Route path="/admin/courses" element={<CourseManagement />} />
         <Route path="/admin/promo-videos" element={<SuperAdminRoute><PromoVideosManagement /></SuperAdminRoute>} />
         <Route path="/admin/coupons" element={<CouponManagement />} />
-        <Route path="/admin/corporate/benefits" element={<BenefitManagement />} />
-        <Route path="/admin/corporate/schedules" element={<ScheduleManagement />} />
-        <Route path="/admin/corporate/reservations" element={<ReservationManagement />} />
       </Route>
 
       {/* ── Instructor routes ────────────────────────────────────── */}
@@ -224,10 +213,6 @@ function AppRoutes() {
         <Route path="/longevity/courses" element={<LongevityCourses />} />
         <Route path="/corporativo/courses" element={<CorporativoCourses />} />
         <Route path="/corporativo/profile" element={<CorporativoProfile />} />
-        <Route path="/corporativo/benefits" element={<CorporativoBenefits />} />
-        <Route path="/corporativo/benefits/:slug/book" element={<CorporativoBooking />} />
-        <Route path="/corporativo/calendar" element={<CorporativoCalendar />} />
-        <Route path="/corporativo/reservations" element={<CorporativoReservations />} />
         <Route path="/course/:courseId" element={<CourseView />} />
         <Route path="/certificates" element={<Certificates />} />
         <Route path="/survey" element={<Survey />} />

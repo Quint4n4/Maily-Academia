@@ -29,6 +29,71 @@ Desplegado y verificado. Lo que se aprendió, para el siguiente:
 | — | Un evento real de Sentry llega sin datos personales | abierto, depende del anterior |
 | — | Cuenta de Bunny Stream y sus dos variables | abierto, antes de subir videos reales |
 | — | `SECURE_SSL_REDIRECT` activado correctamente | abierto. Railway ya fuerza HTTPS en su proxy, así que no es urgente; si se activa, hay que excluir la ruta del healthcheck |
+| — | **Borrar las 6 tablas de beneficios corporativos en producción** | abierto — ver abajo |
+
+---
+
+## Borrar las tablas de beneficios corporativos
+
+El 2026-09-17 se retiró del repo la app `corporate` (beneficios, citas, horarios,
+reservas y notificaciones): esa función se atiende ahora en una aplicación aparte. **El
+código ya no existe, pero las tablas siguen en la base de producción**, porque quitar una
+app de Django no borra lo que tiene guardado.
+
+Dejarlas ahí no rompe nada: sin modelo que las respalde, nadie las lee ni las escribe. Lo
+que sí pasa es que en seis meses nadie va a saber explicar qué son. Por eso este pendiente
+existe, y por eso lleva el respaldo delante.
+
+**Paso 1 — el respaldo.** Aunque se dieron por no usadas, cuesta treinta segundos y es lo
+único que permite dar marcha atrás. Desde la consola de la base en Railway:
+
+```bash
+pg_dump "$DATABASE_URL" \
+  -t corporate_availabilityexception \
+  -t corporate_availabilityschedule \
+  -t corporate_benefitrequest \
+  -t corporate_benefittype \
+  -t corporate_notification \
+  -t corporate_reservation \
+  > beneficios_corporativos_respaldo.sql
+```
+
+**Paso 2 — mira qué hay dentro antes de tirarlo.** Si alguna fila tiene datos reales de un
+empleado, para y consúltalo antes de seguir:
+
+```sql
+SELECT 'benefittype' AS tabla, count(*) FROM corporate_benefittype
+UNION ALL SELECT 'benefitrequest', count(*) FROM corporate_benefitrequest
+UNION ALL SELECT 'reservation',    count(*) FROM corporate_reservation
+UNION ALL SELECT 'schedule',       count(*) FROM corporate_availabilityschedule
+UNION ALL SELECT 'exception',      count(*) FROM corporate_availabilityexception
+UNION ALL SELECT 'notification',   count(*) FROM corporate_notification;
+```
+
+**Paso 3 — el borrado. Esto no se deshace.**
+
+```sql
+BEGIN;
+DROP TABLE IF EXISTS corporate_availabilityexception CASCADE;
+DROP TABLE IF EXISTS corporate_availabilityschedule CASCADE;
+DROP TABLE IF EXISTS corporate_benefitrequest CASCADE;
+DROP TABLE IF EXISTS corporate_notification CASCADE;
+DROP TABLE IF EXISTS corporate_reservation CASCADE;
+DROP TABLE IF EXISTS corporate_benefittype CASCADE;
+DELETE FROM django_migrations WHERE app = 'corporate';
+COMMIT;
+```
+
+El orden va de las dependientes a la que todas apuntan (`benefittype`), y el `CASCADE`
+cubre lo que se haya escapado. La última línea quita el registro de la migración, para que
+Django no crea que hay una migración aplicada de una app que ya no existe.
+
+**Quién lo corre:** Emanuel. `verificadores.migraciones: solo-emanuel` en el perfil del
+repo, y esto además es un borrado irreversible sobre datos de producción.
+
+**No hace falta desplegarlo junto al código.** El backend nuevo funciona igual con las
+tablas presentes o ausentes, así que esto se puede hacer el día que se quiera, sin prisa y
+sin ventana de mantenimiento.
 
 ---
 
