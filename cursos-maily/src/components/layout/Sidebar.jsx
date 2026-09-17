@@ -232,11 +232,23 @@ const Sidebar = ({ plegada = false, onAlternarPlegado }) => {
 
   const contenido = (
     <>
-      {/* Cabecera: logo y el boton de plegar */}
-      <div className={`flex items-center gap-2 h-16 px-3 border-b shrink-0 ${isC ? 'border-[rgba(77,70,55,0.3)]' : 'border-gray-200 dark:border-gray-700'}`}>
+      {/*
+        Cabecera: logo y boton de plegar.
+
+        Plegada quedan 48px utiles (72 menos el padding) y ahi no caben un logo
+        de 36px y un boton de 34px: se encimaban. Con la barra plegada el logo se
+        va y queda solo el boton, centrado.
+
+        Se oculta con `lg:hidden` y no con un `!plegada &&` de JavaScript a
+        proposito: `plegada` es un estado de escritorio, y en el movil la barra
+        se abre entera aunque en el escritorio se hubiera dejado plegada. Con la
+        condicion en JS, quien plegara la barra en el escritorio se quedaba sin
+        logo tambien en el telefono.
+      */}
+      <div className={`flex items-center gap-2 h-16 px-3 border-b shrink-0 ${plegada ? 'lg:justify-center lg:px-2' : ''} ${isC ? 'border-[rgba(77,70,55,0.3)]' : 'border-gray-200 dark:border-gray-700'}`}>
         <Link
           to={navItems[0]?.to || '/dashboard'}
-          className="flex items-center gap-2 min-w-0 flex-1"
+          className={`flex items-center gap-2 min-w-0 flex-1 ${plegada ? 'lg:hidden' : ''}`}
           onClick={() => setAbiertaEnMovil(false)}
         >
           {logoInfo ? (
@@ -244,18 +256,16 @@ const Sidebar = ({ plegada = false, onAlternarPlegado }) => {
               <div className={`rounded-lg overflow-hidden shrink-0 ${logoInfo.bg ? 'bg-black p-1' : 'bg-white/70 dark:bg-white/10'}`}>
                 <img src={logoInfo.src} alt={logoInfo.alt} className="h-9 w-auto object-contain" />
               </div>
-              {!plegada && logoInfo.showName && (
+              {logoInfo.showName && (
                 <span className="text-base font-bold text-gray-900 dark:text-white truncate">
                   {logoInfo.alt}
                 </span>
               )}
             </>
           ) : (
-            !plegada && (
-              <span className={`text-base font-bold truncate ${isC ? 'text-[#e6c364]' : 'text-gray-900 dark:text-white'}`}>
-                Maily Academia
-              </span>
-            )
+            <span className={`text-base font-bold truncate ${isC ? 'text-[#e6c364]' : 'text-gray-900 dark:text-white'}`}>
+              Maily Academia
+            </span>
           )}
         </Link>
 
