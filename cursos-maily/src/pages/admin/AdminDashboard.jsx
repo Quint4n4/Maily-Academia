@@ -35,6 +35,20 @@ const SECTION_COLORS = {
 const PIE_COLORS = ['#4A90A4', '#22c55e', '#8b5cf6', '#f59e0b', '#ef4444'];
 const ROLE_LABELS = { student: 'Estudiantes', instructor: 'Profesores', admin: 'Admins' };
 
+// ─── Secciones desactivadas ────────────────────────────────────────────────────
+// Desactivadas a petición de Emanuel el 2026-09-17: hoy no aportan a la operación.
+// El código se conserva íntegro; para volver a verlas basta con poner esto en `true`.
+//
+// Por qué una bandera y no comentarios: JSX no admite comentarios anidados, y estos
+// bloques ya contienen los suyos ({/* Registrations trend */}, etc.). Envolverlos en
+// {/* ... */} rompería la compilación. La bandera además mantiene los imports en uso,
+// así que el lint sigue limpio, y apaga las peticiones que alimentaban esas secciones.
+//
+// Apaga: tarjeta de completitud (y su modal), tendencia de registros, distribución de
+// usuarios, top de cursos, cursos por categoría, ingresos por rango de fechas,
+// tendencias y comparativa, tabla de instructores y los accesos rápidos.
+const MOSTRAR_SECCIONES_AVANZADAS = false;
+
 // ─── KPI Card ──────────────────────────────────────────────────────────────────
 const KpiCard = ({ icon, label, value, subtitle, trend, color, onDetail, delay = 0 }) => (
   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}>
@@ -152,6 +166,9 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [detailModal, setDetailModal] = useState(null); // 'revenue' | 'users' | 'courses' | 'completion'
 
+  // La comparativa por academia arranca plegada; se abre con el botón de su cabecera.
+  const [mostrarComparativa, setMostrarComparativa] = useState(false);
+
   // ── Estado: Revenue con DateRangePicker ──
   const [rangeStart, setRangeStart] = useState(daysAgoStr(29));
   const [rangeEnd, setRangeEnd] = useState(todayStr());
@@ -191,6 +208,12 @@ const AdminDashboard = () => {
 
   // Cargar tendencias e instructores al montar
   useEffect(() => {
+    // Con las secciones avanzadas apagadas nadie pinta estos datos: no los pedimos.
+    if (!MOSTRAR_SECCIONES_AVANZADAS) {
+      setTrendsLoading(false);
+      setInstructorsLoading(false);
+      return;
+    }
     getTrendsAnalytics()
       .then(setTrends)
       .catch(() => setTrends(null))
@@ -203,6 +226,7 @@ const AdminDashboard = () => {
 
   // Cargar revenue por rango cuando cambia el filtro
   useEffect(() => {
+    if (!MOSTRAR_SECCIONES_AVANZADAS) return;
     if (!rangeStart || !rangeEnd) return;
     let cancelled = false;
     const load = async () => {
@@ -276,7 +300,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* ── Fila 1: KPI Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         <KpiCard
           delay={0}
           icon={<DollarSign size={22} />}
@@ -307,38 +331,63 @@ const AdminDashboard = () => {
           color="text-orange-600 bg-orange-100 dark:bg-orange-900/30"
           onDetail={() => setDetailModal('courses')}
         />
-        <KpiCard
-          delay={0.15}
-          icon={<TrendingUp size={22} />}
-          label="Tasa completitud media"
-          value={coursesAnalytics?.avg_completion_rate != null ? `${coursesAnalytics.avg_completion_rate}%` : '-'}
-          subtitle={`${coursesAnalytics?.published_courses ?? 0} cursos publicados`}
-          color="text-purple-600 bg-purple-100 dark:bg-purple-900/30"
-          onDetail={() => setDetailModal('completion')}
-        />
+        {MOSTRAR_SECCIONES_AVANZADAS && (
+          <KpiCard
+            delay={0.15}
+            icon={<TrendingUp size={22} />}
+            label="Tasa completitud media"
+            value={coursesAnalytics?.avg_completion_rate != null ? `${coursesAnalytics.avg_completion_rate}%` : '-'}
+            subtitle={`${coursesAnalytics?.published_courses ?? 0} cursos publicados`}
+            color="text-purple-600 bg-purple-100 dark:bg-purple-900/30"
+            onDetail={() => setDetailModal('completion')}
+          />
+        )}
       </div>
 
-      {/* ── Fila 2: Comparativa por Academia ── */}
+      {/* ── Fila 2: Comparativa por Academia (plegada por defecto) ── */}
       {(sectionsAnalytics?.sections?.length > 0) && (
         <div>
-          <div className="flex items-center gap-2 mb-4">
-            <Building2 size={20} className="text-maily" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Comparativa por Academia</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {sectionsAnalytics.sections.map((sec, i) => (
-              <SectionCard key={sec.slug} sec={sec} delay={i * 0.07} />
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => setMostrarComparativa((v) => !v)}
+            aria-expanded={mostrarComparativa}
+            aria-controls="comparativa-academias"
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <Building2 size={20} className="text-maily" />
+              <span className="text-lg font-semibold text-gray-900 dark:text-white">Comparativa por Academia</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                ({sectionsAnalytics.sections.length} academias)
+              </span>
+            </span>
+            {mostrarComparativa
+              ? <ChevronUp size={20} className="text-gray-500 dark:text-gray-400 shrink-0" />
+              : <ChevronDown size={20} className="text-gray-500 dark:text-gray-400 shrink-0" />}
+          </button>
+
+          {mostrarComparativa && (
+            <motion.div
+              id="comparativa-academias"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              transition={{ duration: 0.2 }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4"
+            >
+              {sectionsAnalytics.sections.map((sec, i) => (
+                <SectionCard key={sec.slug} sec={sec} delay={i * 0.07} />
+              ))}
+            </motion.div>
+          )}
         </div>
       )}
 
-      {/* ── Fila 3: Gráfico Ingresos + Compras ── */}
-      <Card className="p-6">
+      {/* ── Fila 3: Ganancias (la gráfica principal del panel) ── */}
+      <Card className="p-6 md:p-8">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <DollarSign size={20} className="text-green-600" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Ingresos y Compras</h2>
+            <DollarSign size={26} className="text-green-600" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Ganancias</h2>
             {revenue?.comparison?.vs_previous_period && revenue.comparison.vs_previous_period !== 'N/A' && (
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                 revenue.comparison.trend === 'up'
@@ -367,7 +416,7 @@ const AdminDashboard = () => {
           </div>
         </div>
         {(revenue?.data?.length > 0) ? (
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={420}>
             <ComposedChart data={revenue.data} margin={{ top: 5, right: 30, bottom: 5, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
@@ -389,6 +438,14 @@ const AdminDashboard = () => {
           <p className="text-gray-500 dark:text-gray-400 text-sm py-10 text-center">No hay datos para el período seleccionado.</p>
         )}
       </Card>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          DE AQUÍ HACIA ABAJO ESTÁ APAGADO (bandera MOSTRAR_SECCIONES_AVANZADAS,
+          arriba del archivo). El código se conserva completo y funcionando: para
+          recuperarlo, pon la bandera en `true`. No se borró nada.
+          ══════════════════════════════════════════════════════════════════════ */}
+      {MOSTRAR_SECCIONES_AVANZADAS && (
+        <>
 
       {/* ── Fila 4: Tendencia de registros + Pies de usuarios ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
@@ -917,6 +974,10 @@ const AdminDashboard = () => {
         </Card>
       </div>
 
+        </>
+      )}
+      {/* ══ FIN DEL BLOQUE APAGADO ══ */}
+
       {/* ══ MODALES ══ */}
 
       {/* Modal: Ingresos */}
@@ -1053,7 +1114,8 @@ const AdminDashboard = () => {
         </div>
       </Modal>
 
-      {/* Modal: Completitud */}
+      {/* Modal: Completitud — apagado junto con su tarjeta, que es quien lo abría */}
+      {MOSTRAR_SECCIONES_AVANZADAS && (
       <Modal
         isOpen={detailModal === 'completion'}
         onClose={() => setDetailModal(null)}
@@ -1082,6 +1144,7 @@ const AdminDashboard = () => {
           </div>
         </div>
       </Modal>
+      )}
     </div>
   );
 };
