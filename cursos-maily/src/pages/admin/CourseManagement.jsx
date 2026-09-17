@@ -171,10 +171,19 @@ const CourseManagement = () => {
               <Card className="p-5">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-4 flex-1">
-                    {course.thumbnail && (
-                      <CourseThumbnail src={course.thumbnail} alt="" aspect="h-16" className="w-16 rounded-lg hidden sm:block" />
-                    )}
-                    <div>
+                    {/* 112x64: casi 16:9, que es como vienen las portadas, asi que
+                        `object-cover` recorta lo minimo. El ancho va por `width`
+                        y no por `className`: ver la nota de CourseThumbnail.
+                        Sin el guard de antes, un curso sin portada muestra el
+                        hueco gris del componente y las filas siguen alineadas. */}
+                    <CourseThumbnail
+                      src={course.thumbnail}
+                      alt=""
+                      aspect="h-16"
+                      width="w-28"
+                      className="rounded-lg hidden sm:block"
+                    />
+                    <div className="min-w-0">
                       <h3 className="font-semibold text-gray-900 dark:text-white">{course.title}</h3>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                         Por {course.instructor_name} &middot; {LEVEL_LABELS[course.level] || course.level} &middot; {course.total_lessons} lecciones
