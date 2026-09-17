@@ -396,7 +396,11 @@ class CourseMaterialUploadSerializer(serializers.ModelSerializer):
         course = self.context['course']
         validated_data.pop('course', None)
         user = self.context.get('request').user if self.context.get('request') else None
-        f = validated_data.get('file')
+        # El archivo sale de `validated_data`: sirve para deducir tipo, tamaño y
+        # nombre, pero NO se guarda en el modelo. Ya viajo a Cloudinary desde la
+        # vista, y dejarlo aqui lo escribiria ademas en el disco del contenedor,
+        # que es justo lo que se quiere evitar.
+        f = validated_data.pop('file')
         ext = (f.name or '').rsplit('.', 1)[-1].lower()
         file_type_map = {
             'pdf': CourseMaterial.FileType.PDF,
@@ -413,6 +417,7 @@ class CourseMaterialUploadSerializer(serializers.ModelSerializer):
             file_type=file_type,
             file_size=f.size,
             original_filename=f.name or '',
+            file='',
             **validated_data,
         )
 

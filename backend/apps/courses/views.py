@@ -1,14 +1,16 @@
+import logging
 import os
 import tempfile
 from django.conf import settings as django_settings
 from django.db.models import Count, Q
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes as perm_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.views import APIView
 
 from apps.sections.models import SectionMembership
@@ -21,9 +23,12 @@ from .selectors import (
     leccion_accesible_o_404,
     puede_ver_el_contenido,
 )
+from .almacenamiento import ErrorDeAlmacenamiento, borrar_material, descargar_material, subir_material
 from .video import VIGENCIA_POR_DEFECTO, VideoNoConfigurado, url_de_reproduccion
 from .permissions import CanDownloadCourseMaterial, CanListCourseMaterials, CanManageCourseMaterial
 from apps.progress.activity_logger import log_activity
+
+logger = logging.getLogger(__name__)
 from .serializers import (
     CategoryAdminSerializer,
     CategoryDetailSerializer,
@@ -577,7 +582,21 @@ class CourseMaterialListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         course = Course.objects.get(pk=self.kwargs['course_id'])
-        serializer.save(course=course)
+        archivo = serializer.validated_data.get('file')
+
+        # El archivo va a Cloudinary y NO al disco del contenedor, que Railway
+        # recrea en cada despliegue. `file` queda vacio en los materiales
+        # nuevos; los antiguos lo conservan y se siguen sirviendo del disco.
+        try:
+            public_id = subir_material(archivo, course.id)
+        except ErrorDeAlmacenamiento as e:
+            logger.error('Fallo al subir material del curso %s: %s', course.id, e)
+            raise DRFValidationError(
+                {'file': 'No se pudo guardar el archivo. Inténtalo de nuevo.'}
+            ) from e
+
+        # Tipo, tamaño y nombre los deduce el serializer del propio archivo.
+        serializer.save(course=course, cloudinary_public_id=public_id)
 
 
 class MaterialDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -595,6 +614,14 @@ class MaterialDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method in ('PATCH', 'PUT'):
             return CourseMaterialUpdateSerializer
         return CourseMaterialSerializer
+
+    def perform_destroy(self, instance):
+        # Borrar la fila no borraba el archivo: en el disco local quedo un PDF
+        # de marzo sin fila que lo reclamara. Con Cloudinary eso ademas se paga,
+        # porque el plan Free cuenta por almacenamiento.
+        public_id = instance.cloudinary_public_id
+        instance.delete()
+        borrar_material(public_id)
 
     def get_serializer(self, *args, **kwargs):
         if self.request.method in ('PATCH', 'PUT'):
@@ -614,6 +641,46 @@ class MaterialDownloadView(APIView):
         from django.http import FileResponse
         material = get_object_or_404(CourseMaterial.objects.all(), pk=pk)
         self.check_object_permissions(request, material)
+        nombre = material.original_filename or material.title
+
+        # El contador y la bitacora se mueven DESPUES de conseguir el archivo.
+        # Estaban antes, asi que una descarga fallida sumaba una descarga.
+        if material.cloudinary_public_id:
+            # El archivo esta en Cloudinary. No se redirige al alumno: la cuenta
+            # no entrega archivos raw por enlace directo --responde 401-- y,
+            # sobre todo, estos materiales son de cursos de pago y el permiso lo
+            # decide este endpoint, no quien tenga la URL.
+            try:
+                contenido = descargar_material(material.cloudinary_public_id)
+            except ErrorDeAlmacenamiento as e:
+                logger.error('Fallo al descargar material %s: %s', material.id, e)
+                return Response(
+                    {'detail': 'El archivo no está disponible en este momento.'},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+            respuesta = HttpResponse(contenido, content_type='application/octet-stream')
+            respuesta['Content-Disposition'] = f'attachment; filename="{nombre}"'
+        else:
+            # Material anterior al 2026-09-17: sigue en el disco del contenedor,
+            # si el despliegue no se lo llevo por delante.
+            if not material.file:
+                return Response(
+                    {'detail': 'El archivo no está disponible.'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            try:
+                respuesta = FileResponse(
+                    material.file.open('rb'), as_attachment=True, filename=nombre,
+                )
+            except OSError as e:
+                # Antes esto devolvia `str(e)`, que incluye la ruta del servidor
+                # --"/app/media/materials/..."-- y la enseñaba al usuario.
+                logger.error('Material %s sin archivo en disco: %s', material.id, e)
+                return Response(
+                    {'detail': 'El archivo no está disponible.'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
         material.download_count += 1
         material.save(update_fields=['download_count'])
         log_activity(
@@ -623,20 +690,4 @@ class MaterialDownloadView(APIView):
             material.id,
             {'material_id': material.id, 'file_type': getattr(material, 'file_type', '')},
         )
-        if not material.file:
-            return Response(
-                {'detail': 'El archivo no está disponible.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        try:
-            response = FileResponse(
-                material.file.open('rb'),
-                as_attachment=True,
-                filename=material.original_filename or material.title,
-            )
-            return response
-        except Exception as e:
-            return Response(
-                {'detail': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        return respuesta

@@ -195,7 +195,11 @@ class CourseMaterial(models.Model):
         'pdf', 'pptx', 'ppt', 'docx', 'doc', 'xlsx', 'xls',
         'png', 'jpg', 'jpeg',
     }
-    MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
+    # 10 MB, no 50: es el tope por archivo que impone el plan Free de Cloudinary
+    # --medido contra la cuenta real el 2026-09-17: 11 MB devuelve "File size too
+    # large. Got 11534345. Maximum is 10485760". Aceptar aqui 50 MB solo servia
+    # para que la subida fallara despues, con el archivo ya viajado.
+    MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
     MAX_PER_LESSON = 20
     MAX_PER_MODULE = 50
     MAX_PER_COURSE = 100
@@ -224,7 +228,14 @@ class CourseMaterial(models.Model):
     )
     title = models.CharField('título', max_length=200)
     description = models.TextField('descripción', blank=True, default='')
-    file = models.FileField('archivo', upload_to=course_material_upload_path)
+    # `file` se conserva para los materiales subidos antes del 2026-09-17, que
+    # viven en el disco del contenedor. Los nuevos van a Cloudinary y dejan este
+    # campo vacio; la descarga mira primero `cloudinary_public_id`.
+    file = models.FileField('archivo', upload_to=course_material_upload_path, blank=True)
+    cloudinary_public_id = models.CharField(
+        'identificador en Cloudinary', max_length=255, blank=True, default='',
+        help_text='Vacio en los materiales antiguos, que siguen en el disco del servidor.',
+    )
     file_type = models.CharField('tipo de archivo', max_length=20, choices=FileType.choices)
     file_size = models.PositiveIntegerField('tamaño (bytes)', default=0)
     original_filename = models.CharField('nombre original', max_length=255, default='')
