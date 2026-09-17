@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, BookOpen, Edit, Eye, EyeOff, Settings, Clock, Search, Building2, Info } from 'lucide-react';
-import { Card, Button, Input, Modal, Badge } from '../../components/ui';
+import { Card, Button, Input, SidePanel, Badge } from '../../components/ui';
 import ImageCropModal from '../../components/ImageCropModal';
 import { useAuth } from '../../context/AuthContext';
 import courseService from '../../services/courseService';
@@ -280,7 +280,7 @@ const MyCourses = () => {
       )}
 
       {/* Create/Edit Modal */}
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editingId ? 'Editar Curso' : 'Nuevo Curso'}>
+      <SidePanel size="lg" isOpen={showModal} onClose={() => setShowModal(false)} title={editingId ? 'Editar Curso' : 'Nuevo Curso'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           {formError && <p className="text-red-500 text-sm">{formError}</p>}
           <Input label="Título" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
@@ -367,7 +367,7 @@ const MyCourses = () => {
             <Button type="submit" loading={saving}>{editingId ? 'Guardar' : 'Crear Curso'}</Button>
           </div>
         </form>
-      </Modal>
+      </SidePanel>
       <ImageCropModal
         isOpen={!!cropImageFile}
         imageFile={cropImageFile}

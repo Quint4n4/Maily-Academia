@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, FileText, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
-import { Card, Button, Input, Modal, Badge } from '../../components/ui';
+import { Card, Button, Input, SidePanel, Badge } from '../../components/ui';
 import blogService from '../../services/blogService';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useToast } from '../../context/ToastContext';
@@ -135,7 +135,7 @@ const BlogManagement = () => {
       )}
 
       {/* Create/Edit Modal */}
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editingSlug ? 'Editar Artículo' : 'Nuevo Artículo'}>
+      <SidePanel size="lg" isOpen={showModal} onClose={() => setShowModal(false)} title={editingSlug ? 'Editar Artículo' : 'Nuevo Artículo'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           {formError && <p className="text-red-500 text-sm">{formError}</p>}
           <Input label="Título" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
@@ -167,7 +167,7 @@ const BlogManagement = () => {
             <Button type="submit" loading={saving}>{editingSlug ? 'Guardar' : 'Publicar'}</Button>
           </div>
         </form>
-      </Modal>
+      </SidePanel>
     </div>
   );
 };
