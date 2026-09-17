@@ -26,6 +26,11 @@ from apps.users.models import User
 from apps.users.permissions import IsAdminOrInstructor
 
 from apps.progress.models import Enrollment, LessonProgress, UserActivity, Purchase
+from apps.progress.selectors import (
+    cursos_mas_vistos,
+    serie_de_alumnos_por_periodo,
+    total_de_alumnos_que_ven,
+)
 
 
 def instructor_course_ids(request):
@@ -974,4 +979,46 @@ class AnalyticsDropoutView(APIView):
             'overall_dropout_rate': overall_dropout,
             'dropout_by_lesson': dropout_by_lesson,
             'biggest_dropoff': biggest_dropoff,
+        })
+
+
+class AnalyticsCourseViewsView(APIView):
+    """
+    GET /api/instructor/analytics/views/?period=day|week|month|year
+
+    Cuantos alumnos estan consumiendo los cursos de quien pregunta, y cuales son
+    los mas vistos. Ambas cosas responden al mismo periodo, que es lo que
+    Emanuel pidio el 2026-09-17: el ranking se recalcula al cambiarlo.
+
+    Que cuenta como "visto" y que no esta explicado en
+    `apps/progress/selectors.py`, junto a la consulta.
+
+    AMBITO>> el selector filtra por `instructor=request.user` SIEMPRE, tambien
+    para un admin. Un admin no tiene cursos propios, asi que vera la serie
+    vacia; es preferible a que este endpoint del panel del profesor se convierta
+    en una puerta a la actividad de todos.
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminOrInstructor]
+
+    PERIODOS_VALIDOS = ('day', 'week', 'month', 'year')
+
+    def get(self, request):
+        periodo = request.query_params.get('period', 'month')
+        if periodo not in self.PERIODOS_VALIDOS:
+            return Response(
+                {'detail': f"period debe ser uno de: {', '.join(self.PERIODOS_VALIDOS)}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serie = serie_de_alumnos_por_periodo(request.user, periodo)
+        top = cursos_mas_vistos(request.user, periodo)
+
+        return Response({
+            'period': periodo,
+            'series': serie,
+            'top_courses': top,
+            # El total no es la suma de la serie: un alumno que aparece en dos
+            # meses cuenta una vez aqui y dos alli.
+            'total_students': total_de_alumnos_que_ven(request.user, periodo),
         })

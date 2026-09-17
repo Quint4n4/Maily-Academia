@@ -60,3 +60,13 @@ export const getEngagementAnalytics = (courseId) =>
 
 export const getDropoutAnalytics = (courseId) =>
   api.get('/instructor/analytics/dropout/', { params: { course_id: courseId } }).then(({ data }) => data);
+
+/**
+ * Alumnos que estan consumiendo los cursos del profesor, y sus cursos mas
+ * vistos, ambos para el mismo periodo.
+ *
+ * `period` es uno de: day, week, month, year. El backend rechaza cualquier otro
+ * con un 400 en vez de caer en un defecto silencioso.
+ */
+export const getCourseViews = (period = 'month') =>
+  api.get('/instructor/analytics/views/', { params: { period } }).then(({ data }) => data);
