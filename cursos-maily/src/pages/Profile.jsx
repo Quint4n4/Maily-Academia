@@ -1,23 +1,45 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, FileText, Save, Check } from 'lucide-react';
+import { User, Mail, Phone, FileText, Save, Check, Camera, Loader2 } from 'lucide-react';
 import { Card, Button, Input, Badge } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useSection } from '../context/SectionContext';
+import { useToast } from '../context/ToastContext';
+import ImageCropModal from '../components/ImageCropModal';
+import api from '../services/api';
+
+/**
+ * Iniciales para cuando no hay foto.
+ *
+ * Sin esto, `user.avatar` cae en un servicio externo (ui-avatars.com) que dibuja
+ * el nombre. Si esa peticion no llega --sin red, bloqueada por una extension, el
+ * servicio caido-- el navegador pinta el texto alternativo, que es el nombre
+ * completo, desparramado dentro del circulo. Ademas, pedirla manda el nombre del
+ * usuario a un tercero en cada carga.
+ */
+const iniciales = (nombre = '') =>
+  nombre
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase() || '?';
 
 const ROLE_LABELS = { admin: 'Administrador', instructor: 'Profesor', student: 'Estudiante' };
 
 const Profile = () => {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, updateAvatar } = useAuth();
   const { currentSection } = useSection();
+  const toast = useToast();
 
-  // Usuarios corporativos tienen su propia página de perfil
-  if (currentSection === 'corporativo-camsa') {
-    return <Navigate to="/corporativo/profile" replace />;
-  }
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [archivoARecortar, setArchivoARecortar] = useState(null);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [falloLaFoto, setFalloLaFoto] = useState(false);
+  const inputFotoRef = useRef(null);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState({
     firstName: user?.firstName || '',
@@ -25,6 +47,50 @@ const Profile = () => {
     bio: user?.bio || '',
     phone: user?.phone || '',
   });
+
+  // Usuarios corporativos tienen su propia página de perfil.
+  //
+  // Esta comprobación va DESPUÉS de todos los hooks, no antes. Estaba arriba, y
+  // eso rompe la primera regla de los hooks: React los identifica por el orden
+  // en que se llaman, así que un `return` en medio hace que en unos renders se
+  // llamen siete y en otros ninguno. Funcionaba de milagro porque la condición
+  // no cambia mientras la página está montada; el día que cambiara, la pantalla
+  // reventaría con un error que no señala a esta línea.
+  if (currentSection === 'corporativo-camsa') {
+    return <Navigate to="/corporativo/profile" replace />;
+  }
+
+  const elegirFoto = (e) => {
+    const archivo = e.target.files?.[0];
+    // El input se limpia siempre: si no, elegir la misma foto dos veces seguidas
+    // no dispara el evento y parece que el boton dejo de funcionar.
+    e.target.value = '';
+    if (!archivo) return;
+    if (!archivo.type.startsWith('image/')) {
+      toast.error('Ese archivo no es una imagen.');
+      return;
+    }
+    setArchivoARecortar(archivo);
+  };
+
+  const subirFotoRecortada = async (archivoRecortado) => {
+    setArchivoARecortar(null);
+    setSubiendoFoto(true);
+    const datos = new FormData();
+    datos.append('avatar', archivoRecortado, 'foto_perfil.jpg');
+    try {
+      const { data } = await api.patch('/auth/me/avatar/', datos, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      updateAvatar(data.avatar);
+      setFalloLaFoto(false);
+      toast.success('Foto de perfil actualizada.');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'No se pudo subir la foto.');
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -47,11 +113,46 @@ const Profile = () => {
 
       {/* Avatar & basic info */}
       <Card className="text-center mb-6">
-        <img
-          src={user?.avatar}
-          alt={user?.name}
-          className="w-24 h-24 rounded-full object-cover mx-auto mb-4"
-        />
+        <div className="relative w-24 h-24 mx-auto mb-4">
+          {user?.avatar && !falloLaFoto ? (
+            <img
+              src={user.avatar}
+              alt=""
+              onError={() => setFalloLaFoto(true)}
+              className="w-24 h-24 rounded-full object-cover"
+            />
+          ) : (
+            // `object-cover` recorta la foto al circulo sin deformarla, y las
+            // iniciales cubren el caso de que no haya ninguna.
+            <div
+              className="w-24 h-24 rounded-full bg-maily flex items-center justify-center text-white text-2xl font-bold select-none"
+              aria-hidden="true"
+            >
+              {iniciales(user?.name)}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => inputFotoRef.current?.click()}
+            disabled={subiendoFoto}
+            aria-label="Cambiar foto de perfil"
+            className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-maily text-white flex items-center justify-center shadow-lg ring-2 ring-white dark:ring-gray-800 hover:bg-maily-dark transition-colors disabled:opacity-60"
+          >
+            {subiendoFoto ? <Loader2 size={15} className="animate-spin" /> : <Camera size={15} />}
+          </button>
+
+          {/* `image/*` a proposito, no una lista cerrada: el recorte convierte a
+              JPEG lo que sea que el navegador sepa abrir, HEIC de iPhone
+              incluido, asi que el servidor recibe siempre un formato que acepta. */}
+          <input
+            ref={inputFotoRef}
+            type="file"
+            accept="image/*"
+            onChange={elegirFoto}
+            className="sr-only"
+          />
+        </div>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">{user?.name}</h2>
         <p className="text-gray-500 dark:text-gray-400 text-sm">@{user?.username}</p>
         <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{user?.email}</p>
@@ -123,6 +224,23 @@ const Profile = () => {
           </div>
         )}
       </Card>
+
+      {/* `cubrir` es lo que evita los marcos: sin el, una foto vertical se
+          encaja entera en el recuadro y los huecos se rellenan de negro, y esas
+          barras quedan grabadas dentro del JPEG. 512px basta de sobra para un
+          avatar y deja el archivo muy por debajo del limite de 2 MB. */}
+      <ImageCropModal
+        isOpen={!!archivoARecortar}
+        imageFile={archivoARecortar}
+        onComplete={subirFotoRecortada}
+        onCancel={() => setArchivoARecortar(null)}
+        aspect={1}
+        cubrir
+        circular
+        outputWidth={512}
+        titulo="Ajusta tu foto de perfil"
+        nombreArchivo="foto_perfil.jpg"
+      />
     </div>
   );
 };
