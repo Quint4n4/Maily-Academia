@@ -5,7 +5,7 @@ import {
   Phone, Building2, ShieldCheck, GraduationCap, UserPlus, CheckCircle2,
   AlertCircle, Download,
 } from 'lucide-react';
-import { Card, Button, Input, SidePanel, Badge, Pagination } from '../../components/ui';
+import { Card, Button, Input, SidePanel, Badge, Pagination, UserAvatar } from '../../components/ui';
 import { SkeletonTableRow } from '../../components/ui/SkeletonLoader';
 import userService from '../../services/userService';
 import adminService from '../../services/adminService';
@@ -458,10 +458,21 @@ const UserManagement = () => {
                 ) : users.map((u) => (
                   <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                     <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900 dark:text-white">
-                        {u.first_name} {u.last_name}
+                      <div className="flex items-center gap-3">
+                        {/* `u.profile.avatar` llega vacio mientras la persona no
+                            suba foto; UserAvatar cae entonces en sus iniciales. */}
+                        <UserAvatar
+                          src={u.profile?.avatar}
+                          nombre={`${u.first_name} ${u.last_name}`.trim() || u.username}
+                          size="sm"
+                        />
+                        <div className="min-w-0">
+                          <div className="font-medium text-gray-900 dark:text-white truncate">
+                            {u.first_name} {u.last_name}
+                          </div>
+                          <div className="text-gray-500 dark:text-gray-400 text-xs truncate">@{u.username}</div>
+                        </div>
                       </div>
-                      <div className="text-gray-500 dark:text-gray-400 text-xs">@{u.username}</div>
                     </td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{u.email}</td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
@@ -910,11 +921,18 @@ const UserManagement = () => {
       >
         {accessModal.user && (
           <div className="space-y-4">
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                {accessModal.user.first_name} {accessModal.user.last_name}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{accessModal.user.email}</p>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 flex items-center gap-3">
+              <UserAvatar
+                src={accessModal.user.profile?.avatar}
+                nombre={`${accessModal.user.first_name} ${accessModal.user.last_name}`.trim() || accessModal.user.username}
+                size="md"
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                  {accessModal.user.first_name} {accessModal.user.last_name}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{accessModal.user.email}</p>
+              </div>
             </div>
 
             {accessError && (

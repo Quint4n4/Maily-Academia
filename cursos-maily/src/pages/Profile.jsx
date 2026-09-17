@@ -2,30 +2,12 @@ import { useState, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, FileText, Save, Check, Camera, Loader2 } from 'lucide-react';
-import { Card, Button, Input, Badge } from '../components/ui';
+import { Card, Button, Input, Badge, UserAvatar } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useSection } from '../context/SectionContext';
 import { useToast } from '../context/ToastContext';
 import ImageCropModal from '../components/ImageCropModal';
 import api from '../services/api';
-
-/**
- * Iniciales para cuando no hay foto.
- *
- * Sin esto, `user.avatar` cae en un servicio externo (ui-avatars.com) que dibuja
- * el nombre. Si esa peticion no llega --sin red, bloqueada por una extension, el
- * servicio caido-- el navegador pinta el texto alternativo, que es el nombre
- * completo, desparramado dentro del circulo. Ademas, pedirla manda el nombre del
- * usuario a un tercero en cada carga.
- */
-const iniciales = (nombre = '') =>
-  nombre
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0])
-    .join('')
-    .toUpperCase() || '?';
 
 const ROLE_LABELS = { admin: 'Administrador', instructor: 'Profesor', student: 'Estudiante' };
 
@@ -38,7 +20,6 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [archivoARecortar, setArchivoARecortar] = useState(null);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
-  const [falloLaFoto, setFalloLaFoto] = useState(false);
   const inputFotoRef = useRef(null);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState({
@@ -83,7 +64,6 @@ const Profile = () => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       updateAvatar(data.avatar);
-      setFalloLaFoto(false);
       toast.success('Foto de perfil actualizada.');
     } catch (err) {
       toast.error(err.response?.data?.detail || 'No se pudo subir la foto.');
@@ -114,23 +94,9 @@ const Profile = () => {
       {/* Avatar & basic info */}
       <Card className="text-center mb-6">
         <div className="relative w-24 h-24 mx-auto mb-4">
-          {user?.avatar && !falloLaFoto ? (
-            <img
-              src={user.avatar}
-              alt=""
-              onError={() => setFalloLaFoto(true)}
-              className="w-24 h-24 rounded-full object-cover"
-            />
-          ) : (
-            // `object-cover` recorta la foto al circulo sin deformarla, y las
-            // iniciales cubren el caso de que no haya ninguna.
-            <div
-              className="w-24 h-24 rounded-full bg-maily flex items-center justify-center text-white text-2xl font-bold select-none"
-              aria-hidden="true"
-            >
-              {iniciales(user?.name)}
-            </div>
-          )}
+          {/* El respaldo de iniciales y el `onError` viven dentro de
+              UserAvatar, que es el mismo que pinta la tabla de usuarios. */}
+          <UserAvatar src={user?.avatar} nombre={user?.name} size="lg" />
 
           <button
             type="button"
