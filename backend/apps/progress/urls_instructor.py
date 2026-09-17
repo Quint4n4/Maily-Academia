@@ -17,4 +17,5 @@ urlpatterns = [
     path('analytics/instructors/', views_instructor.AnalyticsInstructorsView.as_view(), name='analytics-instructors'),
     path('analytics/engagement/', views_instructor.AnalyticsEngagementView.as_view(), name='analytics-engagement'),
     path('analytics/dropout/', views_instructor.AnalyticsDropoutView.as_view(), name='analytics-dropout'),
+    path('analytics/views/', views_instructor.AnalyticsCourseViewsView.as_view(), name='analytics-course-views'),
 ]
