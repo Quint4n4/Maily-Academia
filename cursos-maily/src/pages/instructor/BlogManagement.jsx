@@ -3,8 +3,12 @@ import { motion } from 'framer-motion';
 import { Plus, FileText, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Card, Button, Input, Modal, Badge } from '../../components/ui';
 import blogService from '../../services/blogService';
+import { useConfirm } from '../../context/ConfirmContext';
+import { useToast } from '../../context/ToastContext';
 
 const BlogManagement = () => {
+  const confirmar = useConfirm();
+  const toast = useToast();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -60,12 +64,22 @@ const BlogManagement = () => {
     setSaving(false);
   };
 
-  const handleDelete = async (slug) => {
-    if (!window.confirm('¿Eliminar este artículo?')) return;
+  const handleDelete = async (post) => {
+    const ok = await confirmar({
+      titulo: 'Eliminar artículo',
+      mensaje: `¿Eliminar "${post.title}"?`,
+      detalle: 'Esta acción no se puede deshacer.',
+      textoConfirmar: 'Eliminar',
+      peligro: true,
+    });
+    if (!ok) return;
     try {
-      await blogService.remove(slug);
+      await blogService.remove(post.slug);
+      toast.success('Artículo eliminado.');
       load();
-    } catch { /* empty */ }
+    } catch {
+      toast.error('No se pudo eliminar el artículo.');
+    }
   };
 
   if (loading) {
@@ -111,7 +125,7 @@ const BlogManagement = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="ghost" onClick={() => openEdit(p)} icon={<Edit size={14} />}>Editar</Button>
-                    <Button size="sm" variant="danger" onClick={() => handleDelete(p.slug)} icon={<Trash2 size={14} />}>Eliminar</Button>
+                    <Button size="sm" variant="danger" onClick={() => handleDelete(p)} icon={<Trash2 size={14} />}>Eliminar</Button>
                   </div>
                 </div>
               </Card>

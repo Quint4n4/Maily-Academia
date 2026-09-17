@@ -9,6 +9,8 @@ import { Card, Button, Input, Modal, Badge, Pagination } from '../../components/
 import { SkeletonTableRow } from '../../components/ui/SkeletonLoader';
 import userService from '../../services/userService';
 import adminService from '../../services/adminService';
+import { useConfirm } from '../../context/ConfirmContext';
+import { useToast } from '../../context/ToastContext';
 const ROLE_LABELS = { admin: 'Admin', instructor: 'Profesor', student: 'Estudiante' };
 const ROLE_COLORS = { admin: 'accent', instructor: 'primary', student: 'secondary' };
 const PHONE_PATTERN = /^[0-9]{10}$/;
@@ -40,6 +42,8 @@ const TABS = [
 ];
 
 const UserManagement = () => {
+  const confirmar = useConfirm();
+  const toast = useToast();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -328,20 +332,27 @@ const UserManagement = () => {
   // ── Toggle activo ─────────────────────────────────────────────────────────
   const handleToggleActive = async (u) => {
     if (u.is_active) {
-      const confirmed = window.confirm(
-        `¿Estás seguro de desactivar al usuario ${u.first_name} ${u.last_name} (${u.email})? No podrá iniciar sesión.`
-      );
-      if (!confirmed) return;
+      const ok = await confirmar({
+        titulo: 'Desactivar usuario',
+        mensaje: `¿Desactivar a ${u.first_name} ${u.last_name}?`,
+        detalle: `${u.email} dejará de poder iniciar sesión. Sus datos y su progreso se conservan, y puedes reactivarlo cuando quieras.`,
+        textoConfirmar: 'Desactivar',
+        peligro: true,
+      });
+      if (!ok) return;
     }
     try {
       if (u.is_active) {
         await userService.deactivate(u.id);
+        toast.success(`${u.email} ya no puede iniciar sesión.`);
       } else {
         await userService.update(u.id, { isActive: true });
+        toast.success(`${u.email} vuelve a tener acceso.`);
       }
       load();
     } catch (err) {
       console.error('Error toggling user active status:', err);
+      toast.error('No se pudo cambiar el estado del usuario.');
     }
   };
 

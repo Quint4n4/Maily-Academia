@@ -5,12 +5,16 @@ import { Card, Button, Input, Badge, Pagination, Modal, CourseThumbnail } from '
 import { SkeletonTableRow } from '../../components/ui/SkeletonLoader';
 import courseService from '../../services/courseService';
 import userService from '../../services/userService';
+import { useConfirm } from '../../context/ConfirmContext';
+import { useToast } from '../../context/ToastContext';
 
 const LEVEL_LABELS = { beginner: 'Principiante', intermediate: 'Intermedio', advanced: 'Avanzado' };
 const STATUS_LABELS = { draft: 'Borrador', published: 'Publicado', archived: 'Archivado' };
 const STATUS_COLORS = { draft: 'secondary', published: 'primary', archived: 'accent' };
 
 const CourseManagement = () => {
+  const confirmar = useConfirm();
+  const toast = useToast();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -94,15 +98,24 @@ const CourseManagement = () => {
     setEditSaving(false);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de eliminar este curso?')) return;
+  const handleDelete = async (course) => {
+    const ok = await confirmar({
+      titulo: 'Eliminar curso',
+      mensaje: `¿Eliminar "${course.title}"?`,
+      detalle: 'Se borran también sus módulos y lecciones. Esta acción no se puede deshacer. Si el curso tiene alumnos inscritos o compras, el servidor la rechazará: archívalo en su lugar.',
+      textoConfirmar: 'Eliminar',
+      peligro: true,
+    });
+    if (!ok) return;
     setActionError('');
     try {
-      await courseService.remove(id);
+      await courseService.remove(course.id);
+      toast.success(`Curso "${course.title}" eliminado.`);
       load();
     } catch (err) {
       const msg = err.response?.data?.detail || 'No se pudo eliminar el curso.';
       setActionError(msg);
+      toast.error(msg);
     }
   };
 
@@ -205,7 +218,7 @@ const CourseManagement = () => {
                       </Button>
                     )}
                     {(course.students_count ?? 0) === 0 ? (
-                      <Button size="sm" variant="danger" onClick={() => handleDelete(course.id)} icon={<Trash2 size={14} />}>
+                      <Button size="sm" variant="danger" onClick={() => handleDelete(course)} icon={<Trash2 size={14} />}>
                         Eliminar
                       </Button>
                     ) : (

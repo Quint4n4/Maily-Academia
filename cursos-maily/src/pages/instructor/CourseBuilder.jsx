@@ -11,6 +11,7 @@ import ImageCropModal from '../../components/ImageCropModal';
 import VideoPreview from '../../components/VideoPreview';
 import courseService from '../../services/courseService';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import quizService from '../../services/quizService';
 import materialService from '../../services/materialService';
 import { uploadCourseThumbnail } from '../../services/uploadService';
@@ -35,6 +36,7 @@ const CourseBuilder = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const confirmar = useConfirm();
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -291,7 +293,14 @@ const CourseBuilder = () => {
   };
 
   const deleteModule = async (moduleId) => {
-    if (!window.confirm('¿Eliminar este módulo y todas sus lecciones?')) return;
+    const ok = await confirmar({
+      titulo: 'Eliminar módulo',
+      mensaje: '¿Eliminar este módulo?',
+      detalle: 'Se borran también todas sus lecciones y su quiz, junto con el progreso que los alumnos tengan en ellas.',
+      textoConfirmar: 'Eliminar',
+      peligro: true,
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await courseService.deleteModule(moduleId);
@@ -367,7 +376,14 @@ const CourseBuilder = () => {
   };
 
   const deleteLesson = async (lessonId) => {
-    if (!window.confirm('¿Eliminar esta lección?')) return;
+    const ok = await confirmar({
+      titulo: 'Eliminar lección',
+      mensaje: '¿Eliminar esta lección?',
+      detalle: 'Se pierde el progreso que los alumnos tengan en ella.',
+      textoConfirmar: 'Eliminar',
+      peligro: true,
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await courseService.deleteLesson(lessonId);
@@ -425,7 +441,15 @@ const CourseBuilder = () => {
   };
 
   const deleteQuiz = async () => {
-    if (!quiz || !window.confirm('¿Eliminar el quiz y todas sus preguntas?')) return;
+    if (!quiz) return;
+    const ok = await confirmar({
+      titulo: 'Eliminar quiz',
+      mensaje: '¿Eliminar el quiz de este módulo?',
+      detalle: 'Se borran todas sus preguntas y los intentos que los alumnos hayan hecho.',
+      textoConfirmar: 'Eliminar',
+      peligro: true,
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await quizService.remove(quiz.id);
@@ -497,7 +521,13 @@ const CourseBuilder = () => {
   };
 
   const deleteQuestion = async (questionId) => {
-    if (!window.confirm('¿Eliminar esta pregunta?')) return;
+    const ok = await confirmar({
+      titulo: 'Eliminar pregunta',
+      mensaje: '¿Eliminar esta pregunta del quiz?',
+      textoConfirmar: 'Eliminar',
+      peligro: true,
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await quizService.removeQuestion(questionId);
@@ -559,7 +589,13 @@ const CourseBuilder = () => {
   };
 
   const deleteFinalQuestion = async (questionId) => {
-    if (!window.confirm('¿Eliminar esta pregunta de la evaluación final?')) return;
+    const ok = await confirmar({
+      titulo: 'Eliminar pregunta',
+      mensaje: '¿Eliminar esta pregunta de la evaluación final?',
+      textoConfirmar: 'Eliminar',
+      peligro: true,
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await evaluationService.removeFinalQuestion(questionId);
@@ -608,7 +644,14 @@ const CourseBuilder = () => {
   };
 
   const handleDeleteMaterial = async (materialId) => {
-    if (!window.confirm('¿Eliminar este material?')) return;
+    const ok = await confirmar({
+      titulo: 'Eliminar material',
+      mensaje: '¿Eliminar este material de apoyo?',
+      detalle: 'Los alumnos dejarán de poder descargarlo.',
+      textoConfirmar: 'Eliminar',
+      peligro: true,
+    });
+    if (!ok) return;
     try {
       await materialService.remove(materialId);
       showSaved('Material eliminado');

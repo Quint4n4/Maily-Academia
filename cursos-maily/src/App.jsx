@@ -4,6 +4,7 @@ import { SectionContextProvider, useSection } from './context/SectionContext';
 import { ProgressProvider } from './context/ProgressContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
+import { ConfirmProvider } from './context/ConfirmContext';
 import { MainLayout } from './components/layout';
 import {
   Auth,
@@ -270,15 +271,17 @@ function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <Router>
-          <AuthProvider>
-            <SectionContextProvider>
-              <ProgressProvider>
-                <AppRoutes />
-              </ProgressProvider>
-            </SectionContextProvider>
-          </AuthProvider>
-        </Router>
+        <ConfirmProvider>
+          <Router>
+            <AuthProvider>
+              <SectionContextProvider>
+                <ProgressProvider>
+                  <AppRoutes />
+                </ProgressProvider>
+              </SectionContextProvider>
+            </AuthProvider>
+          </Router>
+        </ConfirmProvider>
       </ToastProvider>
     </ThemeProvider>
   );

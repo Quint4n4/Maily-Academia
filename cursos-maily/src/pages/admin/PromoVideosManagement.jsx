@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Video, Plus, Pencil, Trash2, ArrowLeft } from 'lucide-react';
 import { Card, Button, Modal, Input } from '../../components/ui';
 import api from '../../services/api';
+import { useConfirm } from '../../context/ConfirmContext';
+import { useToast } from '../../context/ToastContext';
 
 const SECTION_SLUG = 'maily-academia';
 
@@ -48,6 +50,8 @@ function toEmbedUrl(raw = '') {
 }
 
 export default function PromoVideosManagement() {
+  const confirmar = useConfirm();
+  const toast = useToast();
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -134,12 +138,25 @@ export default function PromoVideosManagement() {
       .finally(() => setSaving(false));
   };
 
-  const handleDelete = (video) => {
-    if (!window.confirm(`¿Eliminar el video "${video.title}"?`)) return;
+  const handleDelete = async (video) => {
+    const ok = await confirmar({
+      titulo: 'Eliminar video',
+      mensaje: `¿Eliminar "${video.title}"?`,
+      detalle: 'Deja de mostrarse en la página de la academia. El video sigue en YouTube; aquí solo se borra la referencia.',
+      textoConfirmar: 'Eliminar',
+      peligro: true,
+    });
+    if (!ok) return;
     api
       .delete(`/admin/sections/${SECTION_SLUG}/promo-videos/${video.id}/`)
-      .then(() => loadVideos())
-      .catch(() => setError('No se pudo eliminar'));
+      .then(() => {
+        toast.success(`Video "${video.title}" eliminado.`);
+        loadVideos();
+      })
+      .catch(() => {
+        setError('No se pudo eliminar');
+        toast.error('No se pudo eliminar el video.');
+      });
   };
 
   return (
