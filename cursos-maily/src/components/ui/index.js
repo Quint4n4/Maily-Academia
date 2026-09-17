@@ -10,3 +10,4 @@ export { default as SkeletonLoader, SkeletonCard, SkeletonText, SkeletonAvatar, 
 export { default as ToastContainer } from './Toast';
 export { default as DateRangePicker } from './DateRangePicker';
 export { CourseThumbnail } from './CourseThumbnail';
+export { UserAvatar } from './UserAvatar';
