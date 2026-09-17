@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Search, Trash2, Eye, Archive, RotateCcw, Edit, X } from 'lucide-react';
-import { Card, Button, Input, Badge, Pagination, Modal, CourseThumbnail } from '../../components/ui';
+import { Card, Button, Input, Badge, Pagination, SidePanel, CourseThumbnail } from '../../components/ui';
 import { SkeletonTableRow } from '../../components/ui/SkeletonLoader';
 import courseService from '../../services/courseService';
 import userService from '../../services/userService';
@@ -255,7 +255,7 @@ const CourseManagement = () => {
         </div>
       )}
       {/* Edit Course Modal */}
-      <Modal isOpen={editModal.open} onClose={() => setEditModal({ open: false, course: null })} title="Editar curso">
+      <SidePanel size="md" isOpen={editModal.open} onClose={() => setEditModal({ open: false, course: null })} title="Editar curso">
         <div className="space-y-4">
           {editError && (
             <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">{editError}</div>
@@ -306,7 +306,7 @@ const CourseManagement = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </SidePanel>
     </div>
   );
 };

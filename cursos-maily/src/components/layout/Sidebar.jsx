@@ -175,17 +175,27 @@ const Sidebar = ({ plegada = false, onAlternarPlegado }) => {
     }
   }, [user?.role, currentSection]);
 
+  /**
+   * Logo y academia de la cabecera.
+   *
+   * Siempre devuelve algo: antes daba `null` para el administrador y para un
+   * instructor sin academia asignada, y esos usuarios se quedaban con la
+   * cabecera vacia. El administrador no pertenece a una academia --las ve
+   * todas-- asi que lleva la marca de la plataforma y "Administración" debajo.
+   */
   const logoInfo = useMemo(() => {
-    if (user?.role === 'admin') return null;
+    const POR_SLUG = {
+      'maily-academia': { src: logoMaily, academia: 'Maily Academia', bg: false },
+      'longevity-360': { src: logoLongevity, academia: 'Longevity 360', bg: false },
+      'corporativo-camsa': { src: logoCorporativo, academia: 'Corporativo CAMSA', bg: true },
+    };
+    const PLATAFORMA = { src: logoMaily, academia: null, bg: false };
+
+    if (user?.role === 'admin') return { ...PLATAFORMA, academia: 'Administración' };
     if (user?.role === 'instructor') {
-      const slug = user?.instructorSection?.slug;
-      if (slug === 'maily-academia') return { src: logoMaily, alt: 'Maily Academia', showName: true, bg: false };
-      if (slug === 'longevity-360') return { src: logoLongevity, alt: 'Longevity 360', showName: false, bg: false };
-      return null;
+      return POR_SLUG[user?.instructorSection?.slug] || PLATAFORMA;
     }
-    if (currentSection === 'maily-academia') return { src: logoMaily, alt: 'Maily Academia', showName: true, bg: false };
-    if (currentSection === 'corporativo-camsa') return { src: logoCorporativo, alt: 'Corporativo CAMSA', showName: false, bg: true };
-    return { src: logoLongevity, alt: 'Longevity 360', showName: false, bg: false };
+    return POR_SLUG[currentSection] || POR_SLUG['longevity-360'];
   }, [user, currentSection]);
 
   const switchableSections = useMemo(() => {
@@ -233,59 +243,46 @@ const Sidebar = ({ plegada = false, onAlternarPlegado }) => {
   const contenido = (
     <>
       {/*
-        Cabecera: logo y boton de plegar.
+        Cabecera: logo y academia, SIEMPRE visibles --tambien plegada.
 
-        Plegada quedan 48px utiles (72 menos el padding) y ahi no caben un logo
-        de 36px y un boton de 34px: se encimaban. Con la barra plegada el logo se
-        va y queda solo el boton, centrado.
-
-        Se oculta con `lg:hidden` y no con un `!plegada &&` de JavaScript a
-        proposito: `plegada` es un estado de escritorio, y en el movil la barra
-        se abre entera aunque en el escritorio se hubiera dejado plegada. Con la
-        condicion en JS, quien plegara la barra en el escritorio se quedaba sin
-        logo tambien en el telefono.
+        El boton de plegar ya no vive aqui. Plegada quedan 48px utiles (72 menos
+        el padding) y un logo de 36px mas un boton de 34px no caben: se
+        encimaban. En vez de esconder el logo, que es lo que identifica la
+        academia, el control se baja al pie junto a los demas.
       */}
-      <div className={`flex items-center gap-2 h-16 px-3 border-b shrink-0 ${plegada ? 'lg:justify-center lg:px-2' : ''} ${isC ? 'border-[rgba(77,70,55,0.3)]' : 'border-gray-200 dark:border-gray-700'}`}>
+      <div className={`flex items-center h-16 px-3 border-b shrink-0 ${plegada ? 'lg:justify-center lg:px-2' : ''} ${isC ? 'border-[rgba(77,70,55,0.3)]' : 'border-gray-200 dark:border-gray-700'}`}>
         <Link
           to={navItems[0]?.to || '/dashboard'}
-          className={`flex items-center gap-2 min-w-0 flex-1 ${plegada ? 'lg:hidden' : ''}`}
+          className="flex items-center gap-2 min-w-0"
           onClick={() => setAbiertaEnMovil(false)}
+          // Plegada no hay sitio para el texto, asi que la academia se dice
+          // aqui: el nombre sale al pasar el raton sobre el logo.
+          title={plegada ? (logoInfo.academia || 'Maily Academia') : undefined}
         >
-          {logoInfo ? (
-            <>
-              <div className={`rounded-lg overflow-hidden shrink-0 ${logoInfo.bg ? 'bg-black p-1' : 'bg-white/70 dark:bg-white/10'}`}>
-                <img src={logoInfo.src} alt={logoInfo.alt} className="h-9 w-auto object-contain" />
-              </div>
-              {logoInfo.showName && (
-                <span className="text-base font-bold text-gray-900 dark:text-white truncate">
-                  {logoInfo.alt}
-                </span>
-              )}
-            </>
-          ) : (
-            <span className={`text-base font-bold truncate ${isC ? 'text-[#e6c364]' : 'text-gray-900 dark:text-white'}`}>
-              Maily Academia
-            </span>
-          )}
-        </Link>
+          <div className={`rounded-lg overflow-hidden shrink-0 ${logoInfo.bg ? 'bg-black p-1' : 'bg-white/70 dark:bg-white/10'}`}>
+            <img src={logoInfo.src} alt="" className="h-9 w-auto object-contain" />
+          </div>
 
-        {/* Plegar: solo en escritorio. En movil se cierra con la X de abajo. */}
-        <button
-          onClick={alternarPlegado}
-          aria-label={plegada ? 'Desplegar el menú' : 'Plegar el menú'}
-          title={plegada ? 'Desplegar el menú' : 'Plegar el menú'}
-          className={`hidden lg:flex p-2 rounded-lg shrink-0 transition-colors ${
-            isC ? 'text-[#d0c5b2] hover:bg-white/5' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-          }`}
-        >
-          {plegada ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-        </button>
+          {/* El nombre se oculta con `lg:hidden` y no con un `!plegada &&`:
+              `plegada` es un estado de escritorio, y en el movil la barra se
+              abre entera aunque en el escritorio se hubiera dejado plegada. */}
+          <span className={`min-w-0 ${plegada ? 'lg:hidden' : ''}`}>
+            <span className={`block text-base font-bold leading-tight truncate ${isC ? 'text-[#e6c364]' : 'text-gray-900 dark:text-white'}`}>
+              {logoInfo.academia || 'Maily Academia'}
+            </span>
+            {logoInfo.academia && logoInfo.academia !== 'Administración' && (
+              <span className={`block text-[11px] leading-tight truncate ${isC ? 'text-[#d0c5b2]' : 'text-gray-500 dark:text-gray-400'}`}>
+                Academia activa
+              </span>
+            )}
+          </span>
+        </Link>
 
         {/* Cerrar: solo en movil */}
         <button
           onClick={() => setAbiertaEnMovil(false)}
           aria-label="Cerrar el menú"
-          className={`lg:hidden p-2 rounded-lg shrink-0 ${isC ? 'text-[#d0c5b2] hover:bg-white/5' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+          className={`lg:hidden ml-auto p-2 rounded-lg shrink-0 ${isC ? 'text-[#d0c5b2] hover:bg-white/5' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
         >
           <X size={20} />
         </button>
@@ -325,8 +322,23 @@ const Sidebar = ({ plegada = false, onAlternarPlegado }) => {
         })}
       </nav>
 
-      {/* Pie: cambiar academia, tema y perfil */}
+      {/* Pie: plegar, cambiar academia, tema y perfil */}
       <div className={`border-t p-2 space-y-1 shrink-0 ${isC ? 'border-[rgba(77,70,55,0.3)]' : 'border-gray-200 dark:border-gray-700'}`}>
+        {/* Plegar: solo en escritorio. En movil la barra se abre o se cierra. */}
+        <button
+          onClick={alternarPlegado}
+          aria-label={plegada ? 'Desplegar el menú' : 'Plegar el menú'}
+          title={plegada ? 'Desplegar el menú' : undefined}
+          className={`hidden lg:flex w-full items-center gap-3 rounded-lg text-sm font-medium transition-colors ${
+            plegada ? 'justify-center px-2' : 'px-3'
+          } py-2.5 ${claseEnlace(false)}`}
+        >
+          {plegada
+            ? <PanelLeftOpen size={20} className="shrink-0" />
+            : <PanelLeftClose size={20} className="shrink-0" />}
+          <span className={plegada ? 'hidden' : ''}>Plegar menú</span>
+        </button>
+
         {switchableSections.length > 0 && (
           <div className="relative" ref={sectionSwitchRef}>
             <button
