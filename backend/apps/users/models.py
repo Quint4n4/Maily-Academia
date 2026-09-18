@@ -36,7 +36,13 @@ class User(AbstractUser):
         null=True,
     )
     
-    # Superadministrador: solo él puede otorgar/revocar acceso a sección Corporativo
+    # Superadministrador. Hay UNO, y lo impone la restriccion de mas abajo.
+    #
+    # Antes este comentario decia que solo el podia otorgar y revocar acceso a
+    # Corporativo. Era falso: esos endpoints usan `IsAdmin`, no `IsSuperAdmin`.
+    # Lo unico reservado a este nivel son los videos promocionales
+    # (`apps/sections/views.py`), que es lo que muestra la pantalla "Videos
+    # Maily" del panel.
     is_super_admin = models.BooleanField(
         'superadministrador',
         default=False,
@@ -81,6 +87,25 @@ class User(AbstractUser):
         verbose_name = 'usuario'
         verbose_name_plural = 'usuarios'
         ordering = ['-date_joined']
+        constraints = [
+            # "Que solo exista un superadministrador" se cumple aqui, en la
+            # base, y no con disciplina. Es un indice unico PARCIAL: solo cubre
+            # las filas con el flag en true, asi que los miles de usuarios con
+            # false no chocan entre si --que es lo que pasaria con un unique
+            # normal sobre un booleano--.
+            #
+            # Ponerlo en la base y no en un serializer es deliberado: el flag no
+            # se puede escribir desde la API (`MeSerializer` lo tiene en
+            # `read_only_fields` y ningun otro serializer lo expone), asi que
+            # hoy solo se toca desde el admin de Django o desde un shell. Una
+            # validacion en el codigo de la API no cubriria ninguno de esos dos
+            # caminos; la restriccion de la tabla los cubre todos.
+            models.UniqueConstraint(
+                fields=['is_super_admin'],
+                condition=models.Q(is_super_admin=True),
+                name='solo_un_superadministrador',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.get_full_name()} ({self.email})'
