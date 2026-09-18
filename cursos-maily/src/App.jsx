@@ -103,11 +103,18 @@ const RoleRoute = ({ roles, children }) => {
   return children;
 };
 
-// Super-admin only (en la práctica, cualquier admin global)
+// Solo el superadministrador. Hay uno.
+//
+// Hasta el 2026-09-18 esto comprobaba `role === 'admin'` e ignoraba el flag, con
+// lo que cualquier administrador pasaba. El flag SI llegaba hasta aquí
+// --`AuthContext` lo copia como `isSuperAdmin`-- pero no lo leía nadie.
+//
+// Esto NO es lo que protege nada: solo evita enseñarle a un administrador una
+// pantalla a la que va a rebotar. Quien protege es `IsSuperAdmin` en el backend,
+// porque a la API se puede llamar sin pasar por ninguna pantalla.
 const SuperAdminRoute = ({ children }) => {
   const { user, getDashboardPath } = useAuth();
-  // Reutilizamos el rol `admin` global; no es necesario marcar un flag especial.
-  if (!user || user.role !== 'admin') {
+  if (!user || !user.isSuperAdmin) {
     return <Navigate to={getDashboardPath()} replace />;
   }
   return children;

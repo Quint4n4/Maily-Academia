@@ -147,7 +147,12 @@ const Sidebar = ({ plegada = false, onAlternarPlegado }) => {
           { to: '/admin/users', label: 'Usuarios', icon: Users },
           { to: '/admin/courses', label: 'Cursos', icon: BookOpen },
           { to: '/admin/coupons', label: 'Cupones', icon: Tag },
-          { to: '/admin/promo-videos', label: 'Videos Maily', icon: Video },
+          // Videos Maily es la única pantalla reservada al superadministrador.
+          // Se oculta al resto para no ofrecer una puerta que los devuelve al
+          // dashboard; el cierre de verdad está en el backend.
+          ...(user?.isSuperAdmin
+            ? [{ to: '/admin/promo-videos', label: 'Videos Maily', icon: Video }]
+            : []),
         ];
       case 'instructor':
         return [
@@ -173,7 +178,7 @@ const Sidebar = ({ plegada = false, onAlternarPlegado }) => {
           { to: '/certificates', label: 'Certificados', icon: Award },
         ];
     }
-  }, [user?.role, currentSection]);
+  }, [user?.role, user?.isSuperAdmin, currentSection]);
 
   /**
    * Logo y academia de la cabecera.

@@ -16,22 +16,34 @@ class IsAdmin(BasePermission):
 
 class IsSuperAdmin(BasePermission):
     """
-    Allow access to platform administrators for super-admin protected actions.
+    Solo el superadministrador. Hay uno, y lo garantiza la base de datos.
 
-    Actualmente se considera "super admin" a cualquier usuario con rol global
-    `admin` (y opcionalmente con el flag `is_super_admin` activado).
+    Hasta el 2026-09-18 esta clase dejaba pasar a cualquier `role == 'admin'`, a
+    cualquier staff y a cualquier superuser, y solo miraba `is_super_admin` en la
+    ultima linea --a la que no llegaba nadie--. O sea: existia una columna, una
+    clase de permiso y una ruta llamadas "superadmin" que no distinguian nada.
+    Eso es peor que no tenerlas, porque hacen creer que algo esta protegido.
+
+    Ahora exige el flag y solo el flag. Se quitaron los tres atajos a proposito:
+
+      · `role == 'admin'` era el que anulaba la distincion entera.
+      · `is_staff` y `is_superuser` son permisos del admin de Django, otra
+        puerta con otro proposito. Quien los tenga puede entrar por ahi y
+        cambiar la base; lo que no debe es heredar este nivel sin que nadie se
+        lo haya dado. Ademas `admin@gmail.com` en produccion es superuser con
+        `role='student'`, asi que ese atajo repartia el nivel por accidente.
+
+    AMBITO>> este permiso es lo unico que protege los endpoints de videos
+    promocionales (`apps/sections/views.py`). El guardian del frontend no cuenta:
+    esconder un boton no es un permiso, porque cualquiera puede llamar a la API
+    sin pasar por la pantalla.
     """
 
     def has_permission(self, request, view):
         user = getattr(request, 'user', None)
         if not user or not user.is_authenticated:
             return False
-        # Superusers y staff tienen acceso total
-        if user.is_superuser or user.is_staff:
-            return True
-        if getattr(user, 'role', None) == 'admin':
-            return True
-        return getattr(user, 'is_super_admin', False)
+        return bool(getattr(user, 'is_super_admin', False))
 
 
 class IsInstructor(BasePermission):
