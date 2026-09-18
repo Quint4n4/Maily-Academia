@@ -5,6 +5,152 @@
 
 ---
 
+## 2026-09-18 · Dominio propio, entrar con Google y un superadministrador de verdad
+
+Tres PR fusionados (**#14, #15, #16**) y la plataforma mudada a **`academy360.mx`**.
+La suite pasó de 125 a **164 tests**.
+
+### Entrar con Google (#15)
+
+El botón «Continuar con Google» llevaba meses en la pantalla de entrada **sin `onClick`**: se
+pulsaba y no pasaba nada. Esto no añadió una función, cerró una promesa que la interfaz ya
+estaba haciendo.
+
+Flujo: el botón oficial de Google entrega un token de identidad al navegador, el frontend lo
+manda a `POST /api/auth/google/`, y el backend verifica la firma contra las claves públicas de
+Google. **No se usa el client secret** — este flujo no lo necesita, y comprobar una firma
+pública no requiere ningún secreto.
+
+Cuatro decisiones que costaría caro cambiar sin querer:
+
+| Decisión | Por qué |
+|---|---|
+| Se enlaza por `sub`, no por correo | El correo el usuario puede cambiarlo en Google; el `sub` no |
+| Sin `email_verified` no se entra **ni se enlaza** | Es el agujero clásico: con un token para una dirección sin verificar, alguien entra en la cuenta ajena que use esa dirección |
+| Se comprueba el `aud` | Sin ello, cualquiera monta una web con su cliente de Google, recoge el token que su usuario le firma y lo manda aquí. El token sería auténtico; no sería *para nosotros* |
+| El bloqueo por intentos fallidos **no** corta esta puerta | Ese bloqueo frena a quien adivina contraseñas y aquí no se usa ninguna. Respetarlo lo convertiría en una forma de dejar fuera al usuario legítimo: bastaría con fallar cinco veces contra su correo |
+
+Una cuenta nueva nace estudiante, en Longevity 360, **sin teléfono y sin contraseña usable**, y
+pasa por la encuesta de intereses. Dependencia nueva: `google-auth[requests]`. Se descartaron
+`django-allauth` (trae su propio sistema de sesiones, chocaría con simplejwt), llamar a
+`tokeninfo` en cada login (una llamada de red dentro del login, con dos workers) y verificar a
+mano con PyJWT — que ni podría: `cryptography` no está instalado.
+
+`datos_de_sesion` salió de dentro de `SecureLoginView` a `apps/users/services.py`. Las dos
+puertas devuelven la misma forma porque el frontend lee una sola; duplicar ese cálculo era
+garantizar que un día dejaran al usuario en academias distintas.
+
+### El teléfono dejó de ser obligatorio (#14), y la bomba que había debajo
+
+El token de Google no trae teléfono, así que con `phone` obligatorio no había alta posible por
+ese camino. Al arreglarlo apareció algo peor: **`phone` es UNIQUE, y Postgres admite muchos
+NULL pero una sola cadena vacía.** Guardar el teléfono ausente como `''` funciona con el primer
+usuario y devuelve 500 con el segundo. Con el registro anterior nunca pasaba porque el campo era
+obligatorio; con Google habría pasado el segundo día.
+
+Por eso la normalización vive en `User.save()` y no en el serializer: **el alta por Google no
+pasa por el serializer**. Si la red estuviera solo arriba, ese camino volvería a meter cadenas
+vacías. Lo mismo se aplicó luego a `google_sub`.
+
+### El superadministrador no existía (#16)
+
+Había una columna `is_super_admin`, una clase `IsSuperAdmin` y una ruta `SuperAdminRoute`.
+**Ninguna de las tres distinguía nada**: cualquier administrador pasaba por todas. Eso es peor
+que no tenerlas, porque hacen creer que algo está protegido. Y el comentario del modelo afirmaba
+que solo el superadministrador podía dar acceso a Corporativo — **falso**: esos endpoints usan
+`IsAdmin`. Lo único reservado a ese nivel es una pantalla, *Videos Maily*.
+
+`IsSuperAdmin` ahora exige el flag y solo el flag. Se quitaron tres atajos: `role == 'admin'`,
+que anulaba la distinción entera, y `is_staff` / `is_superuser`, que son permisos del admin de
+Django — otra puerta con otro propósito. Ese último repartía el nivel por accidente: **la cuenta
+`admin@gmail.com` de producción es superuser con `role='student'`**.
+
+«Que solo exista uno» lo impone un **índice único parcial** en la tabla, no la disciplina: el
+flag no se puede escribir desde la API, así que se toca desde el admin de Django o un shell, y
+una validación en la API no cubriría ninguno de esos dos caminos. Ceder el puesto sigue siendo
+posible —quitárselo a uno y dárselo a otro— y hay un test que lo cubre para no dejar la
+plataforma sin salida.
+
+**Regla que sale de aquí:** esconder un botón no es un permiso. El frontend decide qué se
+dibuja; cualquiera puede llamar a la API sin pasar por la pantalla.
+
+### El dominio: academy360.mx
+
+Comprado en Cloudflare el mismo día. Frontend en la raíz, backend en `api.`. Los registros los
+puso la integración Domain Connect de Railway, **con el proxy de Cloudflare activado (nube
+naranja) y funciona** — al contrario del consejo habitual de ponerla gris.
+
+Variables de Railway que hubo que tocar: `ALLOWED_HOSTS` (no existía, y ese era el 400 de Django
+en el dominio nuevo), `CSRF_TRUSTED_ORIGINS`, `CORS_ALLOWED_ORIGINS`, `FRONTEND_URL` y
+`GOOGLE_CLIENT_ID` en el backend; `VITE_API_URL` y `VITE_GOOGLE_CLIENT_ID` en el frontend. Las
+URLs viejas de Railway siguen en CORS a propósito, para no cortar nada durante la mudanza.
+
+Tres trampas que costaron tiempo y conviene no repetir:
+
+- **Railway no redespliega al guardar una variable.** La guarda, pero el contenedor sigue con el
+  entorno viejo. Hay que forzar `railway redeploy`. El síntoma es idéntico al de haberla escrito
+  mal.
+- **Vite lee las `VITE_` al construir, no al arrancar.** Si la variable falta, el minificador ve
+  que la condición es siempre falsa y **borra el código del paquete**. «No aparece el botón» y
+  «el código no está compilado» son el mismo síntoma.
+- **El traductor automático de Chrome reescribe los valores técnicos de un panel.** En la
+  pantalla de Cloudflare convirtió `_railway-verify` en `_verificar-ferrocarril` y, peor,
+  **`academy360.mx` en `academia360.mx`**. Desactivar la traducción en Cloudflare y Railway.
+
+Relacionado: `academia360.mx` —con *ia*— **es de otra persona** y tiene una página de venta con
+píxel de Facebook. Una letra de diferencia. Verificar siempre el dominio contra la factura, no
+contra una captura de pantalla.
+
+### Estado de producción al cerrar
+
+- `joseph.ccamsa@gmail.com` entró por Google (cuenta nueva, id=34), se promovió a `role=admin` y
+  se le dio el flag de superadministrador. **Es el único que lo tiene.**
+- Migraciones `0010_user_google_sub` y `0011_solo_un_superadministrador` aplicadas.
+- Verificado contra los usuarios reales: `joseph.ccamsa` entra a los endpoints reservados,
+  `admin@gmail.com` recibe 403, y la base rechaza un segundo superadministrador.
+
+### Abierto
+
+- **Producción no envía correos.** `RESEND_API_KEY` y `EMAIL_BACKEND` están guardadas en Railway
+  (36 y 43 caracteres) pero **no llegan al proceso de gunicorn** — comprobado leyendo
+  `/proc/<pid>/environ` de los workers. Quien pulse «olvidé mi contraseña» no recibe nada; el
+  correo se imprime en los logs. Las variables que se añadieron hoy sí llegaron, así que no es
+  un problema general.
+- `www.academy360.mx` no resuelve.
+- La bitácora del **2026-09-17** quedó sin escribir (ver abajo).
+
+## 2026-09-17 · Trece PR sin bitácora
+
+Sesión larga sin entrada propia. Lo que confirma el git, para que no se pierda el rastro:
+
+| PR | Rama |
+|---|---|
+| #1 | `feat/admin-coupons-crud` |
+| #2 | `feat/admin-dashboard-simplificado` |
+| #3 | `feat/quitar-beneficios-corporativos` |
+| #4 | `feat/confirmaciones-sin-alert-del-navegador` |
+| #5 | `fix/miniaturas-del-gestor-de-cursos` |
+| #6 | `feat/menu-lateral-y-paneles` |
+| #7 | `feat/avatar-en-mi-perfil` |
+| #8 | `feat/fotos-en-gestion-de-usuarios` |
+| #9 | `feat/panel-del-profesor-simplificado` |
+| #10 | `feat/vistas-de-cursos-del-profesor` |
+| #11 | `feat/logo-siempre-visible-y-mas-paneles` |
+| #12 | `feat/materiales-a-cloudinary` |
+| #13 | `fix/logos-de-academia-en-el-menu` |
+
+**Pendiente de esa sesión.** Verificado el 2026-09-18:
+
+- Las **seis tablas de beneficios corporativos siguen en producción** (pasos del `DROP` en
+  `docs/05-despliegue.md`): `corporate_availabilityexception`, `corporate_availabilityschedule`,
+  `corporate_benefitrequest`, `corporate_benefittype`, `corporate_notification`,
+  `corporate_reservation`.
+- **`/instructor/dropout` es una ruta huérfana**: existe en `App.jsx` y ningún componente
+  enlaza a ella.
+
+Heredado de esa sesión y no vuelto a medir: `current_uses` de los cupones contaba intentos de
+pago en vez de ventas antes del arreglo, así que los valores anteriores están inflados.
+
 ## 2026-09-15 · DESPLEGADO a produccion
 
 Las siete sesiones de correccion estan en produccion y verificadas. Lo que cambio, medido
