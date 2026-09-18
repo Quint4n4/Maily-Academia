@@ -117,6 +117,40 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /**
+   * Entrar con Google. Mismo contrato que `login`: devuelve
+   * { success, redirectSection, sections } o { success:false, error }.
+   *
+   * El backend responde exactamente lo mismo que en el login con contrasena
+   * --por eso este cuerpo es casi identico--, mas `created`, que dice si la
+   * cuenta acaba de nacer.
+   */
+  const loginConGoogle = async (credential) => {
+    try {
+      const data = await authService.loginWithGoogle(credential);
+
+      const nextRedirectSection = data?.redirect_section || null;
+      const nextSections = Array.isArray(data?.user?.sections) ? data.user.sections : [];
+
+      setRedirectSection(nextRedirectSection);
+      setUserSections(nextSections);
+
+      await fetchUser();
+      return {
+        success: true,
+        redirectSection: nextRedirectSection,
+        sections: nextSections,
+        created: !!data?.created,
+      };
+    } catch (error) {
+      const data = error.response?.data;
+      return {
+        success: false,
+        error: data?.detail || 'No pudimos entrar con Google. Intenta de nuevo.',
+      };
+    }
+  };
+
   const register = async (userData) => {
     try {
       await authService.register(userData);
@@ -218,6 +252,7 @@ export const AuthProvider = ({ children }) => {
       isLoading,
       isAuthenticated: !!user,
       login,
+      loginConGoogle,
       register,
       logout,
       updateProfile,

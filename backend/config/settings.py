@@ -301,3 +301,16 @@ STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
 STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='')
 STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 STRIPE_CURRENCY = config('STRIPE_CURRENCY', default='mxn')
+
+# -----------------------------------------------------------------------------
+# Entrar con Google
+# -----------------------------------------------------------------------------
+# El ID de cliente NO es un secreto: viaja en el paquete del frontend porque el
+# navegador lo necesita para pedirle el token a Google. Aqui se usa para lo
+# contrario --comprobar que el token que llega venia dirigido a ESTA app-- y esa
+# comprobacion es justo lo que impide que alguien presente un token legitimo de
+# Google emitido para otra aplicacion cualquiera.
+#
+# El secreto de cliente no aparece por ningun lado a proposito: el flujo de token
+# de identidad no lo usa. Si algun dia hace falta, no va aqui sin revisar por que.
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')

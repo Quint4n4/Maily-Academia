@@ -8,7 +8,6 @@ import logoMaily from '../../Logos/logomaily.png';
 import logoLongevity from '../../Logos/Longevity360-03.png';
 import logoCorporativo from '../../Logos/logocorporativo.png';
 import logoCamsa from '../../Logos/camsa_final.png';
-import googleIcon from '../../Logos/google_icon.png';
 import { Button, Input } from '../components/ui';
 import { COUNTRIES, STATES_BY_COUNTRY, getCities } from '../data/locations';
 
@@ -22,6 +21,18 @@ const PASSWORD_HAS_LOWER = /[a-z]/;
 const PASSWORD_HAS_DIGIT = /\d/;
 const PASSWORD_HAS_SPECIAL = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/;
 const PHONE_PATTERN = /^[0-9]{10}$/;
+
+/**
+ * El ID de cliente de Google. No es un secreto: el navegador lo necesita para
+ * pedirle el token a Google, y viaja en el paquete de todas formas. El que si
+ * es secreto --el client secret-- no se usa en este flujo y no debe aparecer
+ * nunca por aqui.
+ *
+ * Si falta, el boton simplemente no se pinta. Es mejor que un boton muerto:
+ * hasta hoy habia uno sin `onClick` que no hacia absolutamente nada.
+ */
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+const GOOGLE_SCRIPT_ID = 'gsi-client';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -51,7 +62,8 @@ const Auth = () => {
   const stateRef = useRef(null);
   const cityRef = useRef(null);
 
-  const { login, register, getDashboardPath } = useAuth();
+  const { login,
+    loginConGoogle, register, getDashboardPath } = useAuth();
   const { setCurrentSection } = useSection();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -174,6 +186,120 @@ const Auth = () => {
     return null;
   };
 
+  /**
+   * A donde va el usuario despues de entrar. Lo comparten el login con
+   * contrasena y el de Google a proposito: si se duplica, un dia las dos
+   * puertas dejan a la misma persona en pantallas distintas.
+   */
+  const irAlDestino = (result, esCuentaNueva = false) => {
+    // Con varias academias manda el selector, sea cual sea la puerta.
+    if (result.sections?.length > 1) {
+      setTimeout(() => navigate('/choose-section', { state: { sections: result.sections }, replace: true }), 100);
+      return;
+    }
+    // Una cuenta recien creada pasa por la encuesta de intereses, igual que
+    // quien se registra con el formulario.
+    if (esCuentaNueva) {
+      setTimeout(() => navigate('/survey'), 100);
+      return;
+    }
+    setTimeout(() => {
+      const basePath = getDashboardPath();
+      if (basePath === '/dashboard') {
+        const effectiveSection = sectionFromUrl || result.redirectSection;
+        if (effectiveSection) setCurrentSection(effectiveSection);
+        const target = getSectionDashboardPath(effectiveSection);
+        navigate(target || '/dashboard', { replace: true });
+      } else {
+        navigate(basePath, { replace: true });
+      }
+    }, 100);
+  };
+
+  /**
+   * Lo que pasa cuando Google nos devuelve el token del usuario.
+   *
+   * Vive en una ref y no en una funcion normal porque el callback se le entrega
+   * a Google UNA vez, al inicializar. Si le pasaramos la funcion directamente,
+   * Google se quedaria con la version de ese render y seguiria llamandola con el
+   * estado de entonces.
+   */
+  const alRecibirCredencial = useRef(() => {});
+
+  const manejarCredencialDeGoogle = async (respuesta) => {
+    setGeneralError('');
+    setIsAccountLocked(false);
+    setIsLoading(true);
+    const result = await loginConGoogle(respuesta?.credential);
+    if (result.success) {
+      irAlDestino(result, result.created);
+    } else {
+      setGeneralError(result.error);
+    }
+    setIsLoading(false);
+  };
+
+  // Se actualiza en cada render para que Google llame SIEMPRE a la ultima
+  // version. Escribir la ref durante el render esta prohibido; en un efecto no.
+  useEffect(() => {
+    alRecibirCredencial.current = manejarCredencialDeGoogle;
+  });
+
+  const contenedorDeGoogle = useRef(null);
+
+  /**
+   * Carga el script de Google y pinta su boton.
+   *
+   * Se pinta el boton oficial en vez del que habia dibujado a mano: Google lo
+   * exige para este flujo, y ademas es el que trae el manejo del popup, los
+   * idiomas y el estado de carga. Si se quiere otro aspecto, se configura aqui
+   * --forma, tamano, texto-- y no con CSS propio por encima.
+   */
+  useEffect(() => {
+    if (!isLogin || !GOOGLE_CLIENT_ID) return undefined;
+
+    const pintar = () => {
+      if (!window.google?.accounts?.id || !contenedorDeGoogle.current) return;
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (respuesta) => alRecibirCredencial.current(respuesta),
+      });
+      contenedorDeGoogle.current.innerHTML = '';
+      window.google.accounts.id.renderButton(contenedorDeGoogle.current, {
+        type: 'standard',
+        theme: 'outline',
+        size: 'large',
+        shape: 'pill',
+        text: 'continue_with',
+        logo_alignment: 'center',
+        locale: 'es',
+        width: 320,
+      });
+    };
+
+    if (window.google?.accounts?.id) {
+      pintar();
+      return undefined;
+    }
+
+    // El script puede estar ya en la pagina de un montaje anterior: cargarlo dos
+    // veces deja dos clientes de Google compitiendo por el mismo boton.
+    const yaEsta = document.getElementById(GOOGLE_SCRIPT_ID);
+    if (yaEsta) {
+      yaEsta.addEventListener('load', pintar);
+      return () => yaEsta.removeEventListener('load', pintar);
+    }
+
+    const script = document.createElement('script');
+    script.id = GOOGLE_SCRIPT_ID;
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = pintar;
+    document.head.appendChild(script);
+    return undefined;
+  }, [isLogin]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setGeneralError('');
@@ -185,26 +311,7 @@ const Auth = () => {
     if (isLogin) {
       const result = await login(formData.email, formData.password);
       if (result.success) {
-        // Si tiene varias secciones, mostrar selector de sección (solo aplica a estudiantes con múltiples accesos)
-        if (result.sections?.length > 1) {
-          setTimeout(() => navigate('/choose-section', { state: { sections: result.sections }, replace: true }), 100);
-          return;
-        }
-        // Una vez establecido el usuario, decidimos el dashboard según:
-        // - Rol admin/instructor → rutas existentes
-        // - Rol student → redirección por sección si viene desde backend
-        setTimeout(() => {
-          const basePath = getDashboardPath();
-          if (basePath === '/dashboard') {
-            // Priority: URL param > backend redirect section
-            const effectiveSection = sectionFromUrl || result.redirectSection;
-            if (effectiveSection) setCurrentSection(effectiveSection);
-            const target = getSectionDashboardPath(effectiveSection);
-            navigate(target || '/dashboard', { replace: true });
-          } else {
-            navigate(basePath, { replace: true });
-          }
-        }, 100);
+        irAlDestino(result);
       } else if (result.isLocked) {
         setIsAccountLocked(true);
         setLockoutInfo({
@@ -592,7 +699,7 @@ const Auth = () => {
             )}
           </form>
 
-          {isLogin && (
+          {isLogin && GOOGLE_CLIENT_ID && (
             <>
               {/* Separator */}
               <div className="relative my-8 lg:my-10 text-center">
@@ -602,13 +709,10 @@ const Auth = () => {
                 <span className="relative px-4 sm:px-6 bg-surface-container-lowest text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/50">o inicia sesión con</span>
               </div>
 
-              {/* Social Buttons */}
-              <div className="flex justify-center w-full">
-                <button type="button" className="w-full sm:max-w-sm flex items-center justify-center gap-3 px-4 py-3 bg-surface-container-lowest border border-outline-variant/30 rounded-full hover:bg-surface-container-low transition-colors shadow-sm ambient-shadow group">
-                  <img alt="Google" className="w-5 h-5 sm:w-6 sm:h-6 object-contain group-hover:scale-110 transition-transform" src={googleIcon}/>
-                  <span className="text-sm sm:text-base font-bold text-on-surface">Continuar con Google</span>
-                </button>
-              </div>
+              {/* Boton de Google. Lo pinta el script de Google dentro de este
+                  div; hasta el 2026-09-18 aqui habia un boton dibujado a mano
+                  sin onClick, que no hacia nada al pulsarlo. */}
+              <div className="flex justify-center w-full min-h-[44px]" ref={contenedorDeGoogle} />
             </>
           )}
 

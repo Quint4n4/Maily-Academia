@@ -51,6 +51,18 @@ class User(AbstractUser):
         blank=True,
     )
 
+    # Entrar con Google. Se guarda el `sub` del token y NO el correo porque el
+    # correo el usuario puede cambiarlo en su cuenta de Google y el `sub` no:
+    # vincular por correo significa perder la cuenta el dia que alguien se
+    # cambie la direccion. Nulo en quien nunca haya entrado por Google.
+    google_sub = models.CharField(
+        'identificador de Google',
+        max_length=255,
+        unique=True,
+        null=True,
+        blank=True,
+    )
+
     # Campos para seguridad anti-DDoS
     failed_login_attempts = models.PositiveIntegerField(
         'intentos fallidos',
@@ -107,15 +119,17 @@ class User(AbstractUser):
 
     def save(self, *args, **kwargs):
         """
-        Un telefono vacio se guarda como NULL, nunca como cadena vacia.
+        Los campos unicos que pueden faltar se guardan como NULL, nunca como
+        cadena vacia.
 
-        `phone` es UNIQUE en la tabla (`users_user_phone_key`). Postgres admite
+        `phone` y `google_sub` son UNIQUE en la tabla. Postgres admite
         tantos NULL como quieras en una columna unica, pero solo UNA cadena
         vacia: el segundo usuario que se guardara con `phone=''` reventaria con
         IntegrityError --un 500-- en vez de darse de alta.
 
-        Hasta hoy no pasaba porque el unico camino de alta exigia telefono. Deja
-        de ser teorico con el alta por Google, que no entrega telefono nunca.
+        Con el telefono no pasaba porque el unico camino de alta lo exigia. Deja
+        de ser teorico con el alta por Google, que no entrega telefono nunca; y
+        `google_sub` esta vacio en todos los usuarios que ya existen.
 
         Va aqui y no en el serializer porque el invariante es de la tabla: asi lo
         cumplen tambien el admin de Django, `create_user`, los comandos de carga
@@ -123,6 +137,8 @@ class User(AbstractUser):
         """
         if not self.phone:
             self.phone = None
+        if not self.google_sub:
+            self.google_sub = None
         return super().save(*args, **kwargs)
 
     def reset_login_attempts(self):

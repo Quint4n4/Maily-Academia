@@ -15,6 +15,14 @@ whitenoise>=6.7,<7.0
 bleach>=6.0,<7.0
 stripe>=8.0,<9.0
 
+# Entrar con Google. Verifica la firma del token de identidad contra las claves
+# publicas de Google, que rotan cada pocos dias. El extra [requests] no es
+# opcional: `verify_oauth2_token` necesita un transporte HTTP para bajar esas
+# claves. Se declara aqui aunque `requests` ya venga colado como dependencia
+# transitiva de cloudinary -- apoyarse en eso se rompe el dia que cloudinary
+# cambie su arbol.
+google-auth[requests]>=2.58,<3.0
+
 # Testing. El repo no tenia ningun test hasta el 2026-09-07; este es el andamio
 # que usan las sesiones siguientes del plan de correcciones.
 pytest>=8.0,<9.0

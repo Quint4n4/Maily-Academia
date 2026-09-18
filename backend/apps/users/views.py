@@ -17,6 +17,13 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .models import PasswordResetToken, Profile, SurveyResponse
 from .permissions import IsAdmin
+from .services import (
+    ErrorDeGoogle,
+    TokenInvalido,
+    datos_de_sesion,
+    entrar_con_google,
+    tokens_para,
+)
 from .serializers import (
     RegisterSerializer,
     MeSerializer,
@@ -126,54 +133,12 @@ class SecureLoginView(TokenObtainPairView):
                 user.reset_login_attempts()
 
                 try:
-                    # Importar aquí para evitar dependencias circulares en tiempo de carga
-                    from apps.sections.models import Section, SectionMembership
-
-                    memberships = (
-                        SectionMembership.objects.select_related('section')
-                        .filter(user=user, is_active=True)
-                    )
-
-                    section_slugs = []
-                    has_corporate = False
-                    has_maily = False
-
-                    for membership in memberships:
-                        section = membership.section
-                        if not section or not section.is_active:
-                            continue
-                        section_slugs.append(section.slug)
-                        if section.section_type == Section.SectionType.CORPORATE:
-                            has_corporate = True
-                        elif section.section_type == Section.SectionType.MAILY:
-                            has_maily = True
-
-                    # Longevity 360 es público: todos los estudiantes tienen acceso
-                    section_slugs.append('longevity-360')
-
-                    # Prioridad para redirect: corporativo > maily > público (Longevity 360)
-                    redirect_section = None
-                    if has_corporate:
-                        redirect_section = 'corporativo-camsa'
-                    elif has_maily:
-                        redirect_section = 'maily-academia'
-                    else:
-                        redirect_section = 'longevity-360'
-
-                    # Eliminar duplicados y ordenar para estabilidad
-                    section_slugs = sorted(set(section_slugs))
-
+                    # El calculo vive en `services.datos_de_sesion` porque entrar
+                    # con Google tiene que devolver esta misma forma. Estaba aqui
+                    # dentro; duplicarlo era garantizar que un dia las dos
+                    # puertas dejaran al usuario en academias distintas.
                     if isinstance(response.data, dict):
-                        # Superusers y staff se exponen como 'admin' para el frontend
-                        effective_role = 'admin' if (user.is_superuser or user.is_staff) else user.role
-                        response.data['redirect_section'] = redirect_section
-                        response.data['user'] = {
-                            'id': user.id,
-                            'email': user.email,
-                            'role': effective_role,
-                            'is_super_admin': getattr(user, 'is_super_admin', False),
-                            'sections': section_slugs,
-                        }
+                        response.data.update(datos_de_sesion(user))
                 except Exception:
                     # Si algo falla al calcular secciones, no romper el login
                     pass
@@ -224,6 +189,48 @@ class RegisterView(generics.CreateAPIView):
             UserSerializer(user).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class GoogleLoginView(APIView):
+    """
+    POST /api/auth/google/ – Entrar con la cuenta de Google.
+
+    Recibe `credential`: el token de identidad que el boton de Google le entrega
+    al navegador. Devuelve lo MISMO que `/api/auth/login/` mas `created`, para
+    que el frontend no tenga que distinguir por donde entro el usuario.
+
+    Lleva el mismo `AuthRateThrottle` que el login con contrasena: es una puerta
+    de entrada anonima y no tiene por que ser mas barata de golpear que la otra.
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]
+
+    def post(self, request):
+        credential = (request.data.get('credential') or '').strip()
+        if not credential:
+            return Response(
+                {'detail': 'Falta el token de Google.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            usuario, es_nuevo = entrar_con_google(credential)
+        except TokenInvalido as e:
+            # El motivo real va al registro, no al navegador: lo escribe la
+            # libreria de Google y puede llevar trozos del token dentro.
+            logging.getLogger(__name__).warning('Token de Google rechazado: %s', e)
+            return Response(
+                {'detail': 'No pudimos validar tu cuenta de Google.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        except ErrorDeGoogle as e:
+            return Response({'detail': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+        datos = tokens_para(usuario)
+        datos.update(datos_de_sesion(usuario))
+        datos['created'] = es_nuevo
+        return Response(datos, status=status.HTTP_200_OK)
 
 
 class MeView(generics.RetrieveUpdateAPIView):
