@@ -18,6 +18,20 @@ export const authService = {
     return data;
   },
 
+  /**
+   * Entrar con Google.
+   *
+   * `credential` es el token de identidad que el boton de Google le entrega al
+   * navegador. No es nuestra sesion: el backend lo verifica contra las claves
+   * publicas de Google y a cambio devuelve el mismo par de tokens que el login
+   * normal. Por eso aqui se llama a `setTokens` igual que arriba.
+   */
+  async loginWithGoogle(credential) {
+    const { data } = await api.post('/auth/google/', { credential });
+    setTokens(data.access, data.refresh);
+    return data;
+  },
+
   async register({
     email,
     firstName,
