@@ -100,7 +100,9 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     password = serializers.CharField(write_only=True, min_length=PASSWORD_MIN_LENGTH)
     password_confirm = serializers.CharField(write_only=True, min_length=PASSWORD_MIN_LENGTH)
-    phone = serializers.CharField(required=True, max_length=20)
+    phone = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True, max_length=20,
+    )
     country = serializers.CharField(required=False, allow_blank=True, max_length=100)
     state = serializers.CharField(required=False, allow_blank=True, max_length=100)
     city = serializers.CharField(required=False, allow_blank=True, max_length=100)
@@ -140,11 +142,23 @@ class RegisterSerializer(serializers.ModelSerializer):
         return self._validate_name(value, 'El apellido')
 
     def validate_phone(self, value):
+        """
+        Se puede tener cuenta sin telefono; con uno invalido o repetido, no.
+
+        Devuelve None y NO cadena vacia cuando viene en blanco. La diferencia no
+        es cosmetica: `User.phone` es unico en la base, y dos cadenas vacias
+        chocan mientras que dos NULL conviven. Ver `User.save()`.
+
+        El alta por Google necesita este hueco: el token de identidad trae
+        correo, nombre y foto, nunca un telefono.
+        """
         value = (value or '').strip()
         if not value:
-            raise serializers.ValidationError('El teléfono es requerido.')
+            return None
         if not PHONE_PATTERN.match(value):
             raise serializers.ValidationError('El teléfono debe tener exactamente 10 dígitos numéricos.')
+        # El filtro solo corre con un valor real: `filter(phone=None)` traduce a
+        # `phone IS NULL` y daria por repetido a cualquiera que no tenga uno.
         if User.objects.filter(phone=value).exists():
             raise serializers.ValidationError('Este número de teléfono ya está registrado.')
         return value
@@ -173,7 +187,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                 username=username,
                 first_name=validated_data.get('first_name', ''),
                 last_name=validated_data.get('last_name', ''),
-                phone=validated_data['phone'],
+                phone=validated_data.get('phone') or None,
                 password=validated_data['password'],
                 role=User.Role.STUDENT,
             )

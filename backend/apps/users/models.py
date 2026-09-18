@@ -105,6 +105,26 @@ class User(AbstractUser):
             return max(0, int(remaining))
         return 0
 
+    def save(self, *args, **kwargs):
+        """
+        Un telefono vacio se guarda como NULL, nunca como cadena vacia.
+
+        `phone` es UNIQUE en la tabla (`users_user_phone_key`). Postgres admite
+        tantos NULL como quieras en una columna unica, pero solo UNA cadena
+        vacia: el segundo usuario que se guardara con `phone=''` reventaria con
+        IntegrityError --un 500-- en vez de darse de alta.
+
+        Hasta hoy no pasaba porque el unico camino de alta exigia telefono. Deja
+        de ser teorico con el alta por Google, que no entrega telefono nunca.
+
+        Va aqui y no en el serializer porque el invariante es de la tabla: asi lo
+        cumplen tambien el admin de Django, `create_user`, los comandos de carga
+        y cualquier camino que se escriba despues.
+        """
+        if not self.phone:
+            self.phone = None
+        return super().save(*args, **kwargs)
+
     def reset_login_attempts(self):
         """Resetea los intentos de login y desbloquea la cuenta."""
         self.failed_login_attempts = 0
