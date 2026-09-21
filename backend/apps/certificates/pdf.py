@@ -1,20 +1,21 @@
 """
-Dibujo del diploma en PDF.
+Motor de dibujo del diploma: interpreta un `documento` y lo pinta en PDF.
 
-Un solo formato para las tres academias. Lo unico que cambia entre un diploma y
-otro son las cinco variables que trae `DatosDelDiploma`: alumno, curso, maestro,
-academia y fecha -- mas el codigo de verificacion.
+Hasta la fase 0 este archivo TENIA el layout escrito dentro. Ahora el layout es
+un dato --`documento.py`-- y aqui solo queda como se pinta. Es lo que permite
+que un maestro mueva los elementos sin que nadie toque codigo.
 
-Por que se dibuja por codigo y no sobre una imagen: la plantilla anterior
-(`static/certificates/maily_template.png`) traia el parrafo quemado en el pixel
---"Capacitacion 360 de Maily Soft... exponenciar tu consultorio"-- asi que la
-vista tenia que pintarle encima un rectangulo blanco y reescribir el texto. El
-parche se notaba porque el fondo de esa zona es un degradado, no blanco. Y el
-sello decia Maily Soft, que es otro producto.
+Dos conversiones viven aqui y en ningun otro sitio:
 
-Si algun dia hay arte propio de Academy360, se pone en `RUTA_FONDO` y este
-modulo lo usa de fondo a pagina completa en vez de dibujar el marco. Las
-posiciones del texto no cambian.
+1. **Origen.** El documento cuenta en milimetros desde la esquina SUPERIOR
+   izquierda, como el navegador y como Canva. ReportLab cuenta en puntos desde
+   la esquina INFERIOR izquierda. Si esta conversion se reparte entre el
+   frontend y el backend, un dia difieren y nadie sabe cual de los dos tiene
+   razon.
+2. **Linea base del texto.** `y` es el borde superior del texto, no su linea
+   base. Se baja usando el ascendente real de la fuente
+   (`pdfmetrics.getAscent`), no una aproximacion: con un titulo a 22 pt, un
+   ascendente estimado a ojo descuadra el renglon un milimetro largo.
 """
 
 from __future__ import annotations
@@ -24,62 +25,27 @@ from pathlib import Path
 
 from reportlab.graphics.barcode import qr
 from reportlab.graphics.shapes import Drawing
-from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen import canvas as reportlab_canvas
 
-# --------------------------------------------------------------------------
-# Lo que se cambia sin tocar el resto del archivo
-# --------------------------------------------------------------------------
+from .documento import FUENTES, PAGINAS, documento_semilla
 
-MARCA = 'ACADEMY360'
-TITULO = 'CERTIFICADO DE FINALIZACIÓN'
-
-# Quien firma la plataforma. Con las dos cadenas vacias no se imprime nada bajo
-# la linea de firma, que es como queda hasta que Emanuel diga el nombre y el
-# cargo. La linea se dibuja igual: un diploma sin espacio de firma se ve
-# incompleto, uno con la linea vacia se ve como lo que es, pendiente de firmar.
-FIRMANTE_NOMBRE = ''
-FIRMANTE_CARGO = ''
-
-# PNG con fondo transparente de la firma manuscrita, o None. Se dibuja sobre la
-# linea de firma. Ojo: una firma escaneada dentro de un PDF que el alumno
-# descarga es una firma que cualquiera puede recortar y reusar.
-RUTA_FIRMA: Path | None = None
-
-# PNG de fondo a pagina completa, o None para dibujar el marco por codigo. Si se
-# pone, debe venir SIN texto: los textos los escribe este modulo.
+# Fondo por defecto cuando el documento no trae uno propio: un PNG a pagina
+# completa, o None para dejar el papel en blanco con su marco.
 #
-# Es EL error que tenia la plantilla anterior: traia el parrafo quemado en el
-# pixel y la vista tenia que taparlo con un rectangulo blanco. Un fondo
-# exportado de Canva con "Otorgado a" y un nombre de ejemplo repite esa historia.
+# Debe venir SIN texto. Es el error que tenia la plantilla anterior: traia el
+# parrafo quemado en el pixel y habia que taparlo con un rectangulo blanco.
 RUTA_FONDO: Path | None = None
 
-# El sello circular dorado del centro. Se apaga cuando el fondo propio ya trae
-# medalla: dos sellos superpuestos se ven peor que ninguno.
-DIBUJAR_SELLO = True
-
-# Paleta, tomada de cursos-maily/tailwind.config.js para que el diploma y la
-# plataforma sean el mismo color: maily.dark (#1e40af) y stitch-primary (#845400).
-AZUL = (0.118, 0.251, 0.686)
-DORADO = (0.518, 0.329, 0.000)
-TINTA = (0.106, 0.110, 0.098)
-GRIS = (0.361, 0.357, 0.353)
-BLANCO = (1, 1, 1)
-
-# Helvetica en vez de Plus Jakarta Sans: las Type1 base de PDF no hay que
-# empaquetarlas ni registrarlas, y traen los acentos del espanol. Meter la
-# tipografia de la marca significa subir el .ttf al repo y registrarlo al
-# arrancar; se puede, pero es superficie nueva por un detalle que casi nadie
-# nota en un diploma.
-SANS = 'Helvetica'
-SANS_BOLD = 'Helvetica-Bold'
-SANS_ITALIC_BOLD = 'Helvetica-BoldOblique'
+# Marco dibujado cuando no hay imagen de fondo.
+AZUL_MARCO = (0.118, 0.251, 0.686)
+DORADO_MARCO = (0.518, 0.329, 0.000)
 
 
 @dataclass(frozen=True)
 class DatosDelDiploma:
-    """Lo que se imprime. Todo llega ya resuelto: aqui no se consulta la base."""
+    """Lo que se imprime. Todo llega resuelto: aqui no se consulta la base."""
 
     alumno: str
     curso: str
@@ -89,10 +55,27 @@ class DatosDelDiploma:
     codigo: str
     url_de_verificacion: str
 
+    def como_diccionario(self) -> dict:
+        return {
+            'alumno': self.alumno,
+            'curso': self.curso,
+            'maestro': self.maestro,
+            'academia': self.academia,
+            'fecha': self.fecha,
+            'codigo': self.codigo,
+        }
 
-# --------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
 # Utilidades de texto
-# --------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+
+def _color(codigo, por_defecto=(0, 0, 0)):
+    """'#1e40af' -> (0.117, 0.251, 0.686)."""
+    if not isinstance(codigo, str) or not codigo.startswith('#') or len(codigo) != 7:
+        return por_defecto
+    return tuple(int(codigo[i:i + 2], 16) / 255 for i in (1, 3, 5))
 
 
 def _tamano_que_cabe(pdf, texto, fuente, tamano_max, ancho_max, tamano_min=10):
@@ -100,6 +83,9 @@ def _tamano_que_cabe(pdf, texto, fuente, tamano_max, ancho_max, tamano_min=10):
 
     Sin esto, un nombre como "Maria Fernanda de la Concepcion Rodriguez Sanchez"
     se sale del marco y toca los bordes del diploma.
+
+    Limitacion declarada: se para en `tamano_min`. Con un ancho imposible el
+    texto desborda en vez de volverse ilegible.
     """
     tamano = tamano_max
     while tamano > tamano_min and pdf.stringWidth(texto, fuente, tamano) > ancho_max:
@@ -134,7 +120,6 @@ def _partir_en_lineas(pdf, texto, fuente, tamano, ancho_max, max_lineas=2):
     if not lineas:
         return ['']
 
-    # Quedo texto fuera: recortar la ultima linea para que se vea que sigue.
     consumido = ' '.join(lineas)
     if consumido != texto.strip():
         ultima = lineas[-1]
@@ -145,249 +130,251 @@ def _partir_en_lineas(pdf, texto, fuente, tamano, ancho_max, max_lineas=2):
     return lineas
 
 
-def _con_espaciado(pdf, texto, x_centro, y, fuente, tamano, espaciado):
-    """Dibuja texto centrado con separacion extra entre letras.
+def _rellenar_marcadores(plantilla: str, campos: dict) -> str:
+    """'impartido por {maestro}' -> 'impartido por Maria Garcia'.
 
-    ReportLab no tiene letter-spacing; se dibuja letra por letra. Solo se usa en
-    las dos lineas de arriba, que son las que piden aire de diploma.
+    Reemplazo literal y no `str.format`: el maestro escribe este texto y una
+    llave suelta --"{" en "horario {tarde}"-- reventaria la emision del diploma
+    con un KeyError, en la descarga del alumno y no en el editor.
+
+    Un marcador cuyo valor esta vacio se borra junto con los espacios que lo
+    rodean: `Course.section` admite null, y "impartido por Ana  ·  " con el
+    separador colgando se ve peor que sin academia.
     """
-    ancho = pdf.stringWidth(texto, fuente, tamano) + espaciado * (len(texto) - 1)
-    x = x_centro - ancho / 2
-    pdf.setFont(fuente, tamano)
-    for letra in texto:
-        pdf.drawString(x, y, letra)
-        x += pdf.stringWidth(letra, fuente, tamano) + espaciado
+    texto = plantilla
+    for nombre, valor in campos.items():
+        texto = texto.replace('{' + nombre + '}', valor or '')
+
+    if any(not (campos.get(nombre) or '') for nombre in campos):
+        # Limpieza de separadores que se quedaron sin uno de sus dos lados.
+        for separador in ('  ·  ', ' · ', ' — ', ' - '):
+            texto = texto.strip()
+            if texto.startswith(separador.strip()):
+                texto = texto[len(separador.strip()):]
+            if texto.endswith(separador.strip()):
+                texto = texto[:-len(separador.strip())]
+
+    return ' '.join(texto.split())
 
 
-# --------------------------------------------------------------------------
-# Las piezas del diploma
-# --------------------------------------------------------------------------
+def _escribir(pdf, texto, x_mm, y_mm, ancho_mm, fuente, tamano, align, espaciado=0):
+    """Escribe una linea ya resuelta, convirtiendo el origen."""
+    _, alto_pagina = PAGINAS['a4-horizontal']
+    ascendente = pdfmetrics.getAscent(fuente, tamano)
+    y = (alto_pagina - y_mm) * mm - ascendente
 
-
-def _dibujar_fondo(pdf, ancho, alto):
-    """Marco por codigo, o el PNG de `RUTA_FONDO` si existe."""
-    if RUTA_FONDO is not None and Path(RUTA_FONDO).exists():
-        pdf.drawImage(
-            str(RUTA_FONDO), 0, 0, width=ancho, height=alto,
-            preserveAspectRatio=True, mask='auto',
-        )
+    if espaciado:
+        ancho_texto = pdf.stringWidth(texto, fuente, tamano) + espaciado * (len(texto) - 1)
+        if align == 'center':
+            x = (x_mm + ancho_mm / 2) * mm - ancho_texto / 2
+        elif align == 'right':
+            x = (x_mm + ancho_mm) * mm - ancho_texto
+        else:
+            x = x_mm * mm
+        pdf.setFont(fuente, tamano)
+        for letra in texto:
+            pdf.drawString(x, y, letra)
+            x += pdf.stringWidth(letra, fuente, tamano) + espaciado
         return
 
-    pdf.setFillColorRGB(*BLANCO)
-    pdf.rect(0, 0, ancho, alto, fill=1, stroke=0)
-
-    # Marco exterior azul y filete dorado por dentro.
-    pdf.setStrokeColorRGB(*AZUL)
-    pdf.setLineWidth(3)
-    pdf.rect(10 * mm, 10 * mm, ancho - 20 * mm, alto - 20 * mm, fill=0, stroke=1)
-
-    pdf.setStrokeColorRGB(*DORADO)
-    pdf.setLineWidth(0.8)
-    pdf.rect(13 * mm, 13 * mm, ancho - 26 * mm, alto - 26 * mm, fill=0, stroke=1)
-
-    # Esquinas: cuadrados dorados pequenos que rematan el marco.
-    for x, y in (
-        (13 * mm, 13 * mm),
-        (ancho - 15 * mm, 13 * mm),
-        (13 * mm, alto - 15 * mm),
-        (ancho - 15 * mm, alto - 15 * mm),
-    ):
-        pdf.setFillColorRGB(*DORADO)
-        pdf.rect(x, y, 2 * mm, 2 * mm, fill=1, stroke=0)
+    pdf.setFont(fuente, tamano)
+    if align == 'center':
+        pdf.drawCentredString((x_mm + ancho_mm / 2) * mm, y, texto)
+    elif align == 'right':
+        pdf.drawRightString((x_mm + ancho_mm) * mm, y, texto)
+    else:
+        pdf.drawString(x_mm * mm, y, texto)
 
 
-def _dibujar_encabezado(pdf, ancho, alto):
-    centro = ancho / 2
-
-    pdf.setFillColorRGB(*DORADO)
-    _con_espaciado(pdf, MARCA, centro, alto - 26 * mm, SANS_BOLD, 12, 3.5)
-
-    pdf.setFillColorRGB(*AZUL)
-    _con_espaciado(pdf, TITULO, centro, alto - 40 * mm, SANS_BOLD, 22, 1.5)
-
-    pdf.setStrokeColorRGB(*DORADO)
-    pdf.setLineWidth(1.2)
-    pdf.line(centro - 25 * mm, alto - 45 * mm, centro + 25 * mm, alto - 45 * mm)
+# ---------------------------------------------------------------------------
+# Los tipos de elemento
+# ---------------------------------------------------------------------------
 
 
-def _dibujar_cuerpo(pdf, datos: DatosDelDiploma, ancho, alto) -> float:
-    """Dibuja el bloque central y devuelve la `y` donde termina.
+def _pintar_texto(pdf, elemento, texto):
+    if not texto:
+        return
 
-    Devuelve la `y` porque el titulo del curso puede ocupar uno o dos
-    renglones: lo que va debajo --el sello-- tiene que colocarse a partir de
-    donde el cuerpo acabo de verdad, no de una constante que solo acierta con
-    los titulos cortos.
-    """
-    centro = ancho / 2
-    ancho_util = ancho - 60 * mm
+    fuente = FUENTES[elemento.get('fuente', 'sans')]
+    ancho_mm = elemento['ancho']
+    ancho_pt = ancho_mm * mm
+    tamano = elemento.get('tamano', 12)
 
-    pdf.setFillColorRGB(*GRIS)
-    pdf.setFont(SANS, 12)
-    pdf.drawCentredString(centro, alto - 60 * mm, 'Otorgado a')
+    if elemento.get('mayusculas'):
+        texto = texto.upper()
 
-    tamano_nombre = _tamano_que_cabe(pdf, datos.alumno, SANS_ITALIC_BOLD, 30, ancho_util, 16)
-    pdf.setFillColorRGB(*TINTA)
-    pdf.setFont(SANS_ITALIC_BOLD, tamano_nombre)
-    pdf.drawCentredString(centro, alto - 77 * mm, datos.alumno)
+    max_lineas = elemento.get('max_lineas', 1)
 
-    ancho_nombre = pdf.stringWidth(datos.alumno, SANS_ITALIC_BOLD, tamano_nombre)
-    media_linea = min(max(ancho_nombre / 2 + 8 * mm, 30 * mm), ancho_util / 2)
-    pdf.setStrokeColorRGB(*DORADO)
-    pdf.setLineWidth(0.6)
-    pdf.line(centro - media_linea, alto - 82 * mm, centro + media_linea, alto - 82 * mm)
+    if elemento.get('autoajuste'):
+        tamano = _tamano_que_cabe(pdf, texto, fuente, tamano, ancho_pt, max(tamano * 0.55, 6))
 
-    pdf.setFillColorRGB(*GRIS)
-    pdf.setFont(SANS, 12)
-    pdf.drawCentredString(centro, alto - 94 * mm, 'Por haber concluido satisfactoriamente el curso')
+    lineas = (
+        _partir_en_lineas(pdf, texto, fuente, tamano, ancho_pt, max_lineas)
+        if max_lineas > 1
+        else [texto]
+    )
 
-    # El titulo del curso es la unica linea que puede ocupar dos renglones.
-    tamano_curso = _tamano_que_cabe(pdf, datos.curso, SANS_BOLD, 17, ancho_util, 12)
-    lineas = _partir_en_lineas(pdf, datos.curso, SANS_BOLD, tamano_curso, ancho_util)
-    pdf.setFillColorRGB(*AZUL)
-    pdf.setFont(SANS_BOLD, tamano_curso)
-    y = alto - 105 * mm
+    pdf.setFillColorRGB(*_color(elemento.get('color', '#000000')))
+    y = elemento['y']
     for linea in lineas:
-        pdf.drawCentredString(centro, y, linea)
-        y -= tamano_curso + 3
-
-    # Maestro y academia: las otras dos variables, juntas en un solo renglon.
-    # `Course.section` admite null, asi que la academia puede faltar y el
-    # separador no debe quedar colgando.
-    partes = []
-    if datos.maestro:
-        partes.append(f'impartido por {datos.maestro}')
-    if datos.academia:
-        partes.append(datos.academia)
-    pie = '  ·  '.join(partes)
-    tamano_pie = _tamano_que_cabe(pdf, pie, SANS, 12, ancho_util, 9) if pie else 12
-    pdf.setFillColorRGB(*GRIS)
-    pdf.setFont(SANS, tamano_pie)
-    y -= 5
-    pdf.drawCentredString(centro, y, pie)
-
-    return y
+        _escribir(
+            pdf, linea, elemento['x'], y, ancho_mm,
+            fuente, tamano, elemento.get('align', 'left'),
+            elemento.get('espaciado', 0),
+        )
+        y += (tamano * 1.25) / mm
 
 
-def _dibujar_sello(pdf, ancho, y_tope):
-    """Sello circular entre el cuerpo y la firma.
+def _pintar_linea(pdf, elemento):
+    _, alto_pagina = PAGINAS['a4-horizontal']
+    y = (alto_pagina - elemento['y']) * mm
+    pdf.setStrokeColorRGB(*_color(elemento.get('color', '#000000')))
+    pdf.setLineWidth(elemento.get('grosor', 0.8))
+    pdf.line(elemento['x'] * mm, y, (elemento['x'] + elemento['ancho']) * mm, y)
 
-    No es decoracion gratuita: sin el, la mitad inferior del diploma queda
-    vacia y el documento se ve cortado. `y_tope` es donde acabo el cuerpo, con
-    un suelo para que un curso de dos renglones no lo empuje sobre la firma.
-    """
-    centro_x = ancho / 2
-    centro_y = max(y_tope - 20 * mm, 62 * mm)
-    radio = 11 * mm
 
-    pdf.setStrokeColorRGB(*DORADO)
-    pdf.setFillColorRGB(*BLANCO)
+def _pintar_qr(pdf, elemento, url):
+    _, alto_pagina = PAGINAS['a4-horizontal']
+    lado = elemento['ancho'] * mm
+    x = elemento['x'] * mm
+    y = (alto_pagina - elemento['y'] - elemento['ancho']) * mm
+
+    widget = qr.QrCodeWidget(url or ' ')
+    x1, y1, x2, y2 = widget.getBounds()
+    dibujo = Drawing(lado, lado, transform=[lado / (x2 - x1), 0, 0, lado / (y2 - y1), 0, 0])
+    dibujo.add(widget)
+    dibujo.drawOn(pdf, x, y)
+
+
+def _pintar_sello(pdf, elemento):
+    """Sello circular. Sin el, la mitad inferior del diploma queda vacia."""
+    _, alto_pagina = PAGINAS['a4-horizontal']
+    radio = elemento['ancho'] * mm / 2
+    centro_x = elemento['x'] * mm + radio
+    centro_y = (alto_pagina - elemento['y']) * mm - radio
+    color = _color(elemento.get('color', '#845400'))
+
+    pdf.setStrokeColorRGB(*color)
+    pdf.setFillColorRGB(1, 1, 1)
     pdf.setLineWidth(1.6)
     pdf.circle(centro_x, centro_y, radio, stroke=1, fill=1)
 
     pdf.setLineWidth(0.6)
     pdf.circle(centro_x, centro_y, radio - 1.8 * mm, stroke=1, fill=0)
 
-    pdf.setFillColorRGB(*DORADO)
-    pdf.setFont(SANS_BOLD, 13)
-    pdf.drawCentredString(centro_x, centro_y - 1.5 * mm, 'A360')
+    pdf.setFillColorRGB(*color)
+    pdf.setFont('Helvetica-Bold', 13)
+    pdf.drawCentredString(centro_x, centro_y - 1.5 * mm, elemento.get('contenido', ''))
 
-    pdf.setFont(SANS, 5.2)
+    pdf.setFont('Helvetica', 5.2)
     pdf.drawCentredString(centro_x, centro_y + 4 * mm, 'ACADEMY')
 
 
-def _dibujar_firma(pdf, ancho, alto):
-    centro = ancho / 2
-    y_linea = 40 * mm
+def _pintar_imagen(pdf, elemento, resolver_recurso):
+    """Logo, firma o sello subido. `resolver_recurso` devuelve una ruta o None.
 
-    if RUTA_FIRMA is not None and Path(RUTA_FIRMA).exists():
-        pdf.drawImage(
-            str(RUTA_FIRMA),
-            centro - 22 * mm, y_linea + 2 * mm,
-            width=44 * mm, height=16 * mm,
-            preserveAspectRatio=True, mask='auto', anchor='c',
-        )
-
-    pdf.setStrokeColorRGB(*TINTA)
-    pdf.setLineWidth(0.8)
-    pdf.line(centro - 30 * mm, y_linea, centro + 30 * mm, y_linea)
-
-    y = y_linea - 5 * mm
-    if FIRMANTE_NOMBRE:
-        pdf.setFillColorRGB(*TINTA)
-        pdf.setFont(SANS_BOLD, 10)
-        pdf.drawCentredString(centro, y, FIRMANTE_NOMBRE)
-        y -= 4.5 * mm
-
-    if FIRMANTE_CARGO:
-        pdf.setFillColorRGB(*GRIS)
-        pdf.setFont(SANS, 9)
-        pdf.drawCentredString(centro, y, FIRMANTE_CARGO)
-        y -= 4.5 * mm
-
-    pdf.setFillColorRGB(*GRIS)
-    pdf.setFont(SANS, 8.5)
-    pdf.drawCentredString(centro, y, MARCA)
-
-
-def _dibujar_fecha(pdf, datos: DatosDelDiploma, alto):
-    x = 25 * mm
-
-    pdf.setFillColorRGB(*GRIS)
-    pdf.setFont(SANS, 8)
-    pdf.drawString(x, 42 * mm, 'FECHA DE EMISIÓN')
-
-    pdf.setFillColorRGB(*TINTA)
-    pdf.setFont(SANS_BOLD, 11)
-    pdf.drawString(x, 35 * mm, datos.fecha)
-
-
-def _dibujar_verificacion(pdf, datos: DatosDelDiploma, ancho):
-    """QR a la pagina publica de verificacion, y el codigo escrito debajo.
-
-    El codigo va tambien en texto porque un QR impreso en papel y fotocopiado
-    deja de leerse, y porque quien reciba el diploma por correo puede preferir
-    teclear. Sin esto la verificacion publica existe pero nadie puede llegar a
-    ella desde el documento.
+    Se inyecta en vez de consultarse aqui para que este modulo no dependa de la
+    base ni haga peticiones de red: una descarga de Cloudinary dentro de la
+    peticion, con dos workers de gunicorn, es un worker bloqueado por cada
+    diploma que alguien pida mientras la red va lenta.
     """
-    lado = 22 * mm
-    x = ancho - 25 * mm - lado
-    y = 32 * mm
+    if resolver_recurso is None:
+        return
+    # Se pasa el elemento entero y no su id: un documento congelado trae
+    # `recurso_public_id`, el identificador de Cloudinary del dia de la
+    # emision, y por ahi sobrevive a que borren ese marco de la galeria.
+    ruta = resolver_recurso(elemento)
+    if not ruta:
+        return
 
-    widget = qr.QrCodeWidget(datos.url_de_verificacion)
-    x1, y1, x2, y2 = widget.getBounds()
-    dibujo = Drawing(lado, lado, transform=[lado / (x2 - x1), 0, 0, lado / (y2 - y1), 0, 0])
-    dibujo.add(widget)
-    dibujo.drawOn(pdf, x, y)
+    _, alto_pagina = PAGINAS['a4-horizontal']
+    alto = elemento.get('alto', elemento['ancho'])
+    pdf.drawImage(
+        str(ruta),
+        elemento['x'] * mm,
+        (alto_pagina - elemento['y'] - alto) * mm,
+        width=elemento['ancho'] * mm,
+        height=alto * mm,
+        preserveAspectRatio=True,
+        mask='auto',
+        anchor='c',
+    )
 
-    pdf.setFillColorRGB(*GRIS)
-    pdf.setFont(SANS, 7)
-    pdf.drawCentredString(x + lado / 2, y - 4 * mm, 'Verifica este diploma')
 
-    pdf.setFont(SANS, 5.8)
-    pdf.drawCentredString(x + lado / 2, y - 7 * mm, datos.codigo)
+def _pintar_fondo(pdf, documento, ancho, alto, resolver_recurso):
+    fondo = documento.get('fondo')
+    ruta = None
+
+    if isinstance(fondo, dict) and resolver_recurso is not None:
+        ruta = resolver_recurso(fondo)
+    elif RUTA_FONDO is not None and Path(RUTA_FONDO).exists():
+        ruta = RUTA_FONDO
+
+    if ruta:
+        pdf.drawImage(str(ruta), 0, 0, width=ancho, height=alto,
+                      preserveAspectRatio=True, mask='auto')
+        return
+
+    pdf.setFillColorRGB(1, 1, 1)
+    pdf.rect(0, 0, ancho, alto, fill=1, stroke=0)
+
+    pdf.setStrokeColorRGB(*AZUL_MARCO)
+    pdf.setLineWidth(3)
+    pdf.rect(10 * mm, 10 * mm, ancho - 20 * mm, alto - 20 * mm, fill=0, stroke=1)
+
+    pdf.setStrokeColorRGB(*DORADO_MARCO)
+    pdf.setLineWidth(0.8)
+    pdf.rect(13 * mm, 13 * mm, ancho - 26 * mm, alto - 26 * mm, fill=0, stroke=1)
+
+    for x, y in (
+        (13 * mm, 13 * mm),
+        (ancho - 15 * mm, 13 * mm),
+        (13 * mm, alto - 15 * mm),
+        (ancho - 15 * mm, alto - 15 * mm),
+    ):
+        pdf.setFillColorRGB(*DORADO_MARCO)
+        pdf.rect(x, y, 2 * mm, 2 * mm, fill=1, stroke=0)
 
 
-# --------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Entrada publica
-# --------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 
 
-def dibujar_diploma(destino, datos: DatosDelDiploma) -> None:
-    """Escribe el PDF del diploma en `destino` (un archivo o una HttpResponse)."""
-    ancho, alto = landscape(A4)
+def dibujar_diploma(destino, datos: DatosDelDiploma, documento=None, *, resolver_recurso=None):
+    """Escribe el PDF en `destino`, siguiendo `documento`.
+
+    Sin `documento` usa la plantilla semilla, que es el diploma que la
+    plataforma emite hoy.
+    """
+    documento = documento or documento_semilla()
+    ancho_mm, alto_mm = PAGINAS.get(documento.get('pagina'), PAGINAS['a4-horizontal'])
+    ancho, alto = ancho_mm * mm, alto_mm * mm
+
     pdf = reportlab_canvas.Canvas(destino, pagesize=(ancho, alto))
     pdf.setTitle(f'Diploma - {datos.alumno}')
-    pdf.setAuthor(MARCA)
+    pdf.setAuthor('ACADEMY360')
     pdf.setSubject(datos.curso)
 
-    _dibujar_fondo(pdf, ancho, alto)
-    _dibujar_encabezado(pdf, ancho, alto)
-    y_cuerpo = _dibujar_cuerpo(pdf, datos, ancho, alto)
-    if DIBUJAR_SELLO:
-        _dibujar_sello(pdf, ancho, y_cuerpo)
-    _dibujar_firma(pdf, ancho, alto)
-    _dibujar_fecha(pdf, datos, alto)
-    _dibujar_verificacion(pdf, datos, ancho)
+    _pintar_fondo(pdf, documento, ancho, alto, resolver_recurso)
+
+    campos = datos.como_diccionario()
+    elementos = sorted(documento.get('elementos', []), key=lambda e: e.get('z', 0))
+
+    for elemento in elementos:
+        tipo = elemento.get('tipo')
+        if tipo == 'campo':
+            _pintar_texto(pdf, elemento, campos.get(elemento.get('campo'), ''))
+        elif tipo == 'texto':
+            _pintar_texto(pdf, elemento, _rellenar_marcadores(elemento.get('contenido', ''), campos))
+        elif tipo == 'linea':
+            _pintar_linea(pdf, elemento)
+        elif tipo == 'qr':
+            _pintar_qr(pdf, elemento, datos.url_de_verificacion)
+        elif tipo == 'sello':
+            _pintar_sello(pdf, elemento)
+        elif tipo == 'imagen':
+            _pintar_imagen(pdf, elemento, resolver_recurso)
 
     pdf.showPage()
     pdf.save()

@@ -90,16 +90,37 @@ El layout deja de ser código y pasa a ser un JSON que el maestro edita y el ser
 | `tipo` | Qué imprime | Propiedades propias |
 |---|---|---|
 | `campo` | Una de las variables | `campo`: `alumno` \| `curso` \| `maestro` \| `academia` \| `fecha` \| `codigo` |
-| `texto` | Texto fijo que escribe el maestro | `contenido` (máx. 300 caracteres) |
+| `texto` | Texto fijo, **con marcadores** | `contenido` (máx. 300 caracteres) |
 | `imagen` | Logo, firma o sello | `recurso_id`, `alto` |
-| `qr` | QR a la página de verificación | `lado` |
+| `qr` | QR a la página de verificación | — (usa `ancho` como lado) |
 | `linea` | Raya horizontal | `grosor` |
+| `sello` | Sello circular dibujado | `contenido` (el texto de dentro) |
 
 Propiedades comunes a todos: `id`, `tipo`, `x`, `y`, `ancho`, `z` (orden de dibujo, opcional) y
 `bloqueado` (opcional, por defecto `false`).
 
 Propiedades comunes a `campo` y `texto`: `fuente`, `tamano`, `color`, `align`
-(`left` \| `center` \| `right`), `mayusculas` (bool, opcional).
+(`left` \| `center` \| `right`), `mayusculas`, `espaciado`, y las dos de abajo.
+
+### Marcadores, `autoajuste` y `max_lineas`
+
+`contenido` admite marcadores de las seis variables:
+
+```json
+{ "tipo": "texto", "contenido": "impartido por {maestro}  ·  {academia}" }
+```
+
+Se reemplazan **literalmente, no con `str.format`**: el maestro escribe ese texto, y una llave
+suelta —`"horario {tarde}"`— reventaría la emisión con un `KeyError` en la descarga del alumno. Si
+un marcador queda vacío (`Course.section` admite null), el separador que se queda sin uno de sus
+dos lados se limpia solo.
+
+- **`autoajuste`** (bool): baja el cuerpo de letra hasta que el texto quepa en `ancho`. Es lo que
+  impide que un nombre de cincuenta letras toque el borde del diploma.
+- **`max_lineas`** (int, por defecto 1): parte el texto por palabras. Si aún no cabe, recorta con
+  puntos suspensivos, que es preferible a que el título de un curso invada la zona de la firma.
+
+Sin estas dos, el editor produce diplomas rotos con solo escribir un nombre largo.
 
 ---
 
@@ -316,3 +337,249 @@ Cada fase cierra con:
 - Migraciones **escritas y no aplicadas**: `verificadores.migraciones: solo-emanuel`.
 - Un PDF de muestra mirado con los ojos. La fase 0 tenía todo el contenido apelotonado en la mitad
   superior y ningún test lo habría detectado.
+
+---
+
+## 13 · Cambios durante la implementación de la fase 1
+
+> Escritos aquí y no corregidos en silencio arriba: un contrato que cambia sin dejar rastro deja de
+> servir para lo que existe. Fecha: `2026-09-21`.
+
+**1 · La semilla vive en el código, no en la base.** El contrato daba por hecho una fila con
+`es_semilla=True` creada por una migración de datos. No se hizo así: una migración que copia un
+JSON se queda **congelada en la versión vieja** el día que la semilla evolucione, y una base nueva
+nacería con un diseño distinto al de una base antigua. `documento_semilla()` en
+`apps/certificates/documento.py` es la fuente. El campo `es_semilla` se queda en el modelo para
+que un administrador pueda designar otra desde la base, pero si no hay ninguna manda la del código,
+así que **la semilla no puede faltar**.
+
+**2 · `POST /plantillas/` no acepta `documento`.** Solo `{"nombre", "copiar_de"}`. El documento se
+manda después con `PATCH`, que es el camino que valida. Aceptarlo también al crear sería un segundo
+sitio donde validar, y el segundo sitio es el que se olvida.
+
+**3 · La forma real de los errores.** DRF anida los errores bajo el nombre del campo, así que
+llegan un nivel más abajo de lo que decía §6:
+
+```json
+{ "documento": {
+    "documento": ["No se pueden quitar estos elementos: ['codigo', 'qr']."],
+    "elementos": { "a": ["El elemento se sale por arriba o por la izquierda."] }
+} }
+```
+
+Se documenta como es, en vez de forzar el código a una forma escrita antes de ver el
+comportamiento. El frontend lee `error.response.data.documento.elementos[id]`.
+
+**4 · Tipo `sello`.** No estaba en los cinco tipos y la semilla lo necesita: el sello circular del
+centro no es decoración, sin él la mitad inferior del diploma queda vacía. Se puede borrar —no está
+bloqueado— para quien use un marco de Canva que ya traiga medalla.
+
+**5 · `preview/` acepta un documento sin guardar.** En el cuerpo, opcional. Si obligara a guardar
+antes de ver, el maestro tendría que romper su plantilla buena para probar una idea.
+
+**6 · Los recursos se validan contra un conjunto vacío.** La galería es la fase 2, así que hoy
+**ningún** `recurso_id` es válido. Va `recursos_permitidos=set()` y no `None` a propósito: `None`
+salta la comprobación, y dejarlo así sería empezar la fase 2 con el agujero ya abierto.
+
+### Lo que la fase 1 dejó funcionando
+
+| | |
+|---|---|
+| `documento.py` | Catálogo, semilla de 17 elementos y validador |
+| `pdf.py` | Motor que interpreta el documento. **Un solo camino de dibujo**: la descarga del alumno usa el mismo código que la vista previa |
+| `models.py` | `PlantillaDeDiploma`, con índice único parcial para que solo haya una semilla |
+| `selectors.py` | `plantillas_visibles_para` y `plantillas_editables_por` |
+| API | `GET/POST /plantillas/`, `GET/PATCH/DELETE /plantillas/{id}/`, `POST /plantillas/{id}/preview/` |
+| Tests | 28 nuevos, 53 en la app, 217 en el repo |
+
+Verificado de punta a punta contra el servidor local con la cuenta de `seed_data`: crear devuelve
+los 17 elementos, la vista previa devuelve un PDF de 5.4 KB, y un documento con un elemento fuera
+de la página devuelve 400 señalando cuál.
+
+---
+
+## 14 · Cambios durante la implementación de la fase 2
+
+> Fecha: `2026-09-21`.
+
+**1 · No hay tipo `firma`.** El contrato lo listaba en §3 y se dejó fuera. Estas imágenes suben a
+Cloudinary como `resource_type='image'`, y Cloudinary **sí** las entrega por enlace directo: un
+marco decorativo público no molesta a nadie, pero una firma manuscrita en una URL pública es una
+firma que cualquiera descarga y reusa. Cloudinary tiene entrega autenticada y serviría, pero **no
+se ha medido contra la cuenta real** —el `CLAUDE.md` avisa de no subir nada desde una máquina de
+desarrollo sin comprobar si es la misma cuenta que producción—. Prometer que una firma está
+protegida sin haberlo comprobado es peor que no ofrecerla. Los tipos vivos son `marco`, `logo` y
+`sello`.
+
+**2 · `Course.plantilla_de_diploma`, y su campo en la API.** Sin esto la galería no llega al
+diploma: se podían crear plantillas preciosas que ningún curso usaba. Se añadió
+`plantilla_de_diploma_id` a `CourseCreateUpdateSerializer`, **con el queryset acotado a
+`plantillas_visibles_para(request.user)`**. El queryset es la validación: DRF rechaza con 400
+cualquier id fuera de él, así que un maestro no puede asignar a su curso la plantilla de otra
+academia mandando su número.
+
+Efecto secundario que conviene saber: `apps/courses/serializers.py` ahora importa de
+`apps/certificates`. Es la primera dependencia en esa dirección entre las dos apps.
+
+**3 · Las imágenes se copian en disco la primera vez.** Dibujar un marco obliga a traerlo al
+servidor, y eso es una petición de red dentro de la petición del alumno con dos workers de
+gunicorn. `ruta_local_de()` guarda una copia y las siguientes descargas la leen de ahí. Se escribe
+en un archivo aparte y se mueve, para que dos peticiones simultáneas no lean uno a medio escribir.
+
+**4 · Si la imagen no se puede traer, el diploma sale sin ella.** `resolver_recurso` devuelve `None`
+y el elemento no se dibuja. Un alumno que pidió su diploma prefiere uno sencillo a un 500. Hay un
+test que lo provoca.
+
+**5 · La imagen se valida ANTES de subir.** Subir primero y preguntar después gasta la cuota del
+plan con basura y deja imágenes huérfanas en Cloudinary cuando la fila no llega a crearse.
+
+**6 · `recursos_permitidos` ya recibe el conjunto real.** La fase 1 pasaba `set()`. Hay un test que
+deja escrito qué se pierde si alguien lo cambia a `None` «para que funcione»: con `None` el
+validador **acepta cualquier id**, y basta con escribir el número de un marco ajeno en el documento.
+
+### Lo que la fase 2 dejó funcionando
+
+| | |
+|---|---|
+| `almacenamiento.py` | Validación de imagen, subida, borrado y copia local con caché |
+| `RecursoDeDiploma` | Marcos, logos y sellos con su alcance |
+| API | `GET/POST /recursos/`, `DELETE /recursos/{id}/`, y `plantilla_de_diploma_id` en el curso |
+| Tests | 24 nuevos, 77 en la app, 241 en el repo |
+
+**La subida a Cloudinary no se ha ejercitado contra la cuenta real**, por el aviso del `CLAUDE.md`.
+Los tests usan un doble. Lo que sí se probó de verdad, y contra el servidor: un SVG con `<script>`
+dentro, renombrado a `.png` y enviado con `Content-Type: image/png`, se rechaza con 400.
+
+### Lo que falta para cerrar el ciclo
+
+La fase 2 deja la galería y la asignación, pero **el maestro todavía no tiene dónde pulsar**: no hay
+pantalla. Eso es la fase 3. Hasta entonces esto se maneja por API o desde el admin de Django.
+
+---
+
+## 15 · Cambios durante la implementación de la fase 3
+
+> Fecha: `2026-09-21`.
+
+**1 · `react-rnd` funciona en React 19, comprobado en el navegador.** El riesgo era real:
+`react-draggable` —de la que depende— todavía usa `ReactDOM.findDOMNode`, que **React 19 eliminó**.
+No revienta porque `react-rnd` le pasa `nodeRef`, así que ese camino no se ejecuta. Verificado
+arrastrando de verdad en `/instructor/courses/1/diploma`: el elemento se movió, la `y` pasó de 64 a
+104.63 mm, y la consola quedó sin un solo aviso. **Si algún día `react-rnd` deja de pasar
+`nodeRef`, el editor deja de arrastrar**; el reemplazo sería escribir el arrastre con eventos de
+puntero, unas 80 líneas más las manijas de redimensión.
+
+**2 · El campo del curso va en el detalle, no en el listado, y no en la vitrina.** El editor
+necesita saber si un curso ya tiene diseño propio; sin ese dato crearía una plantilla nueva en cada
+apertura y dejaría huérfanas las anteriores. Está en `CourseDetailSerializer` y **excluido
+explícitamente** en `CourseVitrinaSerializer`, que hereda su `Meta`: un anónimo mirando el catálogo
+no necesita saber qué diploma usa un curso.
+
+**3 · Un clic sin arrastrar marcaba el diploma como modificado.** `onDragStop` se dispara también
+en un clic simple. Se compara la posición antes de aplicar el cambio. Salió al probar a mano, no de
+un test.
+
+### El ciclo, verificado de punta a punta
+
+Con la cuenta de `seed_data`, en el navegador: abrir el editor → arrastrar el nombre del alumno →
+guardar → **el PDF real lo dibuja exactamente donde se soltó**. Eso es lo que prueba que la
+conversión de milímetros y de origen es correcta en los dos sentidos.
+
+### Un fallo propio que conviene dejar escrito
+
+Al añadir el campo al serializer, el reemplazo automático lo insertó en `CourseListSerializer` en
+vez de en `CourseDetailSerializer` —cogió la primera coincidencia del texto—. Declarar un campo sin
+incluirlo en su `fields` hace que DRF levante `AssertionError`: **`GET /api/courses/` respondió 500,
+o sea el catálogo entero caído**, para todos, también para los anónimos.
+
+No lo detectó nadie durante un rato porque tras tocar un serializer de `courses` solo se corrieron
+los tests de `apps/certificates`. **La red existía**: `test_aislamiento_catalogo.py` llama a ese
+endpoint y habría fallado al instante. La regla que sale de aquí: *si el cambio toca una app, los
+tests que se corren son los del repo, no los de la app en la que estabas pensando.*
+
+### Lo que la fase 3 dejó funcionando
+
+| | |
+|---|---|
+| `/instructor/courses/:id/diploma` | Editor en ruta propia, fuera de `CourseBuilder.jsx` |
+| `components/diploma/utilidades.js` | **Toda** la conversión mm ↔ px en un solo archivo |
+| `Lienzo.jsx` | Arrastrar y redimensionar, con el elemento en rojo si el backend lo rechaza |
+| `PanelDePropiedades.jsx` | Tipografía, tamaño, color, alineación y posición en milímetros |
+| `diplomaService.js` | Cliente de la API, incluida la lectura de errores anidados de DRF |
+| Acceso | Botón **Diploma** en la lista de cursos del instructor |
+
+Comprobado en tema claro y oscuro. Lint sin errores nuevos: los 113 que devuelve `npm run lint` son
+anteriores a esta rama.
+
+### Lo que NO tiene el editor, y conviene no prometer
+
+- **No sirve en móvil.** Es una rejilla de tres columnas con un lienzo que se arrastra; por debajo
+  de unos 1000 px de ancho deja de ser usable. No se ha hecho una versión táctil.
+- **No hay deshacer por pasos.** «Deshacer cambios» vuelve a lo último guardado, no al paso anterior.
+- **No hay guías de alineación ni imán.** Los elementos se colocan a ojo o con los milímetros del
+  panel derecho.
+- **La galería solo sube marcos.** El botón manda `tipo=marco`; los logos y sellos se suben por API
+  hasta que haya un selector de tipo en la pantalla.
+
+---
+
+## 16 · Fase 4: lo emitido no se mueve, tampoco por dentro
+
+> Fecha: `2026-09-21`. Cierra el riesgo **R5** de §11.
+
+**Qué se cierra.** La fase 0 congeló los *textos* del diploma. Desde la fase 3 el maestro puede
+rediseñar la plantilla de su curso, así que faltaba congelar el *diseño*: sin eso, mover un elemento
+hoy reescribe el aspecto de todos los diplomas que sus alumnos ya descargaron. Es el mismo fallo de
+la fase 0 un piso más abajo.
+
+`Certificate.documento_congelado` guarda el documento entero al emitir. **No una FK a la plantilla**:
+así el diploma sobrevive a que alguien borre el diseño que lo produjo.
+
+### Las imágenes también se congelan
+
+Congelar solo `recurso_id` no bastaba: borrar ese marco de la galería dejaría sin fondo a todos los
+diplomas emitidos que lo usaban. Al congelar se copia dentro el `recurso_public_id`, el
+identificador de Cloudinary del día de la emisión, y el resolvedor lo prefiere sobre la fila.
+
+Por eso `resolver_recurso` pasó a recibir el **elemento entero** y no su id.
+
+**Lo que esto NO salva:** que alguien borre el archivo en Cloudinary. Ahí el elemento deja de
+dibujarse y el diploma sale sin él. Cerrar eso del todo exige impedir el borrado de una imagen
+referenciada por algún certificado, que es una consulta sobre JSON en Postgres y queda fuera de esta
+fase.
+
+### La matriz de §8, ahora ejercitada
+
+Cada fila tiene su test en `tests/test_diseno_congelado.py`. Las que faltaban y ahora están:
+el administrador **sí** edita la plantilla de la plataforma y **sí** publica en la galería global;
+el instructor **no** borra ni edita lo global pero **sí** lo suyo; el alumno recibe 403 en las
+cuatro puertas; y sin sesión, 401.
+
+> Una matriz escrita en un documento y no ejercitada es una intención.
+
+### Verificado de punta a punta
+
+Contra la base local, con datos reales: se emite un diploma, se rediseña su plantilla, y el diploma
+emitido **sigue diciendo lo mismo** mientras uno nuevo sí estrena el diseño.
+
+Nota de método: comparar el **hash del PDF** no sirve. ReportLab escribe `/CreationDate` en cada
+generación, así que dos PDF idénticos en contenido dan hashes distintos. Se compara el documento.
+
+### Efecto en el perfil del repo
+
+Dos claves de `.claude/PERFIL-DEL-REPO.md` dejaron de ser ciertas y se actualizaron:
+
+| Clave | Antes | Ahora |
+|---|---|---|
+| `cumplimiento.registros_inmutables` | `ninguno` | `si: los certificados` — contenido y diseño |
+| `verificadores.tests_backend` | 103 | **259** |
+
+### Lo que queda abierto del módulo de diplomas
+
+| # | Qué | Dónde |
+|---|---|---|
+| A1 | Borrar una imagen en Cloudinary sí deja sin marco a lo emitido | §16 |
+| A2 | El editor no sirve en móvil | §15 |
+| A3 | No hay tipo `firma`, por la entrega pública de Cloudinary | §14 |
+| A4 | La galería solo sube marcos desde la pantalla | §15 |
+| A5 | Sin tests de frontend: nada vigila que `react-rnd` siga funcionando | §15 |

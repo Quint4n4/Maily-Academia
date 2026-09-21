@@ -5,6 +5,10 @@
 >
 > Repo: `Maily-Academia` · Última actualización: `2026-09-17`
 >
+> Cambios del 2026-09-21, medidos contra el repo: `verificadores.tests_backend` (de 103 a **259**),
+> `cumplimiento.registros_inmutables` (de `ninguno` a **`si: los certificados`**). La app
+> `certificates` pasó de 0 a 95 tests y es la primera con capa de selectores propia.
+>
 > Cambios del 2026-09-17, todos medidos contra el repo y no deducidos:
 > `verificadores.tests_backend` (de `ninguno` a 103 tests), `aislamiento.test_de_fuga` (de `ninguno`
 > a los del catálogo), `backend.capa_de_servicios` (ahora también los cupones de `apps/progress`).
@@ -149,7 +153,7 @@ Es el mismo riesgo en otro sitio.
 | Clave | Valor | Evidencia |
 |---|---|---|
 | `verificadores.entorno` | `docker compose exec -T backend` | `docker-compose.yml` |
-| `verificadores.tests_backend` | `docker compose exec -T backend pytest` — **103 tests, todos en verde** | 8 archivos en `backend/apps/{courses,users,progress}/tests/`; fixtures comunes en `backend/conftest.py` |
+| `verificadores.tests_backend` | `docker compose exec -T backend pytest` — **259 tests, todos en verde** | 12 archivos en `backend/apps/{courses,users,progress,certificates}/tests/`; fixtures comunes en `backend/conftest.py` |
 | `verificadores.tests_frontend` | `ninguno` | No hay vitest, jest ni testing-library |
 | `verificadores.tipos` | `ninguno` | El frontend es `.jsx` sin TypeScript; el backend no tiene mypy |
 | `verificadores.lint` | `cd cursos-maily && npm run lint` (solo frontend) | `cursos-maily/package.json`; el backend no tiene lint configurado |
@@ -180,7 +184,7 @@ Es el mismo riesgo en otro sitio.
 |---|---|---|
 | `cumplimiento.datos_sensibles` | `si: datos de alumnos identificables` | Nombre, email, avatar, progreso académico, certificados con nombre; y `stripe_customer_id` en `apps/users` |
 | `cumplimiento.monitoreo_errores` | `sentry` — activo solo si hay `SENTRY_DSN` | `config/observabilidad.py` |
-| `cumplimiento.registros_inmutables` | `ninguno` | Los certificados deberían serlo y hoy no hay nada que lo impida |
+| `cumplimiento.registros_inmutables` | `si: los certificados` — contenido y diseño | `Certificate` congela alumno, curso, maestro, academia y `documento_congelado` al emitir; `backend/apps/certificates/services.py` |
 | `cumplimiento.estados_con_razon` | `ninguna` | No hay transiciones que exijan razón |
 | `cumplimiento.consulta_legal` | `pendiente` | Nunca se ha hecho |
 
@@ -211,7 +215,7 @@ Las seis claves que estaban `[propuesto]` quedaron decididas. Ninguna es ya una 
 | `aislamiento.ancla` | `AMBITO>>`, a poner como comentario en cada vista que filtra por academia |
 | `verificadores.migraciones` | `solo-emanuel` — ningún agente corre `makemigrations` ni `migrate` |
 | `cumplimiento.datos_sensibles` | `si: datos de alumnos identificables` |
-| `cumplimiento.registros_inmutables` | `ninguno` |
+| `cumplimiento.registros_inmutables` | `ninguno` → **cambiado a `si: los certificados` el 2026-09-21** |
 
 ### Vitrina pública: decidida el 2026-09-03
 

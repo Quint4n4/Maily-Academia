@@ -23,6 +23,7 @@ urlpatterns = [
     path('api/', include('apps.qna.urls')),
     path('api/blog/', include('apps.blog.urls')),
     path('api/certificates/', include('apps.certificates.urls')),
+    path('api/diplomas/', include('apps.certificates.urls_plantillas')),
     path('api/payments/', include('apps.progress.urls_payments')),
     path('api/instructor/', include('apps.progress.urls_instructor')),
     # API documentation

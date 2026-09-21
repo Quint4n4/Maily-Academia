@@ -3,6 +3,8 @@ from rest_framework import serializers
 
 from apps.utils.limites_de_texto import LimitaTextoLibreMixin
 
+from apps.certificates.models import PlantillaDeDiploma
+from apps.certificates.selectors import plantillas_visibles_para
 from apps.sections.models import Section
 
 from .models import Category, Course, CourseMaterial, Module, Lesson
@@ -162,6 +164,14 @@ class CourseDetailSerializer(serializers.ModelSerializer):
     students_count = serializers.IntegerField(read_only=True, default=0)
     materials_count = serializers.IntegerField(read_only=True, default=0)
     category = CategorySummarySerializer(read_only=True)
+    # Lo lee el editor de diplomas para saber si el curso ya tiene diseno
+    # propio. Es solo un id: quien no sea instructor o admin recibe 403 en los
+    # endpoints de plantillas, asi que no le sirve de nada.
+    #
+    # NO va en `CourseListSerializer`: declarar un campo sin incluirlo en su
+    # `fields` hace que DRF levante AssertionError y el listado entero
+    # responda 500.
+    plantilla_de_diploma_id = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Course
@@ -174,6 +184,7 @@ class CourseDetailSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'modules',
             'category',
             'tags',
+            'plantilla_de_diploma_id',
         ]
         read_only_fields = ['id', 'rating', 'created_at', 'updated_at']
 
@@ -213,6 +224,15 @@ class CourseVitrinaSerializer(CourseDetailSerializer):
 
     modules = ModuleVitrinaSerializer(many=True, read_only=True)
 
+    class Meta(CourseDetailSerializer.Meta):
+        # Hereda los campos del detalle MENOS el de la plantilla. Un anonimo
+        # mirando la vitrina no necesita saber que diseno de diploma usa el
+        # curso, y lo que no se manda no se puede filtrar.
+        fields = [
+            campo for campo in CourseDetailSerializer.Meta.fields
+            if campo != 'plantilla_de_diploma_id'
+        ]
+
 
 class CourseCreateUpdateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):
     """Serializer for creating / updating a course."""
@@ -229,6 +249,28 @@ class CourseCreateUpdateSerializer(LimitaTextoLibreMixin, serializers.ModelSeria
         required=False,
         allow_null=True,
     )
+    plantilla_de_diploma_id = serializers.PrimaryKeyRelatedField(
+        source='plantilla_de_diploma',
+        queryset=PlantillaDeDiploma.objects.none(),
+        required=False,
+        allow_null=True,
+    )
+
+    def get_fields(self):
+        """El catalogo de plantillas se acota a quien pide.
+
+        AMBITO>> Sin esto, un maestro asigna a su curso la plantilla de otra
+        academia mandando su id, y el diploma de sus alumnos sale con el diseno
+        ajeno. El queryset del campo es la validacion: DRF rechaza con 400
+        cualquier id que no este dentro.
+        """
+        campos = super().get_fields()
+        peticion = self.context.get('request')
+        if peticion is not None:
+            campos['plantilla_de_diploma_id'].queryset = plantillas_visibles_para(
+                peticion.user,
+            )
+        return campos
 
     class Meta:
         model = Course
@@ -246,6 +288,7 @@ class CourseCreateUpdateSerializer(LimitaTextoLibreMixin, serializers.ModelSeria
             'final_evaluation_duration_default',
             'category_id',
             'section_id',
+            'plantilla_de_diploma_id',
             'tags',
         ]
         read_only_fields = ['id']

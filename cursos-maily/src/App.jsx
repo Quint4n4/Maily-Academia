@@ -42,6 +42,7 @@ import InstructorMyCourses from './pages/instructor/MyCourses';
 import QnAPanel from './pages/instructor/QnAPanel';
 import BlogManagement from './pages/instructor/BlogManagement';
 import CourseBuilder from './pages/instructor/CourseBuilder';
+import DiplomaEditor from './pages/instructor/DiplomaEditor';
 import InstructorEvaluationsPanel from './pages/instructor/InstructorEvaluationsPanel';
 import StudentManagement from './pages/instructor/StudentManagement';
 import StudentDetail from './pages/instructor/StudentDetail';
@@ -186,6 +187,18 @@ function AppRoutes() {
           <ProtectedRoute>
             <RoleRoute roles={['instructor', 'admin']}>
               <CourseBuilder />
+            </RoleRoute>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ── Instructor: editor del diploma (pantalla completa) ──── */}
+      <Route
+        path="/instructor/courses/:courseId/diploma"
+        element={
+          <ProtectedRoute>
+            <RoleRoute roles={['instructor', 'admin']}>
+              <DiplomaEditor />
             </RoleRoute>
           </ProtectedRoute>
         }
