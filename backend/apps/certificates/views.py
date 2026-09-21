@@ -13,7 +13,12 @@ from apps.quizzes.models import FinalEvaluation, FinalEvaluationAttempt
 from .models import Certificate
 from .pdf import dibujar_diploma
 from .serializers import CertificateSerializer, CertificateVerifySerializer
-from .services import datos_del_diploma, emitir_certificado
+from .services import (
+    datos_del_diploma,
+    documento_del_certificado,
+    emitir_certificado,
+    resolver_recurso,
+)
 
 
 class MyCertificatesView(generics.ListAPIView):
@@ -138,6 +143,7 @@ class CertificateDownloadView(APIView):
         # 404 = ese dato no existe para ti.
         certificados = Certificate.objects.select_related(
             'user', 'course', 'course__instructor', 'course__section',
+            'course__plantilla_de_diploma',
         )
         if request.user.role != 'admin':
             certificados = certificados.filter(user=request.user)
@@ -151,5 +157,10 @@ class CertificateDownloadView(APIView):
         filename = f'diploma-{certificate.course_id}-{certificate.user_id}.pdf'
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
-        dibujar_diploma(response, datos_del_diploma(certificate))
+        dibujar_diploma(
+            response,
+            datos_del_diploma(certificate),
+            documento_del_certificado(certificate),
+            resolver_recurso=resolver_recurso,
+        )
         return response

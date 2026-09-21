@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from .documento import validar_documento
-from .models import Certificate, PlantillaDeDiploma
+from .models import Certificate, PlantillaDeDiploma, RecursoDeDiploma
 
 
 class CertificateSerializer(serializers.ModelSerializer):
@@ -67,12 +67,50 @@ class PlantillaDeDiplomaSerializer(serializers.ModelSerializer):
         return plantillas_editables_por(peticion.user).filter(pk=obj.pk).exists()
 
     def validate_documento(self, valor):
-        # fase 1: todavia no existe la galeria de recursos --es la fase 2-- asi
-        # que ningun id de imagen puede ser valido y el conjunto va vacio a
-        # proposito. Cuando exista `RecursoDeDiploma`, aqui entran los ids que
-        # este usuario puede usar; dejarlo en None saltaria la comprobacion y
-        # permitiria montar el marco de otra academia sabiendo su id.
-        errores = validar_documento(valor, recursos_permitidos=set())
+        # AMBITO>> Los ids que este usuario puede referenciar. Pasar None
+        # saltaria la comprobacion y bastaria con escribir el id de un marco
+        # ajeno en el documento para montarlo; un conjunto vacio, que es lo que
+        # habia en la fase 1, rechazaria cualquier imagen.
+        from .selectors import ids_de_recursos_permitidos
+
+        peticion = self.context.get('request')
+        permitidos = (
+            ids_de_recursos_permitidos(peticion.user) if peticion is not None else set()
+        )
+        errores = validar_documento(valor, recursos_permitidos=permitidos)
         if errores:
             raise serializers.ValidationError(errores)
         return valor
+
+
+class RecursoDeDiplomaSerializer(serializers.ModelSerializer):
+    """Un marco, logo o sello de la galeria.
+
+    La imagen no se manda aqui: se sube con multipart a la vista, que es la que
+    la valida antes de que llegue a Cloudinary.
+    """
+
+    url = serializers.SerializerMethodField()
+    proporcion = serializers.FloatField(read_only=True)
+    puede_borrarlo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RecursoDeDiploma
+        fields = [
+            'id', 'tipo', 'nombre', 'url', 'ancho_px', 'alto_px', 'proporcion',
+            'alcance', 'section', 'owner', 'creado_en', 'puede_borrarlo',
+        ]
+        read_only_fields = fields
+
+    def get_url(self, obj) -> str:
+        from .almacenamiento import url_de
+
+        return url_de(obj.cloudinary_public_id)
+
+    def get_puede_borrarlo(self, obj) -> bool:
+        from .selectors import recursos_borrables_por
+
+        peticion = self.context.get('request')
+        if peticion is None:
+            return False
+        return recursos_borrables_por(peticion.user).filter(pk=obj.pk).exists()

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Certificate, PlantillaDeDiploma
+from .models import Certificate, PlantillaDeDiploma, RecursoDeDiploma
 
 
 @admin.register(Certificate)
@@ -27,3 +27,11 @@ class PlantillaDeDiplomaAdmin(admin.ModelAdmin):
     # Se deja visible porque para depurar hace falta verlo.
     def get_readonly_fields(self, request, obj=None):
         return list(self.readonly_fields) + ['documento']
+
+
+@admin.register(RecursoDeDiploma)
+class RecursoDeDiplomaAdmin(admin.ModelAdmin):
+    list_display = ['nombre', 'tipo', 'alcance', 'section', 'owner', 'creado_en']
+    list_filter = ['tipo', 'alcance', 'section']
+    search_fields = ['nombre', 'owner__email']
+    readonly_fields = ['cloudinary_public_id', 'ancho_px', 'alto_px', 'creado_en']

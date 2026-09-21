@@ -395,3 +395,62 @@ salta la comprobación, y dejarlo así sería empezar la fase 2 con el agujero y
 Verificado de punta a punta contra el servidor local con la cuenta de `seed_data`: crear devuelve
 los 17 elementos, la vista previa devuelve un PDF de 5.4 KB, y un documento con un elemento fuera
 de la página devuelve 400 señalando cuál.
+
+---
+
+## 14 · Cambios durante la implementación de la fase 2
+
+> Fecha: `2026-09-21`.
+
+**1 · No hay tipo `firma`.** El contrato lo listaba en §3 y se dejó fuera. Estas imágenes suben a
+Cloudinary como `resource_type='image'`, y Cloudinary **sí** las entrega por enlace directo: un
+marco decorativo público no molesta a nadie, pero una firma manuscrita en una URL pública es una
+firma que cualquiera descarga y reusa. Cloudinary tiene entrega autenticada y serviría, pero **no
+se ha medido contra la cuenta real** —el `CLAUDE.md` avisa de no subir nada desde una máquina de
+desarrollo sin comprobar si es la misma cuenta que producción—. Prometer que una firma está
+protegida sin haberlo comprobado es peor que no ofrecerla. Los tipos vivos son `marco`, `logo` y
+`sello`.
+
+**2 · `Course.plantilla_de_diploma`, y su campo en la API.** Sin esto la galería no llega al
+diploma: se podían crear plantillas preciosas que ningún curso usaba. Se añadió
+`plantilla_de_diploma_id` a `CourseCreateUpdateSerializer`, **con el queryset acotado a
+`plantillas_visibles_para(request.user)`**. El queryset es la validación: DRF rechaza con 400
+cualquier id fuera de él, así que un maestro no puede asignar a su curso la plantilla de otra
+academia mandando su número.
+
+Efecto secundario que conviene saber: `apps/courses/serializers.py` ahora importa de
+`apps/certificates`. Es la primera dependencia en esa dirección entre las dos apps.
+
+**3 · Las imágenes se copian en disco la primera vez.** Dibujar un marco obliga a traerlo al
+servidor, y eso es una petición de red dentro de la petición del alumno con dos workers de
+gunicorn. `ruta_local_de()` guarda una copia y las siguientes descargas la leen de ahí. Se escribe
+en un archivo aparte y se mueve, para que dos peticiones simultáneas no lean uno a medio escribir.
+
+**4 · Si la imagen no se puede traer, el diploma sale sin ella.** `resolver_recurso` devuelve `None`
+y el elemento no se dibuja. Un alumno que pidió su diploma prefiere uno sencillo a un 500. Hay un
+test que lo provoca.
+
+**5 · La imagen se valida ANTES de subir.** Subir primero y preguntar después gasta la cuota del
+plan con basura y deja imágenes huérfanas en Cloudinary cuando la fila no llega a crearse.
+
+**6 · `recursos_permitidos` ya recibe el conjunto real.** La fase 1 pasaba `set()`. Hay un test que
+deja escrito qué se pierde si alguien lo cambia a `None` «para que funcione»: con `None` el
+validador **acepta cualquier id**, y basta con escribir el número de un marco ajeno en el documento.
+
+### Lo que la fase 2 dejó funcionando
+
+| | |
+|---|---|
+| `almacenamiento.py` | Validación de imagen, subida, borrado y copia local con caché |
+| `RecursoDeDiploma` | Marcos, logos y sellos con su alcance |
+| API | `GET/POST /recursos/`, `DELETE /recursos/{id}/`, y `plantilla_de_diploma_id` en el curso |
+| Tests | 24 nuevos, 77 en la app, 241 en el repo |
+
+**La subida a Cloudinary no se ha ejercitado contra la cuenta real**, por el aviso del `CLAUDE.md`.
+Los tests usan un doble. Lo que sí se probó de verdad, y contra el servidor: un SVG con `<script>`
+dentro, renombrado a `.png` y enviado con `Content-Type: image/png`, se rechaza con 400.
+
+### Lo que falta para cerrar el ciclo
+
+La fase 2 deja la galería y la asignación, pero **el maestro todavía no tiene dónde pulsar**: no hay
+pantalla. Eso es la fase 3. Hasta entonces esto se maneja por API o desde el admin de Django.

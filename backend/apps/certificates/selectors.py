@@ -13,7 +13,7 @@ from django.http import Http404
 
 from apps.courses.selectors import _secciones_de_instructor
 
-from .models import PlantillaDeDiploma
+from .models import PlantillaDeDiploma, RecursoDeDiploma
 
 
 def _es_administrador(user) -> bool:
@@ -84,3 +84,56 @@ def plantilla_editable_o_404(user, plantilla_id) -> PlantillaDeDiploma:
     if plantilla is None:
         raise Http404('No existe esa plantilla.')
     return plantilla
+
+
+def recursos_visibles_para(user):
+    """
+    AMBITO>> Imagenes que este usuario puede montar en un diploma.
+
+    Las de la plataforma, las de sus academias y las suyas. Este conjunto es el
+    que alimenta `validar_documento(recursos_permitidos=...)`: sin el, basta con
+    escribir el id de un recurso ajeno en el documento para montarlo.
+    """
+    if not user or not user.is_authenticated:
+        return RecursoDeDiploma.objects.none()
+
+    if _es_administrador(user):
+        return RecursoDeDiploma.objects.all()
+
+    if getattr(user, 'role', None) != 'instructor':
+        return RecursoDeDiploma.objects.none()
+
+    secciones = list(_secciones_de_instructor(user))
+    return RecursoDeDiploma.objects.filter(
+        Q(alcance=RecursoDeDiploma.Alcance.GLOBAL)
+        | Q(alcance=RecursoDeDiploma.Alcance.ACADEMIA, section_id__in=secciones)
+        | Q(alcance=RecursoDeDiploma.Alcance.INSTRUCTOR, owner=user)
+    ).distinct()
+
+
+def recursos_borrables_por(user):
+    """Los suyos. Un maestro no borra el marco de la plataforma."""
+    if not user or not user.is_authenticated:
+        return RecursoDeDiploma.objects.none()
+
+    if _es_administrador(user):
+        return RecursoDeDiploma.objects.all()
+
+    if getattr(user, 'role', None) != 'instructor':
+        return RecursoDeDiploma.objects.none()
+
+    return RecursoDeDiploma.objects.filter(
+        alcance=RecursoDeDiploma.Alcance.INSTRUCTOR, owner=user,
+    )
+
+
+def ids_de_recursos_permitidos(user) -> set[int]:
+    """Los ids que este usuario puede referenciar desde un documento."""
+    return set(recursos_visibles_para(user).values_list('id', flat=True))
+
+
+def recurso_borrable_o_404(user, recurso_id) -> RecursoDeDiploma:
+    recurso = recursos_borrables_por(user).filter(pk=recurso_id).first()
+    if recurso is None:
+        raise Http404('No existe ese recurso.')
+    return recurso

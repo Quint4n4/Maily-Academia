@@ -114,3 +114,63 @@ class PlantillaDeDiploma(models.Model):
 
     def __str__(self):
         return self.nombre
+
+
+class RecursoDeDiploma(models.Model):
+    """Una imagen que se puede montar en un diploma: marco, logo o sello.
+
+    Por qué no hay tipo `firma`, que el contrato sí listaba: estas imágenes
+    suben a Cloudinary como `image`, y Cloudinary **sí** las entrega por enlace
+    directo. Un marco decorativo público no molesta a nadie; una firma
+    manuscrita en una URL pública es una firma que cualquiera descarga y reusa.
+    Entregarla en privado se puede —Cloudinary tiene entrega autenticada— pero
+    no se ha medido contra la cuenta real, y prometer que una firma está
+    protegida sin haberlo comprobado es peor que no ofrecerla.
+    """
+
+    class Tipo(models.TextChoices):
+        MARCO = 'marco', 'Marco de fondo'
+        LOGO = 'logo', 'Logotipo'
+        SELLO = 'sello', 'Sello'
+
+    class Alcance(models.TextChoices):
+        GLOBAL = 'global', 'De la plataforma'
+        ACADEMIA = 'academia', 'De una academia'
+        INSTRUCTOR = 'instructor', 'De un maestro'
+
+    tipo = models.CharField('tipo', max_length=20, choices=Tipo.choices)
+    nombre = models.CharField('nombre', max_length=120)
+    cloudinary_public_id = models.CharField('id en Cloudinary', max_length=255)
+    ancho_px = models.PositiveIntegerField('ancho en píxeles', default=0)
+    alto_px = models.PositiveIntegerField('alto en píxeles', default=0)
+    alcance = models.CharField(
+        'alcance', max_length=20, choices=Alcance.choices, default=Alcance.INSTRUCTOR,
+    )
+    section = models.ForeignKey(
+        'sections.Section',
+        on_delete=models.CASCADE,
+        related_name='recursos_de_diploma',
+        verbose_name='academia',
+        null=True, blank=True,
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='recursos_de_diploma',
+        verbose_name='dueño',
+        null=True, blank=True,
+    )
+    creado_en = models.DateTimeField('creado', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'recurso de diploma'
+        verbose_name_plural = 'recursos de diploma'
+        ordering = ['tipo', 'nombre']
+
+    def __str__(self):
+        return f'{self.get_tipo_display()}: {self.nombre}'
+
+    @property
+    def proporcion(self) -> float:
+        """Ancho dividido entre alto. El editor la necesita para no deformar."""
+        return (self.ancho_px / self.alto_px) if self.alto_px else 1.0

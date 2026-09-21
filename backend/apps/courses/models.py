@@ -84,6 +84,15 @@ class Course(models.Model):
         blank=True,
         help_text='Sección a la que pertenece el curso (Maily, Longevity 360, Corporativo).',
     )
+    plantilla_de_diploma = models.ForeignKey(
+        'certificates.PlantillaDeDiploma',
+        on_delete=models.SET_NULL,
+        related_name='cursos',
+        verbose_name='plantilla de diploma',
+        null=True,
+        blank=True,
+        help_text='Diseño del diploma de este curso. Vacío = el de la plataforma.',
+    )
     title = models.CharField('título', max_length=255)
     description = models.TextField('descripción')
     thumbnail = models.URLField('imagen miniatura', blank=True, default='')

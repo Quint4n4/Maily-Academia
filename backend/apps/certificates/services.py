@@ -107,3 +107,41 @@ def datos_de_ejemplo() -> DatosDelDiploma:
         codigo=codigo,
         url_de_verificacion=f'{settings.FRONTEND_URL.rstrip("/")}/verify/{codigo}',
     )
+
+
+def resolver_recurso(recurso_id):
+    """Ruta local de la imagen de un recurso, o None.
+
+    El documento ya paso por `validar_documento`, que comprobo que ese id fuera
+    de quien lo escribio: por eso aqui no se vuelve a filtrar por usuario. El
+    diploma lo descarga el alumno, que no tiene permisos sobre los recursos del
+    maestro.
+
+    Devuelve None cuando la imagen no se puede traer, y entonces el elemento
+    sencillamente no se dibuja: un diploma sin marco es mejor que un 500.
+    """
+    from .almacenamiento import ruta_local_de
+    from .models import RecursoDeDiploma
+
+    if not isinstance(recurso_id, int):
+        return None
+
+    recurso = RecursoDeDiploma.objects.filter(pk=recurso_id).first()
+    if recurso is None:
+        return None
+    return ruta_local_de(recurso.cloudinary_public_id)
+
+
+def documento_del_certificado(certificate):
+    """Que diseno usa este diploma.
+
+    Hoy: la plantilla del curso, o la semilla. En la fase 4 sera el
+    `documento_congelado` del propio certificado, para que rediseñar una
+    plantilla no cambie los diplomas ya emitidos.
+    """
+    from .documento import documento_semilla
+
+    plantilla = getattr(certificate.course, 'plantilla_de_diploma', None)
+    if plantilla is not None and plantilla.documento:
+        return plantilla.documento
+    return documento_semilla()

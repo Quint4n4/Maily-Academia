@@ -3,6 +3,8 @@ from rest_framework import serializers
 
 from apps.utils.limites_de_texto import LimitaTextoLibreMixin
 
+from apps.certificates.models import PlantillaDeDiploma
+from apps.certificates.selectors import plantillas_visibles_para
 from apps.sections.models import Section
 
 from .models import Category, Course, CourseMaterial, Module, Lesson
@@ -229,6 +231,28 @@ class CourseCreateUpdateSerializer(LimitaTextoLibreMixin, serializers.ModelSeria
         required=False,
         allow_null=True,
     )
+    plantilla_de_diploma_id = serializers.PrimaryKeyRelatedField(
+        source='plantilla_de_diploma',
+        queryset=PlantillaDeDiploma.objects.none(),
+        required=False,
+        allow_null=True,
+    )
+
+    def get_fields(self):
+        """El catalogo de plantillas se acota a quien pide.
+
+        AMBITO>> Sin esto, un maestro asigna a su curso la plantilla de otra
+        academia mandando su id, y el diploma de sus alumnos sale con el diseno
+        ajeno. El queryset del campo es la validacion: DRF rechaza con 400
+        cualquier id que no este dentro.
+        """
+        campos = super().get_fields()
+        peticion = self.context.get('request')
+        if peticion is not None:
+            campos['plantilla_de_diploma_id'].queryset = plantillas_visibles_para(
+                peticion.user,
+            )
+        return campos
 
     class Meta:
         model = Course
@@ -246,6 +270,7 @@ class CourseCreateUpdateSerializer(LimitaTextoLibreMixin, serializers.ModelSeria
             'final_evaluation_duration_default',
             'category_id',
             'section_id',
+            'plantilla_de_diploma_id',
             'tags',
         ]
         read_only_fields = ['id']
