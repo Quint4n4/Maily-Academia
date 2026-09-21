@@ -144,3 +144,121 @@ export function elementoNuevo(tipo, elementos) {
       return base;
   }
 }
+
+// --------------------------------------------------------------------------
+// Ayudas de alineación
+// --------------------------------------------------------------------------
+
+/** Rejilla base: el arrastre cae a milímetros enteros, no a 104.63. */
+export const PASO_MM = 1;
+
+/** A cuántos milímetros del objetivo empieza a tirar el imán. */
+export const UMBRAL_IMAN = 2;
+
+/** Margen del contenido dentro del marco. Los textos de la semilla empiezan aquí. */
+export const MARGEN_MM = 30;
+
+/**
+ * A dónde debería caer el elemento y qué líneas enseñarle al maestro.
+ *
+ * El problema que resuelve: arrastrando a mano, un título queda en 148.2 y el
+ * de abajo en 147.9. Nadie lo ve en la pantalla y se nota en el papel.
+ *
+ * Devuelve la posición ya ajustada y las guías a pintar. Cada guía es una
+ * línea en milímetros: `v` es vertical (una x), `h` es horizontal (una y).
+ */
+export function ajustarConIman(elemento, x, y, otros) {
+  const ancho = elemento.ancho ?? 10;
+  const alto = altoEnMm(elemento);
+
+  // Las TRES primeras de cada eje son las de la hoja, y tienen prioridad.
+  // El orden importa: `ajustarConIman` las separa por posición.
+  const candidatasX = [
+    // El centro de la hoja es la guía más útil de un diploma: casi todo va
+    // centrado, y es imposible acertarlo a ojo.
+    { linea: PAGINA.ancho / 2, destino: PAGINA.ancho / 2 - ancho / 2 },
+    { linea: MARGEN_MM, destino: MARGEN_MM },
+    { linea: PAGINA.ancho - MARGEN_MM, destino: PAGINA.ancho - MARGEN_MM - ancho },
+  ];
+  const candidatasY = [
+    { linea: PAGINA.alto / 2, destino: PAGINA.alto / 2 - alto / 2 },
+    { linea: MARGEN_MM, destino: MARGEN_MM },
+    { linea: PAGINA.alto - MARGEN_MM, destino: PAGINA.alto - MARGEN_MM - alto },
+  ];
+
+  for (const otro of otros) {
+    const oAncho = otro.ancho ?? 10;
+    const oAlto = altoEnMm(otro);
+
+    // Izquierda con izquierda, derecha con derecha, centro con centro.
+    candidatasX.push({ linea: otro.x, destino: otro.x });
+    candidatasX.push({ linea: otro.x + oAncho, destino: otro.x + oAncho - ancho });
+    candidatasX.push({
+      linea: otro.x + oAncho / 2,
+      destino: otro.x + oAncho / 2 - ancho / 2,
+    });
+
+    candidatasY.push({ linea: otro.y, destino: otro.y });
+    candidatasY.push({ linea: otro.y + oAlto, destino: otro.y + oAlto - alto });
+    candidatasY.push({
+      linea: otro.y + oAlto / 2,
+      destino: otro.y + oAlto / 2 - alto / 2,
+    });
+  }
+
+  // La hoja manda sobre los vecinos. Sin esta prioridad, un elemento que ya
+  // esta torcido --y en una plantilla manoseada casi todos lo estan-- atrae a
+  // los demas y el desalineo se propaga: el centro real de la pagina deja de
+  // usarse porque siempre hay un vecino un poco mas cerca.
+  const mejorX = _masCercana(candidatasX.slice(0, 3), x)
+    ?? _masCercana(candidatasX.slice(3), x);
+  const mejorY = _masCercana(candidatasY.slice(0, 3), y)
+    ?? _masCercana(candidatasY.slice(3), y);
+
+  const guias = [];
+  if (mejorX) guias.push({ orientacion: 'v', pos: mejorX.linea });
+  if (mejorY) guias.push({ orientacion: 'h', pos: mejorY.linea });
+
+  return {
+    // Sin imán cerca, cae a la rejilla de milímetros enteros.
+    x: mejorX ? mejorX.destino : Math.round(x / PASO_MM) * PASO_MM,
+    y: mejorY ? mejorY.destino : Math.round(y / PASO_MM) * PASO_MM,
+    guias,
+  };
+}
+
+function _masCercana(candidatas, valor) {
+  let mejor = null;
+  let distancia = UMBRAL_IMAN;
+  for (const candidata of candidatas) {
+    const actual = Math.abs(candidata.destino - valor);
+    if (actual <= distancia) {
+      distancia = actual;
+      mejor = candidata;
+    }
+  }
+  return mejor;
+}
+
+/** Coloca el elemento respecto a la hoja. Lo usan los botones del panel. */
+export function alinearEnPagina(elemento, donde) {
+  const ancho = elemento.ancho ?? 10;
+  const alto = altoEnMm(elemento);
+
+  switch (donde) {
+    case 'centro-h':
+      return { x: Number((PAGINA.ancho / 2 - ancho / 2).toFixed(2)) };
+    case 'centro-v':
+      return { y: Number((PAGINA.alto / 2 - alto / 2).toFixed(2)) };
+    case 'izquierda':
+      return { x: MARGEN_MM };
+    case 'derecha':
+      return { x: Number((PAGINA.ancho - MARGEN_MM - ancho).toFixed(2)) };
+    case 'arriba':
+      return { y: MARGEN_MM };
+    case 'abajo':
+      return { y: Number((PAGINA.alto - MARGEN_MM - alto).toFixed(2)) };
+    default:
+      return {};
+  }
+}

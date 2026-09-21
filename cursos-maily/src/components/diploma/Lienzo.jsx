@@ -3,6 +3,8 @@ import { Rnd } from 'react-rnd';
 
 import {
   PAGINA,
+  PASO_MM,
+  ajustarConIman,
   altoEnMm,
   estiloDeTexto,
   textoDe,
@@ -27,6 +29,8 @@ const Lienzo = ({
 }) => {
   const contenedor = useRef(null);
   const [anchoPx, setAnchoPx] = useState(0);
+  // Guias que se pintan mientras se arrastra. Se vacian al soltar.
+  const [guias, setGuias] = useState([]);
 
   // La escala depende del ancho disponible, asi que se recalcula al cambiar el
   // tamano de la ventana. Sin esto, arrastrar despues de redimensionar deja el
@@ -42,6 +46,9 @@ const Lienzo = ({
 
   const escala = anchoPx / PAGINA.ancho;
   const altoPx = PAGINA.alto * escala;
+
+  // Los demas elementos, que son contra los que se alinea el que se arrastra.
+  const otros = (id) => documento.elementos.filter((e) => e.id !== id);
 
   const actualizar = (id, cambios) => {
     onCambiar(
@@ -96,10 +103,25 @@ const Lienzo = ({
               bounds="parent"
               size={{ width: elemento.ancho * escala, height: alto * escala }}
               position={{ x: elemento.x * escala, y: elemento.y * escala }}
+              dragGrid={[escala * PASO_MM, escala * PASO_MM]}
               onDragStart={() => onSeleccionar(elemento.id)}
+              onDrag={(evento, datos) => {
+                // Solo feedback: se pintan las lineas para que el maestro vea
+                // con que se va a alinear. El ajuste se aplica al soltar, no
+                // aqui: mover la posicion durante el arrastre con react-rnd
+                // controlado produce saltos.
+                const ajuste = ajustarConIman(
+                  elemento, datos.x / escala, datos.y / escala, otros(elemento.id),
+                );
+                setGuias(ajuste.guias);
+              }}
               onDragStop={(evento, datos) => {
-                const x = Number((datos.x / escala).toFixed(2));
-                const y = Number((datos.y / escala).toFixed(2));
+                setGuias([]);
+                const ajuste = ajustarConIman(
+                  elemento, datos.x / escala, datos.y / escala, otros(elemento.id),
+                );
+                const x = Number(ajuste.x.toFixed(2));
+                const y = Number(ajuste.y.toFixed(2));
                 // Un clic sin arrastrar tambien dispara onDragStop. Sin esta
                 // comparacion, seleccionar un elemento marcaba el diploma como
                 // "sin guardar" y el boton de deshacer se encendia sin que
@@ -156,6 +178,18 @@ const Lienzo = ({
             </Rnd>
           );
         })}
+
+        {guias.map((guia) => (
+          <div
+            key={`${guia.orientacion}-${guia.pos}`}
+            className="pointer-events-none absolute z-30 bg-fuchsia-500"
+            style={
+              guia.orientacion === 'v'
+                ? { left: guia.pos * escala, top: 0, width: 1, height: '100%' }
+                : { top: guia.pos * escala, left: 0, height: 1, width: '100%' }
+            }
+          />
+        ))}
       </div>
     </div>
   );

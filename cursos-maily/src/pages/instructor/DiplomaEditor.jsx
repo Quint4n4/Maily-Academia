@@ -6,7 +6,7 @@ import {
 
 import Lienzo from '../../components/diploma/Lienzo';
 import PanelDePropiedades from '../../components/diploma/PanelDePropiedades';
-import { TIPOS, dentroDePagina, elementoNuevo } from '../../components/diploma/utilidades';
+import { PASO_MM, TIPOS, dentroDePagina, elementoNuevo } from '../../components/diploma/utilidades';
 import courseService from '../../services/courseService';
 import diplomaService from '../../services/diplomaService';
 
@@ -111,6 +111,46 @@ const DiplomaEditor = () => {
         (e.id === actualizado.id ? dentroDePagina(actualizado) : e)),
     );
   };
+
+  // Ajuste fino con el teclado: arrastrando es imposible acertar el ultimo
+  // milimetro, y escribir el numero a mano obliga a soltar el raton e ir al
+  // panel. Shift baja el paso para cuando el milimetro entero se pasa.
+  useEffect(() => {
+    if (!seleccionado || !documento) return undefined;
+
+    const alPulsar = (evento) => {
+      const pasos = {
+        ArrowLeft: [-1, 0], ArrowRight: [1, 0],
+        ArrowUp: [0, -1], ArrowDown: [0, 1],
+      };
+      const paso = pasos[evento.key];
+      if (!paso) return;
+
+      // Si el foco esta en un campo del panel, las flechas son suyas: mueven
+      // el cursor o cambian el numero.
+      const activo = document.activeElement?.tagName;
+      if (activo === 'INPUT' || activo === 'TEXTAREA' || activo === 'SELECT') return;
+
+      evento.preventDefault();
+      const distancia = evento.shiftKey ? 0.2 : PASO_MM;
+      setDocumento((actual) => ({
+        ...actual,
+        elementos: actual.elementos.map((e) => (
+          e.id === seleccionado
+            ? dentroDePagina({
+              ...e,
+              x: Number((e.x + paso[0] * distancia).toFixed(2)),
+              y: Number((e.y + paso[1] * distancia).toFixed(2)),
+            })
+            : e
+        )),
+      }));
+      setSinGuardar(true);
+    };
+
+    window.addEventListener('keydown', alPulsar);
+    return () => window.removeEventListener('keydown', alPulsar);
+  }, [seleccionado, documento]);
 
   const agregar = (tipo) => {
     const nuevo = elementoNuevo(tipo, documento.elementos);

@@ -1,6 +1,21 @@
-import { Trash2 } from 'lucide-react';
+import {
+  AlignCenterHorizontal, AlignCenterVertical, AlignHorizontalJustifyStart,
+  AlignHorizontalJustifyEnd, AlignVerticalJustifyStart, AlignVerticalJustifyEnd,
+  Trash2,
+} from 'lucide-react';
 
-import { CAMPOS, FUENTES, PAGINA, TIPOS } from './utilidades';
+import { CAMPOS, FUENTES, PAGINA, TIPOS, alinearEnPagina } from './utilidades';
+
+// El icono va creado, no como componente a desestructurar: eslint no ve el uso
+// en JSX de una variable sacada de un map y la marca como no usada.
+const ALINEACIONES_EN_PAGINA = [
+  { clave: 'izquierda', titulo: 'Pegar al margen izquierdo', icono: <AlignHorizontalJustifyStart size={15} /> },
+  { clave: 'centro-h', titulo: 'Centrar en horizontal', icono: <AlignCenterHorizontal size={15} /> },
+  { clave: 'derecha', titulo: 'Pegar al margen derecho', icono: <AlignHorizontalJustifyEnd size={15} /> },
+  { clave: 'arriba', titulo: 'Pegar al margen superior', icono: <AlignVerticalJustifyStart size={15} /> },
+  { clave: 'centro-v', titulo: 'Centrar en vertical', icono: <AlignCenterVertical size={15} /> },
+  { clave: 'abajo', titulo: 'Pegar al margen inferior', icono: <AlignVerticalJustifyEnd size={15} /> },
+];
 
 const etiqueta = 'block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1';
 const control =
@@ -213,6 +228,28 @@ const PanelDePropiedades = ({ elemento, onCambiar, onBorrar, errores = [], recur
       )}
 
       <div className="border-t border-gray-200 pt-3 dark:border-gray-700">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Colocar en la hoja
+        </p>
+        <div className="mb-3 grid grid-cols-6 gap-1">
+          {ALINEACIONES_EN_PAGINA.map(({ clave, titulo, icono }) => (
+            <button
+              key={clave}
+              type="button"
+              title={titulo}
+              aria-label={titulo}
+              onClick={() => onCambiar({ ...elemento, ...alinearEnPagina(elemento, clave) })}
+              className="flex h-8 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              {icono}
+            </button>
+          ))}
+        </div>
+        <p className="mb-3 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+          Con el elemento elegido, las flechas del teclado lo mueven 1&nbsp;mm.
+          Con <kbd className="rounded bg-gray-100 px-1 dark:bg-gray-700">Shift</kbd>, 0.2&nbsp;mm.
+        </p>
+
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           Posición en milímetros
         </p>
