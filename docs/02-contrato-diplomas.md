@@ -90,16 +90,37 @@ El layout deja de ser código y pasa a ser un JSON que el maestro edita y el ser
 | `tipo` | Qué imprime | Propiedades propias |
 |---|---|---|
 | `campo` | Una de las variables | `campo`: `alumno` \| `curso` \| `maestro` \| `academia` \| `fecha` \| `codigo` |
-| `texto` | Texto fijo que escribe el maestro | `contenido` (máx. 300 caracteres) |
+| `texto` | Texto fijo, **con marcadores** | `contenido` (máx. 300 caracteres) |
 | `imagen` | Logo, firma o sello | `recurso_id`, `alto` |
-| `qr` | QR a la página de verificación | `lado` |
+| `qr` | QR a la página de verificación | — (usa `ancho` como lado) |
 | `linea` | Raya horizontal | `grosor` |
+| `sello` | Sello circular dibujado | `contenido` (el texto de dentro) |
 
 Propiedades comunes a todos: `id`, `tipo`, `x`, `y`, `ancho`, `z` (orden de dibujo, opcional) y
 `bloqueado` (opcional, por defecto `false`).
 
 Propiedades comunes a `campo` y `texto`: `fuente`, `tamano`, `color`, `align`
-(`left` \| `center` \| `right`), `mayusculas` (bool, opcional).
+(`left` \| `center` \| `right`), `mayusculas`, `espaciado`, y las dos de abajo.
+
+### Marcadores, `autoajuste` y `max_lineas`
+
+`contenido` admite marcadores de las seis variables:
+
+```json
+{ "tipo": "texto", "contenido": "impartido por {maestro}  ·  {academia}" }
+```
+
+Se reemplazan **literalmente, no con `str.format`**: el maestro escribe ese texto, y una llave
+suelta —`"horario {tarde}"`— reventaría la emisión con un `KeyError` en la descarga del alumno. Si
+un marcador queda vacío (`Course.section` admite null), el separador que se queda sin uno de sus
+dos lados se limpia solo.
+
+- **`autoajuste`** (bool): baja el cuerpo de letra hasta que el texto quepa en `ancho`. Es lo que
+  impide que un nombre de cincuenta letras toque el borde del diploma.
+- **`max_lineas`** (int, por defecto 1): parte el texto por palabras. Si aún no cabe, recorta con
+  puntos suspensivos, que es preferible a que el título de un curso invada la zona de la firma.
+
+Sin estas dos, el editor produce diplomas rotos con solo escribir un nombre largo.
 
 ---
 
@@ -316,3 +337,61 @@ Cada fase cierra con:
 - Migraciones **escritas y no aplicadas**: `verificadores.migraciones: solo-emanuel`.
 - Un PDF de muestra mirado con los ojos. La fase 0 tenía todo el contenido apelotonado en la mitad
   superior y ningún test lo habría detectado.
+
+---
+
+## 13 · Cambios durante la implementación de la fase 1
+
+> Escritos aquí y no corregidos en silencio arriba: un contrato que cambia sin dejar rastro deja de
+> servir para lo que existe. Fecha: `2026-09-21`.
+
+**1 · La semilla vive en el código, no en la base.** El contrato daba por hecho una fila con
+`es_semilla=True` creada por una migración de datos. No se hizo así: una migración que copia un
+JSON se queda **congelada en la versión vieja** el día que la semilla evolucione, y una base nueva
+nacería con un diseño distinto al de una base antigua. `documento_semilla()` en
+`apps/certificates/documento.py` es la fuente. El campo `es_semilla` se queda en el modelo para
+que un administrador pueda designar otra desde la base, pero si no hay ninguna manda la del código,
+así que **la semilla no puede faltar**.
+
+**2 · `POST /plantillas/` no acepta `documento`.** Solo `{"nombre", "copiar_de"}`. El documento se
+manda después con `PATCH`, que es el camino que valida. Aceptarlo también al crear sería un segundo
+sitio donde validar, y el segundo sitio es el que se olvida.
+
+**3 · La forma real de los errores.** DRF anida los errores bajo el nombre del campo, así que
+llegan un nivel más abajo de lo que decía §6:
+
+```json
+{ "documento": {
+    "documento": ["No se pueden quitar estos elementos: ['codigo', 'qr']."],
+    "elementos": { "a": ["El elemento se sale por arriba o por la izquierda."] }
+} }
+```
+
+Se documenta como es, en vez de forzar el código a una forma escrita antes de ver el
+comportamiento. El frontend lee `error.response.data.documento.elementos[id]`.
+
+**4 · Tipo `sello`.** No estaba en los cinco tipos y la semilla lo necesita: el sello circular del
+centro no es decoración, sin él la mitad inferior del diploma queda vacía. Se puede borrar —no está
+bloqueado— para quien use un marco de Canva que ya traiga medalla.
+
+**5 · `preview/` acepta un documento sin guardar.** En el cuerpo, opcional. Si obligara a guardar
+antes de ver, el maestro tendría que romper su plantilla buena para probar una idea.
+
+**6 · Los recursos se validan contra un conjunto vacío.** La galería es la fase 2, así que hoy
+**ningún** `recurso_id` es válido. Va `recursos_permitidos=set()` y no `None` a propósito: `None`
+salta la comprobación, y dejarlo así sería empezar la fase 2 con el agujero ya abierto.
+
+### Lo que la fase 1 dejó funcionando
+
+| | |
+|---|---|
+| `documento.py` | Catálogo, semilla de 17 elementos y validador |
+| `pdf.py` | Motor que interpreta el documento. **Un solo camino de dibujo**: la descarga del alumno usa el mismo código que la vista previa |
+| `models.py` | `PlantillaDeDiploma`, con índice único parcial para que solo haya una semilla |
+| `selectors.py` | `plantillas_visibles_para` y `plantillas_editables_por` |
+| API | `GET/POST /plantillas/`, `GET/PATCH/DELETE /plantillas/{id}/`, `POST /plantillas/{id}/preview/` |
+| Tests | 28 nuevos, 53 en la app, 217 en el repo |
+
+Verificado de punta a punta contra el servidor local con la cuenta de `seed_data`: crear devuelve
+los 17 elementos, la vista previa devuelve un PDF de 5.4 KB, y un documento con un elemento fuera
+de la página devuelve 400 señalando cuál.

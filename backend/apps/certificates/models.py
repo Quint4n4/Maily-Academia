@@ -52,3 +52,65 @@ class Certificate(models.Model):
 
     def __str__(self):
         return f'Certificado: {self.user.email} – {self.course.title}'
+
+
+class PlantillaDeDiploma(models.Model):
+    """El diseño de un diploma, guardado como datos y no como código.
+
+    El `documento` es el JSON que describe `docs/02-contrato-diplomas.md`: la
+    lista de elementos con su posición en milímetros. Lo edita el maestro y lo
+    interpreta `pdf.py`.
+    """
+
+    class Alcance(models.TextChoices):
+        GLOBAL = 'global', 'De la plataforma'
+        ACADEMIA = 'academia', 'De una academia'
+        INSTRUCTOR = 'instructor', 'De un maestro'
+
+    nombre = models.CharField('nombre', max_length=120)
+    documento = models.JSONField('documento', default=dict)
+    alcance = models.CharField(
+        'alcance', max_length=20, choices=Alcance.choices, default=Alcance.INSTRUCTOR,
+    )
+    section = models.ForeignKey(
+        'sections.Section',
+        on_delete=models.CASCADE,
+        related_name='plantillas_de_diploma',
+        verbose_name='academia',
+        null=True, blank=True,
+        help_text='Obligatoria si el alcance es "academia".',
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='plantillas_de_diploma',
+        verbose_name='dueño',
+        null=True, blank=True,
+        help_text='Obligatorio si el alcance es "instructor".',
+    )
+    es_semilla = models.BooleanField(
+        'es la semilla',
+        default=False,
+        help_text='La que se copia al crear una plantilla nueva. Solo puede haber una.',
+    )
+    creado_en = models.DateTimeField('creado', auto_now_add=True)
+    actualizado_en = models.DateTimeField('actualizado', auto_now=True)
+
+    class Meta:
+        verbose_name = 'plantilla de diploma'
+        verbose_name_plural = 'plantillas de diploma'
+        ordering = ['nombre']
+        constraints = [
+            # Que solo exista una semilla lo impone la tabla y no la disciplina:
+            # es el mismo remedio que el indice unico parcial del
+            # superadministrador. Con dos semillas, cual se copia al crear una
+            # plantilla nueva depende del orden de la consulta.
+            models.UniqueConstraint(
+                fields=['es_semilla'],
+                condition=models.Q(es_semilla=True),
+                name='una_sola_plantilla_semilla',
+            ),
+        ]
+
+    def __str__(self):
+        return self.nombre

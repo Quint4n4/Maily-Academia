@@ -88,3 +88,22 @@ def datos_del_diploma(certificate: Certificate) -> DatosDelDiploma:
         codigo=codigo,
         url_de_verificacion=f'{settings.FRONTEND_URL.rstrip("/")}/verify/{codigo}',
     )
+
+
+def datos_de_ejemplo() -> DatosDelDiploma:
+    """Datos para la vista previa del editor. No tocan la base ni emiten nada.
+
+    Los valores son largos a proposito: un maestro que coloca los elementos con
+    "Ana Ruiz" y "Curso 1" cree que todo cabe, y descubre que no el dia que se
+    gradua alguien con cuatro apellidos.
+    """
+    codigo = '00000000-0000-4000-8000-000000000000'
+    return DatosDelDiploma(
+        alumno='María Fernanda Rodríguez Sánchez',
+        curso='Introducción a la Medicina Regenerativa Aplicada',
+        maestro='Carlos Rodríguez',
+        academia='Longevity 360',
+        fecha=fecha_larga(timezone.now()),
+        codigo=codigo,
+        url_de_verificacion=f'{settings.FRONTEND_URL.rstrip("/")}/verify/{codigo}',
+    )
