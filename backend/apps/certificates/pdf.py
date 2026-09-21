@@ -280,7 +280,10 @@ def _pintar_imagen(pdf, elemento, resolver_recurso):
     """
     if resolver_recurso is None:
         return
-    ruta = resolver_recurso(elemento.get('recurso_id'))
+    # Se pasa el elemento entero y no su id: un documento congelado trae
+    # `recurso_public_id`, el identificador de Cloudinary del dia de la
+    # emision, y por ahi sobrevive a que borren ese marco de la galeria.
+    ruta = resolver_recurso(elemento)
     if not ruta:
         return
 
@@ -303,7 +306,7 @@ def _pintar_fondo(pdf, documento, ancho, alto, resolver_recurso):
     ruta = None
 
     if isinstance(fondo, dict) and resolver_recurso is not None:
-        ruta = resolver_recurso(fondo.get('recurso_id'))
+        ruta = resolver_recurso(fondo)
     elif RUTA_FONDO is not None and Path(RUTA_FONDO).exists():
         ruta = RUTA_FONDO
 

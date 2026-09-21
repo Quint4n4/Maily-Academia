@@ -520,3 +520,66 @@ anteriores a esta rama.
   panel derecho.
 - **La galería solo sube marcos.** El botón manda `tipo=marco`; los logos y sellos se suben por API
   hasta que haya un selector de tipo en la pantalla.
+
+---
+
+## 16 · Fase 4: lo emitido no se mueve, tampoco por dentro
+
+> Fecha: `2026-09-21`. Cierra el riesgo **R5** de §11.
+
+**Qué se cierra.** La fase 0 congeló los *textos* del diploma. Desde la fase 3 el maestro puede
+rediseñar la plantilla de su curso, así que faltaba congelar el *diseño*: sin eso, mover un elemento
+hoy reescribe el aspecto de todos los diplomas que sus alumnos ya descargaron. Es el mismo fallo de
+la fase 0 un piso más abajo.
+
+`Certificate.documento_congelado` guarda el documento entero al emitir. **No una FK a la plantilla**:
+así el diploma sobrevive a que alguien borre el diseño que lo produjo.
+
+### Las imágenes también se congelan
+
+Congelar solo `recurso_id` no bastaba: borrar ese marco de la galería dejaría sin fondo a todos los
+diplomas emitidos que lo usaban. Al congelar se copia dentro el `recurso_public_id`, el
+identificador de Cloudinary del día de la emisión, y el resolvedor lo prefiere sobre la fila.
+
+Por eso `resolver_recurso` pasó a recibir el **elemento entero** y no su id.
+
+**Lo que esto NO salva:** que alguien borre el archivo en Cloudinary. Ahí el elemento deja de
+dibujarse y el diploma sale sin él. Cerrar eso del todo exige impedir el borrado de una imagen
+referenciada por algún certificado, que es una consulta sobre JSON en Postgres y queda fuera de esta
+fase.
+
+### La matriz de §8, ahora ejercitada
+
+Cada fila tiene su test en `tests/test_diseno_congelado.py`. Las que faltaban y ahora están:
+el administrador **sí** edita la plantilla de la plataforma y **sí** publica en la galería global;
+el instructor **no** borra ni edita lo global pero **sí** lo suyo; el alumno recibe 403 en las
+cuatro puertas; y sin sesión, 401.
+
+> Una matriz escrita en un documento y no ejercitada es una intención.
+
+### Verificado de punta a punta
+
+Contra la base local, con datos reales: se emite un diploma, se rediseña su plantilla, y el diploma
+emitido **sigue diciendo lo mismo** mientras uno nuevo sí estrena el diseño.
+
+Nota de método: comparar el **hash del PDF** no sirve. ReportLab escribe `/CreationDate` en cada
+generación, así que dos PDF idénticos en contenido dan hashes distintos. Se compara el documento.
+
+### Efecto en el perfil del repo
+
+Dos claves de `.claude/PERFIL-DEL-REPO.md` dejaron de ser ciertas y se actualizaron:
+
+| Clave | Antes | Ahora |
+|---|---|---|
+| `cumplimiento.registros_inmutables` | `ninguno` | `si: los certificados` — contenido y diseño |
+| `verificadores.tests_backend` | 103 | **259** |
+
+### Lo que queda abierto del módulo de diplomas
+
+| # | Qué | Dónde |
+|---|---|---|
+| A1 | Borrar una imagen en Cloudinary sí deja sin marco a lo emitido | §16 |
+| A2 | El editor no sirve en móvil | §15 |
+| A3 | No hay tipo `firma`, por la entrega pública de Cloudinary | §14 |
+| A4 | La galería solo sube marcos desde la pantalla | §15 |
+| A5 | Sin tests de frontend: nada vigila que `react-rnd` siga funcionando | §15 |

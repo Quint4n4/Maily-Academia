@@ -59,6 +59,13 @@ def emitir_certificado(usuario, course) -> Certificate:
     if existente is not None:
         return existente
 
+    plantilla = getattr(course, 'plantilla_de_diploma', None)
+    diseno = plantilla.documento if plantilla and plantilla.documento else None
+    if diseno is None:
+        from .documento import documento_semilla
+
+        diseno = documento_semilla()
+
     return Certificate.objects.create(
         user=usuario,
         course=course,
@@ -66,6 +73,7 @@ def emitir_certificado(usuario, course) -> Certificate:
         course_title=course.title,
         instructor_name=nombre_de(course.instructor),
         section_name=academia_de(course),
+        documento_congelado=congelar_documento(diseno),
     )
 
 
@@ -109,13 +117,17 @@ def datos_de_ejemplo() -> DatosDelDiploma:
     )
 
 
-def resolver_recurso(recurso_id):
-    """Ruta local de la imagen de un recurso, o None.
+def resolver_recurso(elemento):
+    """Ruta local de la imagen de un elemento, o None.
 
-    El documento ya paso por `validar_documento`, que comprobo que ese id fuera
-    de quien lo escribio: por eso aqui no se vuelve a filtrar por usuario. El
-    diploma lo descarga el alumno, que no tiene permisos sobre los recursos del
-    maestro.
+    Recibe el elemento entero --no solo su id-- porque un documento CONGELADO
+    trae `recurso_public_id`: el identificador de Cloudinary copiado el dia de
+    la emision. Asi el diploma emitido sobrevive a que alguien borre ese marco
+    de la galeria, que es lo que pasaria si dependiera de la fila.
+
+    El documento ya paso por `validar_documento`, que comprobo que el id fuera
+    de quien lo escribio: por eso aqui no se filtra por usuario. El diploma lo
+    descarga el alumno, que no tiene permisos sobre los recursos del maestro.
 
     Devuelve None cuando la imagen no se puede traer, y entonces el elemento
     sencillamente no se dibuja: un diploma sin marco es mejor que un 500.
@@ -123,6 +135,14 @@ def resolver_recurso(recurso_id):
     from .almacenamiento import ruta_local_de
     from .models import RecursoDeDiploma
 
+    if not isinstance(elemento, dict):
+        return None
+
+    congelado = elemento.get('recurso_public_id')
+    if congelado:
+        return ruta_local_de(congelado)
+
+    recurso_id = elemento.get('recurso_id')
     if not isinstance(recurso_id, int):
         return None
 
@@ -132,14 +152,57 @@ def resolver_recurso(recurso_id):
     return ruta_local_de(recurso.cloudinary_public_id)
 
 
-def documento_del_certificado(certificate):
-    """Que diseno usa este diploma.
+def congelar_documento(documento) -> dict:
+    """Copia del documento con los identificadores de Cloudinary dentro.
 
-    Hoy: la plantilla del curso, o la semilla. En la fase 4 sera el
-    `documento_congelado` del propio certificado, para que rediseñar una
-    plantilla no cambie los diplomas ya emitidos.
+    Sin esto, el documento congelado guardaria solo `recurso_id`, y borrar ese
+    marco de la galeria dejaria sin fondo a todos los diplomas ya emitidos que
+    lo usaban.
+
+    Lo que esto NO salva: que alguien borre el archivo en Cloudinary. Ahi el
+    elemento deja de dibujarse y el diploma sale sin el.
+    """
+    import copy
+
+    from .models import RecursoDeDiploma
+
+    copia = copy.deepcopy(documento or {})
+
+    referencias = [e for e in copia.get('elementos', []) if isinstance(e, dict)]
+    if isinstance(copia.get('fondo'), dict):
+        referencias.append(copia['fondo'])
+
+    ids = {
+        r.get('recurso_id') for r in referencias
+        if isinstance(r.get('recurso_id'), int)
+    }
+    if not ids:
+        return copia
+
+    publicos = dict(
+        RecursoDeDiploma.objects
+        .filter(pk__in=ids)
+        .values_list('pk', 'cloudinary_public_id')
+    )
+    for referencia in referencias:
+        publico = publicos.get(referencia.get('recurso_id'))
+        if publico:
+            referencia['recurso_public_id'] = publico
+
+    return copia
+
+
+def documento_del_certificado(certificate):
+    """Que diseno usa este diploma: el congelado el dia que se emitio.
+
+    Lo demas es el camino de respaldo para un certificado creado saltandose
+    `emitir_certificado`. La migracion 0007 rellena los que ya existian, asi
+    que en una base al dia ese camino no se recorre.
     """
     from .documento import documento_semilla
+
+    if certificate.documento_congelado:
+        return certificate.documento_congelado
 
     plantilla = getattr(certificate.course, 'plantilla_de_diploma', None)
     if plantilla is not None and plantilla.documento:

@@ -44,6 +44,20 @@ class Certificate(models.Model):
     instructor_name = models.CharField('nombre del maestro', max_length=255, blank=True, default='')
     section_name = models.CharField('academia', max_length=120, blank=True, default='')
 
+    # El DISEÑO del día de la emisión, no solo los textos.
+    #
+    # Desde la fase 3 el maestro puede rediseñar la plantilla de su curso. Sin
+    # esta copia, mover un elemento hoy reescribiría el aspecto de todos los
+    # diplomas que ya descargaron sus alumnos: el mismo fallo que cerraron los
+    # cuatro campos de arriba, pero sobre el layout en vez de sobre el texto.
+    #
+    # Se guarda el documento entero y no una FK a la plantilla, para que el
+    # diploma sobreviva a que alguien borre la plantilla que lo produjo. Son
+    # unos pocos KB por certificado.
+    documento_congelado = models.JSONField(
+        'diseño congelado', null=True, blank=True, default=None,
+    )
+
     class Meta:
         verbose_name = 'certificado'
         verbose_name_plural = 'certificados'
