@@ -164,6 +164,14 @@ class CourseDetailSerializer(serializers.ModelSerializer):
     students_count = serializers.IntegerField(read_only=True, default=0)
     materials_count = serializers.IntegerField(read_only=True, default=0)
     category = CategorySummarySerializer(read_only=True)
+    # Lo lee el editor de diplomas para saber si el curso ya tiene diseno
+    # propio. Es solo un id: quien no sea instructor o admin recibe 403 en los
+    # endpoints de plantillas, asi que no le sirve de nada.
+    #
+    # NO va en `CourseListSerializer`: declarar un campo sin incluirlo en su
+    # `fields` hace que DRF levante AssertionError y el listado entero
+    # responda 500.
+    plantilla_de_diploma_id = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Course
@@ -176,6 +184,7 @@ class CourseDetailSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'modules',
             'category',
             'tags',
+            'plantilla_de_diploma_id',
         ]
         read_only_fields = ['id', 'rating', 'created_at', 'updated_at']
 
@@ -214,6 +223,15 @@ class CourseVitrinaSerializer(CourseDetailSerializer):
     """Ficha publica de un curso: todo lo del detalle, con el temario sin videos."""
 
     modules = ModuleVitrinaSerializer(many=True, read_only=True)
+
+    class Meta(CourseDetailSerializer.Meta):
+        # Hereda los campos del detalle MENOS el de la plantilla. Un anonimo
+        # mirando la vitrina no necesita saber que diseno de diploma usa el
+        # curso, y lo que no se manda no se puede filtrar.
+        fields = [
+            campo for campo in CourseDetailSerializer.Meta.fields
+            if campo != 'plantilla_de_diploma_id'
+        ]
 
 
 class CourseCreateUpdateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer):

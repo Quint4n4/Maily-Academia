@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, BookOpen, Edit, Eye, EyeOff, Settings, Clock, Search, Building2, Info } from 'lucide-react';
+import { Plus, BookOpen, Edit, Eye, EyeOff, Settings, Clock, Search, Building2, Info, Award } from 'lucide-react';
 import { Card, Button, Input, SidePanel, Badge } from '../../components/ui';
 import ImageCropModal from '../../components/ImageCropModal';
 import { useAuth } from '../../context/AuthContext';
@@ -262,6 +262,7 @@ const MyCourses = () => {
                 <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                   <Button size="sm" variant="primary" onClick={() => navigate(`/instructor/courses/${c.id}/edit`)} icon={<Settings size={14} />}>Contenido</Button>
                   <Button size="sm" variant="secondary" onClick={() => navigate(`/instructor/courses/${c.id}/analytics`)}>Analytics</Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigate(`/instructor/courses/${c.id}/diploma`)} icon={<Award size={14} />}>Diploma</Button>
                   <Button size="sm" variant="ghost" onClick={() => openEdit(c)} icon={<Edit size={14} />}>Editar</Button>
                   <Button size="sm" variant="secondary" onClick={() => handleTogglePublish(c)} icon={c.status === 'published' ? <EyeOff size={14} /> : <Eye size={14} />}>
                     {c.status === 'published' ? 'Despublicar' : 'Publicar'}

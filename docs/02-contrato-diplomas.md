@@ -454,3 +454,69 @@ dentro, renombrado a `.png` y enviado con `Content-Type: image/png`, se rechaza 
 
 La fase 2 deja la galería y la asignación, pero **el maestro todavía no tiene dónde pulsar**: no hay
 pantalla. Eso es la fase 3. Hasta entonces esto se maneja por API o desde el admin de Django.
+
+---
+
+## 15 · Cambios durante la implementación de la fase 3
+
+> Fecha: `2026-09-21`.
+
+**1 · `react-rnd` funciona en React 19, comprobado en el navegador.** El riesgo era real:
+`react-draggable` —de la que depende— todavía usa `ReactDOM.findDOMNode`, que **React 19 eliminó**.
+No revienta porque `react-rnd` le pasa `nodeRef`, así que ese camino no se ejecuta. Verificado
+arrastrando de verdad en `/instructor/courses/1/diploma`: el elemento se movió, la `y` pasó de 64 a
+104.63 mm, y la consola quedó sin un solo aviso. **Si algún día `react-rnd` deja de pasar
+`nodeRef`, el editor deja de arrastrar**; el reemplazo sería escribir el arrastre con eventos de
+puntero, unas 80 líneas más las manijas de redimensión.
+
+**2 · El campo del curso va en el detalle, no en el listado, y no en la vitrina.** El editor
+necesita saber si un curso ya tiene diseño propio; sin ese dato crearía una plantilla nueva en cada
+apertura y dejaría huérfanas las anteriores. Está en `CourseDetailSerializer` y **excluido
+explícitamente** en `CourseVitrinaSerializer`, que hereda su `Meta`: un anónimo mirando el catálogo
+no necesita saber qué diploma usa un curso.
+
+**3 · Un clic sin arrastrar marcaba el diploma como modificado.** `onDragStop` se dispara también
+en un clic simple. Se compara la posición antes de aplicar el cambio. Salió al probar a mano, no de
+un test.
+
+### El ciclo, verificado de punta a punta
+
+Con la cuenta de `seed_data`, en el navegador: abrir el editor → arrastrar el nombre del alumno →
+guardar → **el PDF real lo dibuja exactamente donde se soltó**. Eso es lo que prueba que la
+conversión de milímetros y de origen es correcta en los dos sentidos.
+
+### Un fallo propio que conviene dejar escrito
+
+Al añadir el campo al serializer, el reemplazo automático lo insertó en `CourseListSerializer` en
+vez de en `CourseDetailSerializer` —cogió la primera coincidencia del texto—. Declarar un campo sin
+incluirlo en su `fields` hace que DRF levante `AssertionError`: **`GET /api/courses/` respondió 500,
+o sea el catálogo entero caído**, para todos, también para los anónimos.
+
+No lo detectó nadie durante un rato porque tras tocar un serializer de `courses` solo se corrieron
+los tests de `apps/certificates`. **La red existía**: `test_aislamiento_catalogo.py` llama a ese
+endpoint y habría fallado al instante. La regla que sale de aquí: *si el cambio toca una app, los
+tests que se corren son los del repo, no los de la app en la que estabas pensando.*
+
+### Lo que la fase 3 dejó funcionando
+
+| | |
+|---|---|
+| `/instructor/courses/:id/diploma` | Editor en ruta propia, fuera de `CourseBuilder.jsx` |
+| `components/diploma/utilidades.js` | **Toda** la conversión mm ↔ px en un solo archivo |
+| `Lienzo.jsx` | Arrastrar y redimensionar, con el elemento en rojo si el backend lo rechaza |
+| `PanelDePropiedades.jsx` | Tipografía, tamaño, color, alineación y posición en milímetros |
+| `diplomaService.js` | Cliente de la API, incluida la lectura de errores anidados de DRF |
+| Acceso | Botón **Diploma** en la lista de cursos del instructor |
+
+Comprobado en tema claro y oscuro. Lint sin errores nuevos: los 113 que devuelve `npm run lint` son
+anteriores a esta rama.
+
+### Lo que NO tiene el editor, y conviene no prometer
+
+- **No sirve en móvil.** Es una rejilla de tres columnas con un lienzo que se arrastra; por debajo
+  de unos 1000 px de ancho deja de ser usable. No se ha hecho una versión táctil.
+- **No hay deshacer por pasos.** «Deshacer cambios» vuelve a lo último guardado, no al paso anterior.
+- **No hay guías de alineación ni imán.** Los elementos se colocan a ojo o con los milímetros del
+  panel derecho.
+- **La galería solo sube marcos.** El botón manda `tipo=marco`; los logos y sellos se suben por API
+  hasta que haya un selector de tipo en la pantalla.

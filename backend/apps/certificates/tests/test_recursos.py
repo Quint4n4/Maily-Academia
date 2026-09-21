@@ -485,3 +485,44 @@ class TestElCursoElijeSuDiseno:
         assert respuesta.status_code == 200
         curso.refresh_from_db()
         assert curso.plantilla_de_diploma_id == propia.id
+
+    def test_la_vitrina_publica_no_dice_que_plantilla_usa_el_curso(
+        self, api, curso_factory, academia_con_vitrina, instructor,
+    ):
+        """
+        Un anonimo mirando el catalogo no necesita ese dato. Lo que no se manda
+        no se puede filtrar, y `CourseVitrinaSerializer` hereda los campos del
+        detalle: sin excluirlo a mano, saldria solo.
+        """
+        academia_con_vitrina.allow_public_preview = True
+        academia_con_vitrina.save(update_fields=['allow_public_preview'])
+        plantilla = PlantillaDeDiploma.objects.create(
+            nombre='La del curso', documento=documento_semilla(),
+            alcance=PlantillaDeDiploma.Alcance.INSTRUCTOR, owner=instructor,
+        )
+        curso = curso_factory(academia_con_vitrina)
+        curso.plantilla_de_diploma = plantilla
+        curso.save(update_fields=['plantilla_de_diploma'])
+
+        respuesta = api.get(f'/api/courses/{curso.id}/')
+
+        assert respuesta.status_code == 200
+        assert 'plantilla_de_diploma_id' not in respuesta.data
+
+    def test_el_instructor_si_ve_que_plantilla_usa_su_curso(
+        self, api, curso_factory, academia_con_vitrina, instructor_de_vitrina,
+    ):
+        """Es lo que lee el editor para no crear una plantilla nueva cada vez."""
+        plantilla = PlantillaDeDiploma.objects.create(
+            nombre='La del curso', documento=documento_semilla(),
+            alcance=PlantillaDeDiploma.Alcance.INSTRUCTOR, owner=instructor_de_vitrina,
+        )
+        curso = curso_factory(academia_con_vitrina)
+        curso.instructor = instructor_de_vitrina
+        curso.plantilla_de_diploma = plantilla
+        curso.save(update_fields=['instructor', 'plantilla_de_diploma'])
+        api.force_authenticate(instructor_de_vitrina)
+
+        respuesta = api.get(f'/api/courses/{curso.id}/')
+
+        assert respuesta.data['plantilla_de_diploma_id'] == plantilla.id
