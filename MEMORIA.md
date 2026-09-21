@@ -74,6 +74,24 @@ de `courses` solo se corrieron los tests de `certificates`. La red existía:
 que dos PDF idénticos en contenido dan hashes distintos. Estuvo a punto de dar por roto el congelado
 que sí funcionaba.
 
+### Después de las cinco fases: ayudas de alineación
+
+Arrastrando a mano es imposible acertar el último milímetro. Se añadieron imán —a la hoja y a los
+demás elementos, con guía visible—, rejilla de 1 mm, seis botones de colocación en la hoja, y
+flechas del teclado (1 mm, o 0.2 mm con Shift).
+
+**La hoja manda sobre los vecinos, y esa prioridad no es un detalle.** Sin ella el imán se pega al
+elemento más cercano, y en una plantilla manoseada casi todos están torcidos: el centro real deja
+de usarse porque siempre hay un vecino un poco más cerca, y el desalineo se propaga. Se vio en
+vivo: el imán llevó un logo a 129.51 para alinearlo con una raya que estaba torcida, en vez de al
+centro, que era 128.5.
+
+De paso salió un defecto de uso que no se ve en el código: **el editor deja poner cualquier caja a
+una imagen**. Un logo cuadrado en una caja de 40×25 se dibuja a 25×25 centrado, con 15 mm de hueco
+invisible a los lados; se coloca una caja que no corresponde con lo que se ve y es imposible
+ajustarla a ojo. Hasta que la caja tome sola la proporción de la imagen al elegirla, hay que
+corregirlo a mano en el panel.
+
 ### Dos claves del perfil dejaron de ser ciertas
 
 | Clave | Antes | Ahora |
