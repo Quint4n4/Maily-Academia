@@ -5,6 +5,111 @@
 
 ---
 
+## 2026-09-21 · El diploma, de imagen con parche a módulo editable
+
+Cinco fases en una sesión, seis commits, dos ramas apiladas. La suite pasó de **164 a 259 tests**;
+`apps/certificates` pasó de **0 a 95** y es la primera app con capa de selectores propia.
+
+**Nada de esto está en producción todavía.** Las ramas son `feat/diploma-unico-academy360`
+(fase 0) y `feat/motor-de-plantillas-de-diploma` (fases 1 a 4), y la segunda contiene a la primera.
+
+### De qué se partía
+
+El PDF se dibujaba sobre `maily_template.png`, una plantilla de **Maily Soft** —otro producto— con
+el párrafo quemado en el pixel. La vista le pintaba encima un rectángulo blanco y reescribía el
+texto. Ese párrafo hablaba de *"exponenciar tu consultorio"* y **se imprimía igual en los diplomas
+de Corporativo CAMSA**, que son de onboarding interno de empleados.
+
+El módulo no tenía ni un test, siendo el único que produce un documento que sale de la plataforma.
+
+### Lo grave que no se veía
+
+El PDF leía `course.title` y `course.instructor` **en cada descarga**. Renombrar un curso o
+reasignar a un maestro reescribía todos los diplomas ya emitidos, incluidos los que el alumno había
+descargado meses antes. Un documento fechado que cambia solo no es un documento.
+
+Ahora el certificado congela alumno, curso, maestro, academia **y el diseño entero**. Se guarda el
+documento completo y no una FK a la plantilla, para que el diploma sobreviva a que alguien borre el
+diseño que lo produjo. Y dentro del diseño se copia el identificador de Cloudinary de cada imagen,
+para que sobreviva también a que borren el marco de la galería.
+
+**Lo que no salva:** borrar el archivo directamente en el panel de Cloudinary. Ahí el elemento deja
+de dibujarse y el diploma sale sin él. Nada en el código lo impide ni lo avisa.
+
+### Qué hay ahora
+
+El layout dejó de ser código y es un **documento JSON** en milímetros con origen arriba-izquierda.
+El maestro lo edita arrastrando en `/instructor/courses/:id/diploma` y el servidor lo interpreta.
+
+Dos decisiones que sostienen todo lo demás:
+
+- **Milímetros, no píxeles.** En píxeles del navegador el diploma se descuadra según el monitor de
+  quien lo editó. La conversión al origen de ReportLab vive en un solo sitio.
+- **El editor no predice el PDF: lo pide.** El navegador mide el texto distinto a ReportLab, y esa
+  diferencia se descubre cuando el alumno ya lo descargó. El botón de vista previa devuelve el PDF
+  real, dibujado por el mismo código que emitirá el diploma.
+
+De paso se cerraron dos fallos que vivían en la misma vista: reclamar un curso con id inexistente
+devolvía **500**, y reclamar no comprobaba la academia. Y el QR con el código de verificación ya se
+imprime: el endpoint público existía desde febrero y no había forma de llegar a él desde el papel.
+
+### Tres tropiezos que conviene no repetir
+
+**`react-draggable` usa `findDOMNode`, que React 19 eliminó.** `react-rnd` no revienta porque le
+pasa `nodeRef`. Verificado arrastrando de verdad en el navegador, no leyendo el `package.json`. El
+día que deje de pasarlo, el editor deja de arrastrar y **ningún test lo notará**: no hay tests de
+frontend.
+
+**Un reemplazo automático metió un campo en `CourseListSerializer` en vez de
+`CourseDetailSerializer`** —cogió la primera coincidencia del texto—. Declarar un campo sin
+incluirlo en su `fields` hace que DRF levante `AssertionError`: `GET /api/courses/` respondió
+**500, el catálogo entero caído, también para anónimos**. No se vio porque tras tocar un serializer
+de `courses` solo se corrieron los tests de `certificates`. La red existía:
+`test_aislamiento_catalogo.py` lo habría cazado al instante.
+
+> Regla que sale de aquí: **si el cambio toca una app, los tests que se corren son los del repo, no
+> los de la app en la que estabas pensando.**
+
+**Comparar el hash de dos PDF no sirve.** ReportLab escribe `/CreationDate` en cada generación, así
+que dos PDF idénticos en contenido dan hashes distintos. Estuvo a punto de dar por roto el congelado
+que sí funcionaba.
+
+### Dos claves del perfil dejaron de ser ciertas
+
+| Clave | Antes | Ahora |
+|---|---|---|
+| `cumplimiento.registros_inmutables` | `ninguno` | `si: los certificados` — contenido y diseño |
+| `verificadores.tests_backend` | 103 | 259 |
+
+La primera era un hueco que el propio perfil señalaba desde el 2026-09-02.
+
+### Decisiones que costaría caro cambiar sin querer
+
+| Decisión | Por qué |
+|---|---|
+| **No hay tipo `firma`** en la galería | Estas imágenes suben como `image` y Cloudinary **sí** las entrega por enlace directo. Una firma manuscrita pública es una firma que cualquiera descarga y reusa. La entrega autenticada existe, pero no se ha medido contra la cuenta real |
+| `alcance` y `owner` son de solo lectura | Si no, un maestro se crea una plantilla «global» y su diseño sale en las tres academias |
+| El queryset de `plantilla_de_diploma_id` se acota a quien pide | El queryset **es** la validación: sin acotarlo, se asigna la plantilla de otra academia mandando su id |
+| `recursos_permitidos` nunca en `None` | Con `None` el validador acepta cualquier id de imagen. Hay un test que deja escrito qué se pierde |
+| El campo de la plantilla está excluido de `CourseVitrinaSerializer` | Hereda el `Meta` del detalle; sin excluirlo a mano, saldría en la ficha pública que ven los anónimos |
+
+### Abierto
+
+- **Nada se ha subido a Cloudinary de verdad.** El `CLAUDE.md` avisa de que el `.env` local tiene
+  credenciales reales y de comprobar si son la cuenta de producción. Los tests usan un doble. La
+  primera subida real es lo primero que hay que probar tras desplegar.
+- **El editor no sirve en móvil.** Tres columnas con un lienzo arrastrable; por debajo de ~1000 px
+  deja de ser usable.
+- **Sin tests de frontend.** Ver el tropiezo de `react-rnd`.
+- La galería solo sube marcos desde la pantalla; logos y sellos, por API.
+- `backend/static/certificates/maily_template.png` ya no lo usa nadie y sigue en el repo.
+
+### Al fusionar
+
+El orden importa: **primero la fase 0, después la otra**, porque la segunda contiene a la primera.
+Y ojo: el PR #17 (bitácora del 18) también toca la cabecera de `MEMORIA.md`, así que ahí habrá
+conflicto — se resuelve dejando las dos entradas.
+
 ## 2026-09-15 · DESPLEGADO a produccion
 
 Las siete sesiones de correccion estan en produccion y verificadas. Lo que cambio, medido
