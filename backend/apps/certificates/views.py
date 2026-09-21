@@ -1,21 +1,19 @@
-from pathlib import Path
-
-from django.conf import settings
 from django.http import HttpResponse
-from reportlab.lib.pagesizes import landscape, A4
-from reportlab.pdfgen import canvas
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.courses.models import Course, Lesson
+from apps.courses.models import Lesson
+from apps.courses.selectors import curso_inscribible_o_404
 from apps.progress.models import LessonProgress
 from apps.progress.activity_logger import log_activity
 from apps.quizzes.models import FinalEvaluation, FinalEvaluationAttempt
 
 from .models import Certificate
+from .pdf import dibujar_diploma
 from .serializers import CertificateSerializer, CertificateVerifySerializer
+from .services import datos_del_diploma, emitir_certificado
 
 
 class MyCertificatesView(generics.ListAPIView):
@@ -46,7 +44,11 @@ class CertificateClaimView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, course_id):
-        course = Course.objects.get(pk=course_id)
+        # AMBITO>> Reclamar el diploma de un curso exige acceso al contenido de
+        # su academia, no solo verlo en la vitrina. Antes era
+        # `Course.objects.get(pk=course_id)`: un id inexistente devolvia 500 y
+        # la academia no se comprobaba en ningun momento.
+        course = curso_inscribible_o_404(request.user, course_id)
 
         existing = Certificate.objects.filter(user=request.user, course=course).first()
         if existing:
@@ -98,7 +100,7 @@ class CertificateClaimView(APIView):
             # Si el curso no tiene evaluación final, solo se exige curso completo
             pass
 
-        certificate = Certificate.objects.create(user=request.user, course=course)
+        certificate = emitir_certificado(request.user, course)
         log_activity(
             request.user,
             'certificate_claimed',
@@ -114,8 +116,12 @@ class CertificateClaimView(APIView):
 
 class CertificateDownloadView(APIView):
     """
-    GET /api/certificates/{pk}/download/ – descarga el certificado en PDF.
-    Genera un PDF usando una plantilla de fondo y datos dinámicos.
+    GET /api/certificates/{pk}/download/ – descarga el diploma en PDF.
+
+    El dibujo vive en `pdf.py` y los datos en `services.py`; aqui solo queda
+    quien puede pedirlo. Antes esta vista tenia dentro las coordenadas, los
+    colores y el texto, incluido el parrafo de Maily Soft que se imprimia en los
+    diplomas de las tres academias.
     """
 
     permission_classes = [IsAuthenticated]
@@ -130,7 +136,9 @@ class CertificateDownloadView(APIView):
         #
         # Punto 10 de security-checklist: 403 = tu rol no puede hacer esta accion,
         # 404 = ese dato no existe para ti.
-        certificados = Certificate.objects.select_related('user', 'course', 'course__instructor')
+        certificados = Certificate.objects.select_related(
+            'user', 'course', 'course__instructor', 'course__section',
+        )
         if request.user.role != 'admin':
             certificados = certificados.filter(user=request.user)
 
@@ -139,97 +147,9 @@ class CertificateDownloadView(APIView):
         except Certificate.DoesNotExist:
             return Response({'detail': 'Certificado no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Ruta a la plantilla de imagen del certificado
-        template_path = Path(settings.BASE_DIR) / 'static' / 'certificates' / 'maily_template.png'
-
-        # Crear respuesta HTTP con PDF
         response = HttpResponse(content_type='application/pdf')
-        filename = f'certificado-{certificate.course.id}-{certificate.user.id}.pdf'
+        filename = f'diploma-{certificate.course_id}-{certificate.user_id}.pdf'
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
-        # Configurar página horizontal A4
-        page_width, page_height = landscape(A4)
-        pdf = canvas.Canvas(response, pagesize=(page_width, page_height))
-
-        # Dibujar plantilla si existe
-        if template_path.exists():
-          pdf.drawImage(
-              str(template_path),
-              0,
-              0,
-              width=page_width,
-              height=page_height,
-              preserveAspectRatio=True,
-              mask='auto',
-          )
-
-        # Coordenadas aproximadas (pueden ajustarse según la plantilla)
-        student_name = certificate.user.get_full_name() or certificate.user.email
-        course_title = certificate.course.title
-        instructor_name = certificate.course.instructor.get_full_name() or certificate.course.instructor.email
-        issued_date = certificate.issued_at.astimezone().strftime('%d/%m/%Y')
-
-        pdf.setTitle(f'Certificado - {student_name}')
-
-        # Nombre del alumno — más separado del "Otorgado a:" de la plantilla, itálica-negrita
-        pdf.setFont('Helvetica-BoldOblique', 30)
-        pdf.setFillColorRGB(0.08, 0.08, 0.08)
-        pdf.drawCentredString(page_width / 2, page_height * 0.39, student_name)
-
-        # Cubrir el texto estático del curso en la plantilla (fondo blanco sin borde)
-        pdf.setFillColorRGB(1, 1, 1)
-        pdf.rect(
-            page_width * 0.08,
-            page_height * 0.23,
-            page_width * 0.84,
-            page_height * 0.15,
-            fill=1,
-            stroke=0,
-        )
-
-        # --- Redibujar párrafo con el nombre real del curso ---
-        font_body = 13
-        gray = (0.38, 0.38, 0.38)
-        dark = (0.08, 0.08, 0.08)
-
-        # Línea 1: "Por concluir satisfactoriamente la [CURSO]."
-        prefix = 'Por concluir satisfactoriamente la '
-        suffix = '.'
-        prefix_w = pdf.stringWidth(prefix, 'Helvetica', font_body)
-        course_w = pdf.stringWidth(course_title, 'Helvetica-Bold', font_body)
-        suffix_w = pdf.stringWidth(suffix, 'Helvetica', font_body)
-        line1_x = (page_width - prefix_w - course_w - suffix_w) / 2
-        line1_y = page_height * 0.355
-
-        pdf.setFont('Helvetica', font_body)
-        pdf.setFillColorRGB(*gray)
-        pdf.drawString(line1_x, line1_y, prefix)
-        pdf.setFont('Helvetica-Bold', font_body)
-        pdf.setFillColorRGB(*dark)
-        pdf.drawString(line1_x + prefix_w, line1_y, course_title)
-        pdf.setFont('Helvetica', font_body)
-        pdf.setFillColorRGB(*gray)
-        pdf.drawString(line1_x + prefix_w + course_w, line1_y, suffix)
-
-        # Línea 2
-        pdf.setFont('Helvetica', font_body)
-        pdf.setFillColorRGB(*gray)
-        pdf.drawCentredString(page_width / 2, page_height * 0.315, 'Ahora estás listo para sacarle el mayor provecho')
-
-        # Línea 3
-        pdf.drawCentredString(page_width / 2, page_height * 0.277, 'y exponenciar tu consultorio.')
-
-        # Fecha (inferior izquierdo)
-        pdf.setFont('Helvetica', 11)
-        pdf.setFillColorRGB(0.25, 0.25, 0.25)
-        pdf.drawString(page_width * 0.15, page_height * 0.155, f'Fecha: {issued_date}')
-
-        # Instructor debajo de la línea de firma (inferior centro)
-        pdf.setFont('Helvetica', 11)
-        pdf.setFillColorRGB(0.25, 0.25, 0.25)
-        pdf.drawCentredString(page_width * 0.5, page_height * 0.095, f'Instructor/a: {instructor_name}')
-
-        pdf.showPage()
-        pdf.save()
-
+        dibujar_diploma(response, datos_del_diploma(certificate))
         return response
