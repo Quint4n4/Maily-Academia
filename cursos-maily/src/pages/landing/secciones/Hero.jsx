@@ -60,14 +60,21 @@ const Hero = () => {
         <div className="flex h-full max-w-[700px] flex-col justify-center lg:min-h-[720px]">
           {/* El logo vive aqui y no en la cabecera: puesto arriba del todo
               quedaba pequeno y lejos del mensaje. Aqui abre la columna y se
-              lee como parte de lo que se esta diciendo. */}
-          <img
-            src={MARCA.logo}
-            alt={MARCA.nombre}
-            className="mb-8 h-[120px] w-[120px] lg:h-[150px] lg:w-[150px]"
-          />
+              lee como parte de lo que se esta diciendo.
 
-          <Eyebrow>{HERO.eyebrow}</Eyebrow>
+              Logo y eyebrow van en un contenedor que se encoge a su contenido
+              (`self-start`), asi que su ancho lo marca el eyebrow, que es el
+              mas largo. `items-center` centra el logo sobre ESE ancho, no
+              sobre la columna entera. Si el texto cambia, el logo se recoloca
+              solo. */}
+          <div className="mb-2 flex flex-col items-center self-start">
+            <img
+              src={MARCA.logo}
+              alt={MARCA.nombre}
+              className="mb-8 h-[120px] w-[120px] lg:h-[150px] lg:w-[150px]"
+            />
+            <Eyebrow>{HERO.eyebrow}</Eyebrow>
+          </div>
 
           <h1 className="mt-6 font-display text-[40px] leading-[1.06] tracking-[-0.01em] text-academy-tinta sm:text-a-54 lg:text-a-76">
             {HERO.titulo}{' '}
