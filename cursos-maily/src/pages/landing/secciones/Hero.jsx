@@ -64,7 +64,7 @@ const Hero = () => {
           <img
             src={MARCA.logo}
             alt={MARCA.nombre}
-            className="mb-8 h-[120px] w-[120px] lg:h-[150px] lg:w-[150px]"
+            className="mx-auto mb-8 h-[120px] w-[120px] lg:h-[150px] lg:w-[150px]"
           />
 
           <Eyebrow>{HERO.eyebrow}</Eyebrow>
