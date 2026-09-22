@@ -105,7 +105,14 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         "plus-jakarta-sans": ["Plus Jakarta Sans", "sans-serif"],
         // Academy360. `display` para titulares, `ui` para todo lo demas.
-        display: ['"Cormorant Garamond"', 'Garamond', '"Times New Roman"', 'serif'],
+        // Outfit para los titulares. Geometrica como Jost, asi que las dos
+        // conviven sin que se note el salto entre titular y texto.
+        //
+        // OJO: Outfit NO tiene cursiva. Pedirle `italic` hace que el
+        // navegador la incline por su cuenta, y en una geometrica eso
+        // deforma los circulos. Lo que estaba en cursiva se distingue
+        // ahora por el color dorado.
+        display: ['Outfit', 'Jost', 'system-ui', 'sans-serif'],
         ui: ['Jost', '"Avenir Next"', '"Century Gothic"', 'sans-serif'],
       },
       fontSize: {

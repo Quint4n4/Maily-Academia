@@ -62,9 +62,10 @@ const Hero = () => {
 
           <h1 className="mt-6 font-display text-[40px] leading-[1.06] tracking-[-0.01em] text-academy-tinta sm:text-a-54 lg:text-a-76">
             {HERO.titulo}{' '}
-            <em className="not-italic">
-              <span className="italic text-academy-oro-texto">{HERO.tituloDestacado}</span>
-            </em>
+            {/* Sin cursiva: Outfit no la tiene y el navegador la fabricaria
+                inclinando las letras, lo que en una geometrica se nota. La
+                segunda mitad se distingue por el color. */}
+            <span className="text-academy-oro-texto">{HERO.tituloDestacado}</span>
           </h1>
 
           <p className="mt-6 max-w-[520px] font-ui text-a-17 leading-[1.7] text-academy-tinta-2">

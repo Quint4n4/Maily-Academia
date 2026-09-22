@@ -83,7 +83,7 @@ const LoginAcademy360 = () => {
       <div className="relative hidden bg-academy-crema-2 lg:block">
         <Foto src={FOTO.src} alt="" min={FOTO.min} etiqueta="Foto del login" className="h-full w-full" />
         <figure className="absolute bottom-[72px] left-[72px] max-w-[420px] bg-white/95 px-8 py-7">
-          <p className="font-display text-a-28 italic leading-[1.3] text-academy-tinta">
+          <p className="font-display text-a-28 leading-[1.3] text-academy-tinta">
             Aprende salud con quienes la ejercen.
           </p>
         </figure>
