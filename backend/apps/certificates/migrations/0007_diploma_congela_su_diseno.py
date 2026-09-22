@@ -26,7 +26,7 @@ def congelar_el_diseno_de_los_ya_emitidos(apps, schema_editor):
     for certificado in consulta.iterator():
         if certificado.documento_congelado:
             continue
-        plantilla = certificado.course.plantilla_de_diploma
+        plantilla = getattr(certificado.course, 'plantilla_de_diploma', None)
         certificado.documento_congelado = (
             plantilla.documento if plantilla and plantilla.documento
             else {**semilla, 'elementos': [dict(e) for e in semilla['elementos']]}
@@ -49,6 +49,16 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('certificates', '0006_recurso_de_diploma'),
+        # El relleno de abajo lee `course.plantilla_de_diploma`, que crea esta
+        # migracion de OTRA app. Sin declararlo, Django es libre de ejecutar
+        # esta antes, y entonces el campo no existe todavia: `migrate` revienta
+        # y el contenedor no llega a arrancar.
+        #
+        # No se noto en los tests porque pytest corre con --reuse-db sobre una
+        # base donde las migraciones ya estaban aplicadas en el orden en que se
+        # escribieron. Desde cero, que es lo que pasa en un despliegue, el
+        # orden lo decide el grafo.
+        ('courses', '0011_plantilla_de_diploma_en_curso'),
     ]
 
     operations = [
