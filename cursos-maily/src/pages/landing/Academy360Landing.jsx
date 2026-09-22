@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { CURSOS_GRATIS } from './academy360Config';
 import AreasDeSalud from './secciones/AreasDeSalud';
 import CierreCTA from './secciones/CierreCTA';
 import CursosGratis from './secciones/CursosGratis';
@@ -9,6 +10,7 @@ import Hero from './secciones/Hero';
 import PieDePagina from './secciones/PieDePagina';
 import SobreLosCursos from './secciones/SobreLosCursos';
 import api from '../../services/api';
+import courseService from '../../services/courseService';
 
 /**
  * Landing pública de Academy360.
@@ -23,6 +25,8 @@ import api from '../../services/api';
  */
 const Academy360Landing = () => {
   const [academias, setAcademias] = useState([]);
+  const [cursos, setCursos] = useState([]);
+  const [cargandoCursos, setCargandoCursos] = useState(true);
 
   useEffect(() => {
     let vigente = true;
@@ -40,6 +44,11 @@ const Academy360Landing = () => {
       })
       .catch(() => { /* la sección usa su lista fija */ });
 
+    courseService.listarGratuitos(CURSOS_GRATIS.cuantos)
+      .then((lista) => { if (vigente) setCursos(lista); })
+      .catch(() => { /* la sección muestra su estado vacío */ })
+      .finally(() => { if (vigente) setCargandoCursos(false); });
+
     return () => { vigente = false; };
   }, []);
 
@@ -48,7 +57,7 @@ const Academy360Landing = () => {
       <Encabezado />
       <main>
         <Hero />
-        <CursosGratis />
+        <CursosGratis cursos={cursos} cargando={cargandoCursos} />
         <SobreLosCursos />
         <AreasDeSalud academias={academias} />
         <Docentes />
