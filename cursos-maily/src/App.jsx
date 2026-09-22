@@ -33,6 +33,7 @@ import ChooseSection from './pages/ChooseSection';
 import LandingHub from './pages/landing/LandingHub';
 import AcademyLanding from './pages/landing/AcademyLanding';
 import Academy360Landing from './pages/landing/Academy360Landing';
+import LoginAcademy360 from './pages/LoginAcademy360';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import CourseManagement from './pages/admin/CourseManagement';
@@ -142,6 +143,14 @@ function AppRoutes() {
         }
       />
       <Route path="/auth" element={<Navigate to="/login" replace />} />
+      {/* El registro completo sigue en la pantalla de siempre; el login nuevo
+          enlaza aqui en vez de traerse sus nueve campos. */}
+      <Route
+        path="/registro"
+        element={<PublicRoute><Auth /></PublicRoute>}
+      />
+      {/* Login nuevo, en ruta aparte mientras se termina. */}
+      <Route path="/preview-login" element={<LoginAcademy360 />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route path="/choose-section" element={<ProtectedRoute><ChooseSection /></ProtectedRoute>} />
