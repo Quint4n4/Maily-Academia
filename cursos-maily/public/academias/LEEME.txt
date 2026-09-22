@@ -21,3 +21,22 @@ NOTAS
 - El video se ve recortado al centro: lo importante, al centro.
 - Peso: por debajo de 5 MB cada uno. Un video de 30 MB en la portada tarda
   una eternidad con datos moviles.
+
+
+DIEZ VIDEOS POR ACADEMIA
+========================
+
+El panel es un feed: se desliza hacia abajo y aparece el siguiente. Al pasar
+del decimo vuelve al primero, sin final.
+
+Los nombres van numerados del 1 al 10:
+
+  maily-1.mp4 ... maily-10.mp4
+  longevity-1.mp4 ... longevity-10.mp4
+  camsa-1.mp4 ... camsa-10.mp4
+
+No hace falta tenerlos los diez desde el principio: los que falten muestran su
+marcador y el feed sigue funcionando igual.
+
+Para cambiar cuantos son, se toca VIDEOS_POR_ACADEMIA en
+src/pages/landing/academy360Config.js. Es un solo numero.

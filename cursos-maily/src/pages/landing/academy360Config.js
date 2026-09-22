@@ -41,6 +41,21 @@ export const NAVEGACION = [
   { texto: 'Docentes', a: '#docentes' },
 ];
 
+/** Cuántos videos tiene el feed de cada academia. */
+export const VIDEOS_POR_ACADEMIA = 10;
+
+/**
+ * Los archivos de video de una academia, numerados.
+ *
+ * Se generan en vez de escribirse a mano: treinta entradas repetidas son
+ * treinta sitios donde equivocarse, y cambiar la cantidad obligaría a
+ * reescribirlas todas.
+ */
+const videosDe = (slug) => Array.from({ length: VIDEOS_POR_ACADEMIA }, (_, i) => ({
+  src: `/academias/${slug}-${i + 1}.mp4`,
+  numero: i + 1,
+}));
+
 /**
  * Las tres academias.
  *
@@ -56,6 +71,7 @@ export const ACADEMIAS = {
   lista: [
     {
       slug: 'maily-academia',
+      videos: videosDe('maily'),
       nombre: 'Maily',
       resumen: 'Aprende a manejar nuestro software.',
       imagen: '/academias/maily.jpg',
@@ -70,6 +86,7 @@ export const ACADEMIAS = {
     },
     {
       slug: 'longevity-360',
+      videos: videosDe('longevity'),
       nombre: 'Longevity 360',
       resumen: 'Cursos de salud, abiertos a cualquiera.',
       imagen: '/academias/longevity.jpg',
@@ -82,6 +99,7 @@ export const ACADEMIAS = {
     },
     {
       slug: 'corporativo-camsa',
+      videos: videosDe('camsa'),
       nombre: 'Corporativo CAMSA',
       resumen: '¿Eres parte de nuestra familia?',
       imagen: '/academias/camsa.jpg',
@@ -95,6 +113,10 @@ export const ACADEMIAS = {
   ],
   medidaFoto: { css: '384 × 288', min: '768 × 576' },
   medidaVideo: { css: '9:16 vertical', min: '720 × 1280' },
+  // El feed vuelve al primero al pasar del último: no hay final, como en
+  // TikTok. Sin esto, quien llega abajo se queda mirando una pantalla que
+  // ya no responde al gesto.
+  enBucle: true,
 };
 
 export const CURSOS_GRATIS = {
