@@ -32,14 +32,70 @@ export const HERO = {
     'Academy360 reúne cursos en distintas áreas de la salud, impartidos por '
     + 'docentes especialistas. Empieza con los gratuitos y avanza a tu ritmo.',
   ctaPrincipal: { texto: 'Empieza gratis', a: '/login' },
-  ctaSecundario: { texto: 'Ver cursos gratis', a: '#cursos' },
+  ctaSecundario: { texto: 'Ver las academias', a: '#academias' },
 };
 
 export const NAVEGACION = [
-  { texto: 'Cursos gratis', a: '#cursos' },
+  { texto: 'Academias', a: '#academias' },
   { texto: 'Áreas', a: '#areas' },
   { texto: 'Docentes', a: '#docentes' },
 ];
+
+/**
+ * Las tres academias.
+ *
+ * Cada una abre un panel a pantalla completa --al estilo de TikTok, video
+ * vertical y texto encima-- con su video, su descripción y un botón.
+ *
+ * `video` y `poster` viven en `public/academias/`. Mientras no existan, la
+ * tarjeta usa `imagen` y el panel muestra un marcador con las medidas.
+ */
+export const ACADEMIAS = {
+  titulo: 'Nuestras academias',
+  subtitulo: 'Tres caminos, según lo que necesites aprender.',
+  lista: [
+    {
+      slug: 'maily-academia',
+      nombre: 'Maily',
+      resumen: 'Aprende a manejar nuestro software.',
+      imagen: '/academias/maily.jpg',
+      video: '/academias/maily.mp4',
+      descripcion:
+        'La academia de Maily está dedicada a que domines el software: '
+        + 'desde lo básico hasta lo que casi nadie usa. Cursos cortos, '
+        + 'hechos por quienes lo construyeron.',
+      // PENDIENTE: Emanuel pasa la dirección de la página de Maily Soft.
+      // Hasta entonces el botón lleva al login, para no dejar un enlace muerto.
+      cta: { texto: 'Conocer más', a: null, externo: true },
+    },
+    {
+      slug: 'longevity-360',
+      nombre: 'Longevity 360',
+      resumen: 'Cursos de salud, abiertos a cualquiera.',
+      imagen: '/academias/longevity.jpg',
+      video: '/academias/longevity.mp4',
+      descripcion:
+        'Nuestra academia abierta. Nutrición, longevidad, salud cerebral y '
+        + 'medicina preventiva, impartidos por especialistas que ejercen. '
+        + 'Crea tu cuenta y empieza por los cursos gratuitos.',
+      cta: { texto: 'Crear mi cuenta', a: '/login' },
+    },
+    {
+      slug: 'corporativo-camsa',
+      nombre: 'Corporativo CAMSA',
+      resumen: '¿Eres parte de nuestra familia?',
+      imagen: '/academias/camsa.jpg',
+      video: '/academias/camsa.mp4',
+      descripcion:
+        '¿Eres parte de nuestra familia? Entra a Corporativo CAMSA y '
+        + 'actualiza tus conocimientos. Formación interna para el equipo, '
+        + 'con lo que hace falta saber en cada área.',
+      cta: { texto: 'Entrar', a: '/login' },
+    },
+  ],
+  medidaFoto: { css: '384 × 288', min: '768 × 576' },
+  medidaVideo: { css: '9:16 vertical', min: '720 × 1280' },
+};
 
 export const CURSOS_GRATIS = {
   titulo: 'Cursos gratis',
@@ -107,7 +163,7 @@ export const CIERRE = {
 };
 
 export const PIE = [
-  { texto: 'Cursos gratis', a: '#cursos' },
+  { texto: 'Academias', a: '#academias' },
   { texto: 'Docentes', a: '#docentes' },
   // Pendiente: hay datos personales de alumnos y pagos con Stripe, y la
   // consulta legal del proyecto sigue en `pendiente`. Un enlace de privacidad

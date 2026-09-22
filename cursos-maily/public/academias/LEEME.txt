@@ -1,0 +1,23 @@
+IMAGENES Y VIDEOS DE LAS ACADEMIAS
+==================================
+
+Cada academia tiene una portada (la tarjeta) y un video (el panel que se abre
+al pulsarla). Deja los archivos con estos nombres exactos:
+
+  maily.jpg       768 x 576 minimo   portada de la tarjeta
+  maily.mp4       720 x 1280 minimo  VERTICAL 9:16, como un video de TikTok
+
+  longevity.jpg   768 x 576 minimo
+  longevity.mp4   720 x 1280 minimo  vertical
+
+  camsa.jpg       768 x 576 minimo
+  camsa.mp4       720 x 1280 minimo  vertical
+
+NOTAS
+-----
+- El video arranca SIN sonido, en bucle. Hay un boton para activarlo.
+- Si falta el video, el panel muestra un marcador y el resto funciona igual.
+- Si falta la portada, la tarjeta muestra el hueco con su medida.
+- El video se ve recortado al centro: lo importante, al centro.
+- Peso: por debajo de 5 MB cada uno. Un video de 30 MB en la portada tarda
+  una eternidad con datos moviles.
