@@ -64,10 +64,10 @@ const Hero = () => {
           <img
             src={MARCA.logo}
             alt={MARCA.nombre}
-            className="mx-auto mb-8 h-[120px] w-[120px] lg:h-[150px] lg:w-[150px]"
+            className="mb-8 h-[120px] w-[120px] lg:h-[150px] lg:w-[150px]"
           />
 
-          <Eyebrow centrado>{HERO.eyebrow}</Eyebrow>
+          <Eyebrow>{HERO.eyebrow}</Eyebrow>
 
           <h1 className="mt-6 font-display text-[40px] leading-[1.06] tracking-[-0.01em] text-academy-tinta sm:text-a-54 lg:text-a-76">
             {HERO.titulo}{' '}
