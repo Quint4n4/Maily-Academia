@@ -26,8 +26,14 @@ const Encabezado = () => {
     <header
       className={`relative z-40 flex h-[72px] items-center justify-between bg-white lg:h-[104px] ${canal}`}
     >
-      <Link to="/" className="flex items-center" aria-label={`${MARCA.nombre}, ir al inicio`}>
-        <img src={MARCA.logo} alt={MARCA.nombre} className="h-14 w-14 lg:h-[88px] lg:w-[88px]" />
+      {/* Sin logo: el grande vive en el hero, justo debajo. Repetirlo aqui
+          los deja a pocos pixeles uno de otro. El enlace al inicio se
+          mantiene para quien navegue con teclado. */}
+      <Link
+        to="/"
+        className="font-ui text-a-13 uppercase tracking-[0.18em] text-academy-oro-texto"
+      >
+        {MARCA.nombre}
       </Link>
 
       <nav className="hidden items-center gap-10 lg:flex" aria-label="Principal">

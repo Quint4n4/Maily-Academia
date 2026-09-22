@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { HERO, HERO_FOTOS } from '../academy360Config';
+import { HERO, HERO_FOTOS, MARCA } from '../academy360Config';
 import { Boton, Eyebrow, Foto } from './Piezas';
 import { canal } from './estilos';
 
@@ -58,6 +58,15 @@ const Hero = () => {
 
       <div className={`relative ${canal} py-12 lg:min-h-[720px] lg:py-0`}>
         <div className="flex h-full max-w-[700px] flex-col justify-center lg:min-h-[720px]">
+          {/* El logo vive aqui y no en la cabecera: puesto arriba del todo
+              quedaba pequeno y lejos del mensaje. Aqui abre la columna y se
+              lee como parte de lo que se esta diciendo. */}
+          <img
+            src={MARCA.logo}
+            alt={MARCA.nombre}
+            className="mb-8 h-[120px] w-[120px] lg:h-[150px] lg:w-[150px]"
+          />
+
           <Eyebrow>{HERO.eyebrow}</Eyebrow>
 
           <h1 className="mt-6 font-display text-[40px] leading-[1.06] tracking-[-0.01em] text-academy-tinta sm:text-a-54 lg:text-a-76">
