@@ -1,0 +1,31 @@
+FOTOS DE LA LANDING DE ACADEMY360
+=================================
+
+Deja aqui los archivos con EXACTAMENTE estos nombres. En cuanto existan,
+aparecen solas al recargar: no hay que tocar codigo.
+
+  hero-1.jpg     minimo 1440 px de ALTO. Es la foto grande de la derecha.
+                 Puedes poner hasta tres (hero-2.jpg, hero-3.jpg) y salen
+                 flechas para pasarlas. Con una sola, no hay controles.
+
+  apoyo.jpg      minimo 1440 x 1160. La de la banda "Cursos en linea, a tu ritmo".
+
+  cierre.jpg     minimo 2880 x 798. Muy apaisada. Va de fondo al bloque final,
+                 con un velo claro encima, asi que no se lee bien lo que tenga.
+
+  docente-1.jpg  minimo 552 x 690 cada una. Retrato vertical (4:5).
+  docente-2.jpg
+  docente-3.jpg
+  docente-4.jpg
+
+  login.jpg      minimo 1440 x 1800. La columna izquierda de la pantalla de
+                 entrada. Encima va una tarjeta blanca abajo a la izquierda,
+                 asi que deja esa zona despejada.
+
+NOTAS
+-----
+- Formato: JPG. Si tienes PNG o WEBP, dimelo y cambio una linea.
+- Todas se recortan al centro (object-fit: cover): lo importante, al centro.
+- No hace falta que sean exactas, solo que no bajen del minimo, o se veran
+  borrosas en pantallas buenas.
+- Mientras falte una, ahi sale un recuadro gris diciendo cual es y su medida.

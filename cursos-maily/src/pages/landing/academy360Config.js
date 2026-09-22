@@ -18,7 +18,10 @@ export const MARCA = {
 
 /** Fotos del carrusel del hero. Con una sola, no salen flechas ni puntos. */
 export const HERO_FOTOS = [
-  { src: '/landing/hero-1.jpg', min: '1440 px de alto', alt: 'Docentes de Academy360' },
+  { src: '/landing/hero-1.jpg', min: '1440 px de alto', alt: '' },
+  { src: '/landing/hero-2.jpg', min: '1440 px de alto', alt: '' },
+  { src: '/landing/hero-3.jpg', min: '1440 px de alto', alt: '' },
+  { src: '/landing/hero-4.jpg', min: '1440 px de alto', alt: '' },
 ];
 
 export const HERO = {
