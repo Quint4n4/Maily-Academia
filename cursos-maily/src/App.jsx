@@ -30,8 +30,6 @@ import FinalEvaluationView from './pages/FinalEvaluationView';
 import CertificateVerify from './pages/CertificateVerify';
 import MailyPresentacion from './pages/MailyPresentacion';
 import ChooseSection from './pages/ChooseSection';
-import LandingHub from './pages/landing/LandingHub';
-import AcademyLanding from './pages/landing/AcademyLanding';
 import Academy360Landing from './pages/landing/Academy360Landing';
 import LoginAcademy360 from './pages/LoginAcademy360';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -126,19 +124,22 @@ const SuperAdminRoute = ({ children }) => {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public – Landing pages */}
-      <Route path="/" element={<LandingHub />} />
-      <Route path="/academia/:slug" element={<AcademyLanding />} />
-      {/* Landing nueva, en una ruta aparte mientras se termina. Cuando
-          sustituya a la portada, `/` pasa a apuntar aqui y esta ruta se va. */}
-      <Route path="/preview-academy360" element={<Academy360Landing />} />
+      {/* Public – Landing */}
+      <Route path="/" element={<Academy360Landing />} />
+      {/*
+        Las tres landings por academia se retiran: el diseno de Academy360 es
+        una sola portada. Se redirige en vez de borrar la ruta para que los
+        enlaces repartidos --correos, mensajes, lo que este indexado-- sigan
+        llevando a algun sitio en vez de a un 404.
+      */}
+      <Route path="/academia/:slug" element={<Navigate to="/" replace />} />
 
       {/* Auth */}
       <Route
         path="/login"
         element={
           <PublicRoute>
-            <Auth />
+            <LoginAcademy360 />
           </PublicRoute>
         }
       />
@@ -149,8 +150,6 @@ function AppRoutes() {
         path="/registro"
         element={<PublicRoute><Auth /></PublicRoute>}
       />
-      {/* Login nuevo, en ruta aparte mientras se termina. */}
-      <Route path="/preview-login" element={<LoginAcademy360 />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route path="/choose-section" element={<ProtectedRoute><ChooseSection /></ProtectedRoute>} />
