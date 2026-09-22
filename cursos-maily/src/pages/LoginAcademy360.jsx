@@ -69,30 +69,30 @@ const LoginAcademy360 = () => {
     }
   });
 
-  const etiqueta = 'block font-ui text-a-13 text-academy-tinta-2 dark:text-white/70';
+  const etiqueta = 'block font-ui text-a-13 text-academy-tinta-2';
   const campo =
     'h-[52px] w-full rounded-[4px] border border-academy-borde bg-white px-4 font-ui text-a-15 '
     + 'text-academy-tinta placeholder:text-academy-tinta-3/70 transition-[border-color,box-shadow] '
     + 'duration-150 focus:border-academy-oro-texto focus:outline-none focus:ring-1 '
-    + 'focus:ring-academy-oro-texto dark:bg-white/5 dark:text-academy-crema dark:border-white/20';
+    + 'focus:ring-academy-oro-texto';
 
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
       {/* Foto: en móvil no se pinta, para que el formulario quede a la vista
           sin tener que bajar. */}
-      <div className="relative hidden bg-academy-crema-2 lg:block dark:bg-white/5">
+      <div className="relative hidden bg-academy-crema-2 lg:block">
         <Foto src={FOTO.src} alt="" min={FOTO.min} etiqueta="Foto del login" className="h-full w-full" />
-        <figure className="absolute bottom-[72px] left-[72px] max-w-[420px] bg-white/95 px-8 py-7 dark:bg-academy-tinta/95">
-          <p className="font-display text-a-28 italic leading-[1.3] text-academy-tinta dark:text-academy-crema">
+        <figure className="absolute bottom-[72px] left-[72px] max-w-[420px] bg-white/95 px-8 py-7">
+          <p className="font-display text-a-28 italic leading-[1.3] text-academy-tinta">
             Aprende salud con quienes la ejercen.
           </p>
         </figure>
       </div>
 
-      <div className="flex flex-col justify-between bg-white px-6 py-8 sm:px-10 lg:px-[88px] dark:bg-academy-tinta">
+      <div className="flex flex-col justify-between bg-white px-6 py-8 sm:px-10 lg:px-[88px]">
         <Link
           to="/"
-          className="inline-flex items-center gap-2 self-start font-ui text-a-13 text-academy-tinta-3 hover:text-academy-tinta dark:text-white/50 dark:hover:text-white"
+          className="inline-flex items-center gap-2 self-start font-ui text-a-13 text-academy-tinta-3 hover:text-academy-tinta"
         >
           <ArrowLeft size={14} /> Volver al inicio
         </Link>
@@ -100,10 +100,10 @@ const LoginAcademy360 = () => {
         <div className="mx-auto w-full max-w-[400px] py-10">
           <img src={MARCA.logo} alt={MARCA.nombre} className="mx-auto h-[104px] w-[104px]" />
 
-          <h1 className="mt-6 text-center font-display text-a-44 text-academy-tinta dark:text-academy-crema">
+          <h1 className="mt-6 text-center font-display text-a-44 text-academy-tinta">
             Inicia sesión
           </h1>
-          <p className="mt-2 text-center font-ui text-a-15 text-academy-tinta-3 dark:text-white/60">
+          <p className="mt-2 text-center font-ui text-a-15 text-academy-tinta-3">
             Entra para continuar con tus cursos.
           </p>
 
@@ -112,7 +112,7 @@ const LoginAcademy360 = () => {
               role="alert"
               className={`mt-6 flex items-start gap-3 rounded-[4px] px-4 py-3 font-ui text-a-13 ${
                 bloqueada
-                  ? 'bg-academy-oro/15 text-academy-sobre-oro dark:text-academy-crema'
+                  ? 'bg-academy-oro/15 text-academy-sobre-oro'
                   : 'bg-academy-error/10 text-academy-error'
               }`}
             >
@@ -152,7 +152,7 @@ const LoginAcademy360 = () => {
                   onClick={() => setVerContrasena((v) => !v)}
                   aria-pressed={verContrasena}
                   aria-controls="contrasena"
-                  className="absolute right-3 top-1/2 flex h-11 -translate-y-1/2 items-center px-2 font-ui text-a-13 text-academy-oro-texto hover:underline dark:text-academy-oro"
+                  className="absolute right-3 top-1/2 flex h-11 -translate-y-1/2 items-center px-2 font-ui text-a-13 text-academy-oro-texto hover:underline"
                 >
                   {verContrasena ? 'Ocultar' : 'Mostrar'}
                 </button>
@@ -160,7 +160,7 @@ const LoginAcademy360 = () => {
               <div className="flex justify-end">
                 <Link
                   to="/forgot-password"
-                  className="font-ui text-a-13 text-academy-oro-texto hover:underline dark:text-academy-oro"
+                  className="font-ui text-a-13 text-academy-oro-texto hover:underline"
                 >
                   ¿Olvidaste tu contraseña?
                 </Link>
@@ -180,9 +180,9 @@ const LoginAcademy360 = () => {
             <>
               <div className="relative my-8 text-center">
                 <span className="absolute inset-0 flex items-center" aria-hidden="true">
-                  <span className="w-full border-t border-academy-linea-2 dark:border-white/10" />
+                  <span className="w-full border-t border-academy-linea-2" />
                 </span>
-                <span className="relative bg-white px-4 font-ui text-[11px] uppercase tracking-[0.18em] text-academy-tinta-3 dark:bg-academy-tinta dark:text-white/50">
+                <span className="relative bg-white px-4 font-ui text-[11px] uppercase tracking-[0.18em] text-academy-tinta-3">
                   o inicia sesión con
                 </span>
               </div>
@@ -190,21 +190,21 @@ const LoginAcademy360 = () => {
             </>
           )}
 
-          <p className="mt-8 text-center font-ui text-a-13 text-academy-tinta-3 dark:text-white/60">
+          <p className="mt-8 text-center font-ui text-a-13 text-academy-tinta-3">
             ¿Aún no tienes cuenta?{' '}
             {/* Lleva a la pantalla actual, que trae el formulario completo con
                 sus nueve campos. Rehacerlo entra en su propia tarea. */}
             <button
               type="button"
               onClick={() => navigate('/registro')}
-              className="font-medium text-academy-oro-texto hover:underline dark:text-academy-oro"
+              className="font-medium text-academy-oro-texto hover:underline"
             >
               Crea una gratis
             </button>
           </p>
         </div>
 
-        <p className="text-center font-ui text-[11px] text-academy-tinta-3/70 dark:text-white/40">
+        <p className="text-center font-ui text-[11px] text-academy-tinta-3/70">
           © {MARCA.anio} {MARCA.nombre}
         </p>
       </div>

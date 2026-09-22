@@ -53,7 +53,7 @@ const Academy360Landing = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white font-ui text-academy-tinta dark:bg-academy-tinta dark:text-academy-crema">
+    <div className="min-h-screen bg-white font-ui text-academy-tinta">
       <Encabezado />
       <main>
         <Hero />
