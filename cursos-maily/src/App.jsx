@@ -32,6 +32,7 @@ import MailyPresentacion from './pages/MailyPresentacion';
 import ChooseSection from './pages/ChooseSection';
 import LandingHub from './pages/landing/LandingHub';
 import AcademyLanding from './pages/landing/AcademyLanding';
+import Academy360Landing from './pages/landing/Academy360Landing';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import CourseManagement from './pages/admin/CourseManagement';
@@ -127,6 +128,9 @@ function AppRoutes() {
       {/* Public – Landing pages */}
       <Route path="/" element={<LandingHub />} />
       <Route path="/academia/:slug" element={<AcademyLanding />} />
+      {/* Landing nueva, en una ruta aparte mientras se termina. Cuando
+          sustituya a la portada, `/` pasa a apuntar aqui y esta ruta se va. */}
+      <Route path="/preview-academy360" element={<Academy360Landing />} />
 
       {/* Auth */}
       <Route

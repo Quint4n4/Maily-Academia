@@ -11,6 +11,29 @@ export default {
         'plus-jakarta-sans': ['"Plus Jakarta Sans"', 'sans-serif'],
       },
       colors: {
+        // --- Academy360 -------------------------------------------------
+        // Paleta del rediseño de 2026-09-22. Editorial: crema, dorado y tinta,
+        // sin gradientes de color ni sombras.
+        //
+        // Dos dorados y NO uno, por contraste: `oro` sobre blanco da 1.95:1, que
+        // no llega al 3:1 que WCAG pide para el borde de un control, asi que
+        // solo vale como relleno o como filete decorativo. Para texto y bordes
+        // va `oro-texto`, que da 3.37:1 -- suficiente para texto grande
+        // (>=24px), NO para un enlace de 15px.
+        academy: {
+          tinta: '#1F1B14',        // 17.14:1 sobre blanco
+          'tinta-2': '#4A4438',    //  9.65:1 sobre blanco
+          'tinta-3': '#6B6355',    //  5.93:1 sobre blanco
+          crema: '#FAF6EC',        // fondo de seccion alterna
+          'crema-2': '#F4EDDD',
+          oro: '#DDB54E',          // relleno de boton y filetes. NO para bordes
+          'oro-texto': '#AE8625',  // texto grande, bordes de control, hover
+          linea: '#E2D5B8',        // divisoria decorativa
+          'linea-2': '#EFE7D4',
+          borde: '#968B73',        // borde de input, 3.37:1
+          'sobre-oro': '#2E281D',  // texto encima del dorado, 14.61:1
+          error: '#A3341F',        //  6.84:1 sobre blanco
+        },
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',
@@ -81,6 +104,26 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         "plus-jakarta-sans": ["Plus Jakarta Sans", "sans-serif"],
+        // Academy360. `display` para titulares, `ui` para todo lo demas.
+        display: ['"Cormorant Garamond"', 'Garamond', '"Times New Roman"', 'serif'],
+        ui: ['Jost', '"Avenir Next"', '"Century Gothic"', 'sans-serif'],
+      },
+      fontSize: {
+        // Escala del diseno. Solo 14, 16, 18 y 48 px coincidian con Tailwind;
+        // los demas se declaran aqui para no llenar los componentes de
+        // valores arbitrarios tipo text-[76px].
+        'a-13': ['13px', { lineHeight: '1.4' }],
+        'a-15': ['15px', { lineHeight: '1.6' }],
+        'a-17': ['17px', { lineHeight: '1.6' }],
+        'a-25': ['25px', { lineHeight: '1.25' }],
+        'a-27': ['27px', { lineHeight: '1.25' }],
+        'a-28': ['28px', { lineHeight: '1.25' }],
+        'a-32': ['32px', { lineHeight: '1.3' }],
+        'a-44': ['44px', { lineHeight: '1.1' }],
+        'a-46': ['46px', { lineHeight: '1.1' }],
+        'a-50': ['50px', { lineHeight: '1.1' }],
+        'a-54': ['54px', { lineHeight: '1.1' }],
+        'a-76': ['76px', { lineHeight: '1.05' }],
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out',
