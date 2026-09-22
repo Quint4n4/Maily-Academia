@@ -6,6 +6,24 @@ export const courseService = {
     return data;
   },
 
+  /**
+   * Cursos gratuitos para la portada publica.
+   *
+   * No exige sesion: el backend responde con lo que ve un anonimo, que son los
+   * cursos de las academias con vitrina. Un curso gratis de una academia
+   * cerrada NO sale, y eso lo decide el backend, no este metodo.
+   *
+   * @param {number} cuantos cuantas tarjetas necesita la portada
+   */
+  async listarGratuitos(cuantos = 3) {
+    const { data } = await api.get('/courses/', { params: { free: 'true' } });
+    // Se recorta aqui y no con un `page_size`: la paginacion del backend no
+    // acepta ese parametro --haria falta `page_size_query_param` en la
+    // configuracion de DRF, que afecta a toda la API-- asi que mandarlo daria
+    // la falsa impresion de que limita algo. Llegan hasta 20 y se usan 3.
+    return (data?.results ?? data ?? []).slice(0, cuantos);
+  },
+
   async getRecommended(sectionSlug = null) {
     const params = sectionSlug ? { section: sectionSlug } : {};
     const { data } = await api.get('/courses/recommended/', { params });

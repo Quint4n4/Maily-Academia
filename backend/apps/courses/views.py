@@ -98,6 +98,20 @@ class CourseListCreateView(generics.ListCreateAPIView):
             if tags:
                 qs = qs.filter(tags__contains=tags)
 
+        # Solo los gratuitos. Lo pide la portada publica, que ofrece "empieza
+        # gratis" y tiene tres huecos.
+        #
+        # Va aqui y no en `filterset_fields` porque no se filtra por un valor
+        # concreto sino por una condicion: precio menor o igual que cero.
+        # `price` no admite null --tiene default 0-- asi que no hace falta
+        # contemplar ese caso.
+        #
+        # Sin esto, la portada tendria que pedir una pagina y filtrar en el
+        # navegador, y la paginacion es de 20: no hay garantia de que en la
+        # primera pagina venga un solo curso gratuito.
+        if self.request.query_params.get('free') in ('true', '1'):
+            qs = qs.filter(price__lte=0)
+
         # El orden lo fija el selector: los annotate() fuerzan un GROUP BY y
         # Django descarta el Meta.ordering al agrupar, con lo que la paginacion
         # deja de ser determinista.

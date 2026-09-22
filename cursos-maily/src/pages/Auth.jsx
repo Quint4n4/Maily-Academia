@@ -35,7 +35,11 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const GOOGLE_SCRIPT_ID = 'gsi-client';
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  // En /registro arranca en el formulario de alta. Se mira la ruta y no un
+  // parametro porque el enlace tiene que poder compartirse tal cual.
+  const [isLogin, setIsLogin] = useState(
+    () => !window.location.pathname.startsWith('/registro'),
+  );
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
