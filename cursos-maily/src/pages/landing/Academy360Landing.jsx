@@ -7,7 +7,7 @@ import Docentes from './secciones/Docentes';
 import Encabezado from './secciones/Encabezado';
 import Hero from './secciones/Hero';
 import PieDePagina from './secciones/PieDePagina';
-import SobreLosCursos from './secciones/SobreLosCursos';
+import SabiasDeTuCuerpo from './secciones/SabiasDeTuCuerpo';
 import api from '../../services/api';
 
 /**
@@ -49,7 +49,9 @@ const Academy360Landing = () => {
       <main>
         <Hero />
         <Academias />
-        <SobreLosCursos />
+        {/* Ocupa el sitio de `SobreLosCursos`, que sigue en el repo por si
+            este mosaico no convence. */}
+        <SabiasDeTuCuerpo />
         <AreasDeSalud academias={academias} />
         <Docentes />
         <CierreCTA />

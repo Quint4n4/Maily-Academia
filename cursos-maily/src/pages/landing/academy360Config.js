@@ -133,6 +133,52 @@ export const CURSOS_GRATIS = {
   medidaFoto: { css: '384 × 288', min: '768 × 576' },
 };
 
+/**
+ * El mosaico de curiosidades.
+ *
+ * Cada pieza es una imagen quieta que, al pasar el cursor o al tocarla, crece
+ * y reproduce un video corto.
+ *
+ * LOS TEXTOS DE ABAJO SON DE EJEMPLO. Son datos ciertos y de manual, puestos
+ * para poder ver la sección funcionando, pero esto es una plataforma de salud:
+ * cada afirmación que se publique aquí debería poder respaldarse. Sustitúyelos
+ * por los de los docentes.
+ *
+ * `destacada` hace que la pieza ocupe el doble de ancho y de alto en el
+ * mosaico. En móvil se ignora: ahí todas miden igual, porque una pieza doble
+ * en una rejilla de dos columnas se come la pantalla entera.
+ */
+export const CUERPO = {
+  eyebrow: 'Curiosidades',
+  titulo: '¿Sabías esto de tu cuerpo?',
+  subtitulo: 'Pasa el cursor por encima y te lo contamos en un minuto.',
+  subtituloTactil: 'Toca cualquiera y te lo contamos en un minuto.',
+  medidaFoto: { css: '280 × 280', min: '560 × 560' },
+  medidaVideo: { css: 'cuadrado o vertical', min: '720 × 720' },
+  /**
+   * Milisegundos que espera antes de arrancar el video.
+   *
+   * No es un capricho: sin esta pausa, cruzar el mosaico con el ratón lanza la
+   * descarga de las doce piezas que toca de paso. Con ella solo se descarga
+   * aquella en la que alguien se detiene.
+   */
+  esperaAntesDeArrancar: 140,
+  piezas: [
+    { slug: 'intestino', dato: 'Tu intestino tiene unos 500 millones de neuronas propias.', destacada: true },
+    { slug: 'corazon', dato: 'El corazón late unas 100 000 veces al día.' },
+    { slug: 'cerebro', dato: 'El cerebro pesa el 2 % de ti y gasta el 20 % de tu energía.' },
+    { slug: 'huesos', dato: 'El esqueleto se renueva por completo cada diez años.' },
+    { slug: 'piel', dato: 'La capa externa de la piel se renueva cada mes.' },
+    { slug: 'higado', dato: 'El hígado es el único órgano que regenera lo que le falta.', destacada: true },
+    { slug: 'microbiota', dato: 'Llevas encima tantas bacterias como células propias.' },
+    { slug: 'pulmones', dato: 'Desplegados, los pulmones cubrirían unos 70 m².' },
+    { slug: 'saliva', dato: 'Produces más de un litro de saliva al día.' },
+    { slug: 'estomago', dato: 'El estómago rehace su recubrimiento cada pocos días.' },
+    { slug: 'ojos', dato: 'Parpadeas unas 15 veces por minuto sin darte cuenta.' },
+    { slug: 'sangre', dato: 'Tu sangre da la vuelta al cuerpo entero en un minuto.' },
+  ],
+};
+
 export const SOBRE_LOS_CURSOS = {
   eyebrow: 'Sobre los cursos',
   titulo: 'Cursos en línea,',
