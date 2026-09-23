@@ -16,9 +16,9 @@ Cada pieza necesita DOS archivos con el mismo nombre:
   higado.jpg     +  higado.mp4
   microbiota.jpg +  microbiota.mp4
   pulmones.jpg   +  pulmones.mp4
-  saliva.jpg     +  saliva.mp4
+  sueno.jpg      +  sueno.mp4
   estomago.jpg   +  estomago.mp4
-  ojos.jpg       +  ojos.mp4
+  musculo.jpg    +  musculo.mp4
   sangre.jpg     +  sangre.mp4
 
 

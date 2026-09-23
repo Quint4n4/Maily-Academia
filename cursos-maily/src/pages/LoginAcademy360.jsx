@@ -100,11 +100,15 @@ const LoginAcademy360 = () => {
         <div className="mx-auto w-full max-w-[400px] py-10">
           <img src={MARCA.logo} alt={MARCA.nombre} className="mx-auto h-[104px] w-[104px]" />
 
+          {/* Habla con quien VUELVE, y eso es deliberado: desde que los
+              botones de la portada llevan a `/registro`, quien llega aquí ya
+              tiene cuenta. Antes esta pantalla recibía a desconocidos y les
+              decía "continúa con tus cursos", unos cursos que no tenían. */}
           <h1 className="mt-6 text-center font-display text-a-44 text-academy-tinta">
-            Inicia sesión
+            Bienvenido de vuelta
           </h1>
           <p className="mt-2 text-center font-ui text-a-15 text-academy-tinta-3">
-            Entra para continuar con tus cursos.
+            Entra y sigue donde lo dejaste.
           </p>
 
           {error && (
@@ -191,7 +195,8 @@ const LoginAcademy360 = () => {
           )}
 
           <p className="mt-8 text-center font-ui text-a-13 text-academy-tinta-3">
-            ¿Aún no tienes cuenta?{' '}
+            {/* "¿Aún no tienes cuenta?" llevaba un reproche en ese "aún". */}
+            ¿Es tu primera vez aquí?{' '}
             {/* Lleva a la pantalla actual, que trae el formulario completo con
                 sus nueve campos. Rehacerlo entra en su propia tarea. */}
             <button
@@ -199,7 +204,7 @@ const LoginAcademy360 = () => {
               onClick={() => navigate('/registro')}
               className="font-medium text-academy-oro-texto hover:underline"
             >
-              Crea una gratis
+              Crea tu cuenta
             </button>
           </p>
         </div>

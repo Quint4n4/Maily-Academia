@@ -24,14 +24,31 @@ export const HERO_FOTOS = [
   { src: '/landing/hero-4.jpg', min: '1440 px de alto', alt: '' },
 ];
 
+/**
+ * El hero.
+ *
+ * "Empieza gratis" se queda, pero ahora dice QUÉ es lo gratis. Una promesa
+ * gratuita sin límite declarado se lee como "todo es gratis", y el día que
+ * aparezca un precio parece un cambio de reglas.
+ *
+ * OJO con lo que se promete aquí: hoy el backend cobra por curso entero
+ * --`Course.price`--, y ni `Module` ni `Lesson` tienen campo para marcarse
+ * como gratuitos. O sea que un curso es gratis del todo o de pago del todo.
+ * El texto dice "cursos abiertos sin costo", que es exactamente eso. En cuanto
+ * el backend sepa abrir el primer módulo de un curso de pago, esta línea se
+ * cambia por "el primer módulo de cada curso".
+ */
 export const HERO = {
   eyebrow: 'Cursos de salud en línea',
   titulo: 'Aprende salud con',
   tituloDestacado: 'quienes la ejercen.',
   texto:
-    'Academy360 reúne cursos en distintas áreas de la salud, impartidos por '
-    + 'docentes especialistas. Empieza con los gratuitos y avanza a tu ritmo.',
-  ctaPrincipal: { texto: 'Empieza gratis', a: '/login' },
+    'Nutrición, longevidad, salud cerebral y medicina preventiva, explicados '
+    + 'por especialistas que atienden pacientes. Hay cursos abiertos sin costo '
+    + 'para que veas cómo enseñan antes de pagar nada.',
+  // A `/registro` y no a `/login`: quien pulsa "Empieza gratis" no tiene
+  // cuenta, y mandarlo a un formulario que pide contraseña es perderlo.
+  ctaPrincipal: { texto: 'Empieza gratis', a: '/registro' },
   ctaSecundario: { texto: 'Ver las academias', a: '#academias' },
 };
 
@@ -80,14 +97,17 @@ const videosDe = (slug) => Array.from({ length: VIDEOS_POR_ACADEMIA }, (_, i) =>
  */
 export const ACADEMIAS = {
   titulo: 'Nuestras academias',
-  subtitulo: 'Tres caminos, según lo que necesites aprender.',
+  // Dice de entrada cuál es la que se puede comprar. Dos de las tres son
+  // cerradas --clientes del software y empleados-- y antes no lo decían: un
+  // visitante podía gastar su único clic en una puerta que no es suya.
+  subtitulo: 'Longevity 360 está abierta a cualquiera. Las otras dos ya tienen dueño.',
   lista: [
     {
       slug: 'maily-academia',
       videos: videosDe('maily'),
       nombre: 'Maily',
       logo: '/academias/logo-maily.png',
-      resumen: 'Aprende a manejar nuestro software.',
+      resumen: 'Cerrada. Solo para quien usa el software Maily.',
       imagen: '/academias/maily.jpg',
       video: '/academias/maily.mp4',
       descripcion:
@@ -101,27 +121,32 @@ export const ACADEMIAS = {
       videos: videosDe('longevity'),
       nombre: 'Longevity 360',
       logo: '/academias/logo-longevity.png',
-      resumen: 'Cursos de salud, abiertos a cualquiera.',
+      resumen: 'Abierta a cualquiera. Aquí están los cursos que se venden.',
       imagen: '/academias/longevity.jpg',
       video: '/academias/longevity.mp4',
       descripcion:
         'Nuestra academia abierta. Nutrición, longevidad, salud cerebral y '
-        + 'medicina preventiva, impartidos por especialistas que ejercen. '
-        + 'Crea tu cuenta y empieza por los cursos gratuitos.',
-      cta: { texto: 'Crear mi cuenta', a: '/login' },
+        + 'medicina preventiva, impartidos por especialistas que atienden '
+        + 'pacientes. Entra a los cursos abiertos y decide desde dentro.',
+      cta: { texto: 'Crear mi cuenta', a: '/registro' },
     },
     {
       slug: 'corporativo-camsa',
       videos: videosDe('camsa'),
       nombre: 'Corporativo CAMSA',
       logo: '/academias/logo-camsa.png',
-      resumen: '¿Eres parte de nuestra familia?',
+      resumen: 'Cerrada. Formación interna del equipo CAMSA.',
       imagen: '/academias/camsa.jpg',
       video: '/academias/camsa.mp4',
+      // Ya no abre preguntando "¿eres parte de nuestra familia?". Esa pregunta
+      // la respondía que no casi todo el que la leía, y responder que no a la
+      // primera frase de una tarjeta es que te digan que esto no es para ti.
       descripcion:
-        '¿Eres parte de nuestra familia? Entra a Corporativo CAMSA y '
-        + 'actualiza tus conocimientos. Formación interna para el equipo, '
-        + 'con lo que hace falta saber en cada área.',
+        'Formación interna para el equipo de Corporativo CAMSA: lo que hace '
+        + 'falta saber en cada área, actualizado. Si trabajas aquí, entra con '
+        + 'tu cuenta de siempre.',
+      // Este SÍ se queda en `/login`: quien entra aquí ya tiene cuenta de
+      // empresa. Es el único de los cinco botones que estaba bien.
       cta: { texto: 'Entrar', a: '/login' },
     },
   ],
@@ -161,8 +186,12 @@ export const CURSOS_GRATIS = {
 export const CUERPO = {
   eyebrow: 'Curiosidades',
   titulo: '¿Sabías esto de tu cuerpo?',
-  subtitulo: 'Pasa el cursor por encima y pulsa para verlo en grande.',
-  subtituloTactil: 'Toca cualquiera y te lo contamos en un minuto.',
+  // El subtítulo ya no explica cómo se usa el ratón. Ese espacio es de los
+  // pocos sitios donde se puede decir algo que importe, y gastarlo en
+  // instrucciones de interfaz sale caro: el que pasa el cursor lo descubre
+  // solo, y el que no, no iba a leerlo.
+  subtitulo: 'Doce cosas que están pasando dentro de ti ahora mismo.',
+  subtituloTactil: 'Doce cosas que están pasando dentro de ti ahora mismo.',
   medidaFoto: { css: '180 × 180', min: '1280 × 720' },
   medidaVideo: { css: '16:9 horizontal', min: '1280 × 720' },
   /**
@@ -173,19 +202,31 @@ export const CUERPO = {
    * aquella en la que alguien se detiene.
    */
   esperaAntesDeArrancar: 140,
+  /**
+   * El gancho abre y el dato cierra a medias.
+   *
+   * Antes los dos decían lo mismo: "15 parpadeos por minuto" y "parpadeas
+   * unas 15 veces por minuto". Un dato cerrado se lee, se asiente y se cierra
+   * la pestaña. Ahora el cuadro plantea algo y el panel lo explica, que es la
+   * única razón por la que alguien pulsaría.
+   *
+   * Ninguno termina en "esto lo explica el curso de X": esos cursos todavía no
+   * existen y nombrarlos sería prometer un catálogo que no hay. Cuando estén
+   * publicados, esta es la frase que cada dato debe ganar al final.
+   */
   piezas: [
-    { slug: 'intestino', gancho: '500 millones de neuronas', dato: 'Tu intestino tiene unos 500 millones de neuronas propias.' },
-    { slug: 'corazon', gancho: '100 000 latidos al día', dato: 'El corazón late unas 100 000 veces al día.' },
-    { slug: 'cerebro', gancho: 'El 2 % de ti, el 20 % de tu energía', dato: 'El cerebro pesa el 2 % de ti y gasta el 20 % de tu energía.' },
-    { slug: 'huesos', gancho: 'Un esqueleto nuevo cada década', dato: 'El esqueleto se renueva por completo cada diez años.' },
-    { slug: 'piel', gancho: 'Piel nueva cada mes', dato: 'La capa externa de la piel se renueva cada mes.' },
-    { slug: 'higado', gancho: 'El órgano que se regenera', dato: 'El hígado es el único órgano que regenera lo que le falta.' },
-    { slug: 'microbiota', gancho: 'Tantas bacterias como células', dato: 'Llevas encima tantas bacterias como células propias.' },
-    { slug: 'pulmones', gancho: '70 m² plegados en el pecho', dato: 'Desplegados, los pulmones cubrirían unos 70 m².' },
-    { slug: 'saliva', gancho: 'Un litro de saliva al día', dato: 'Produces más de un litro de saliva al día.' },
-    { slug: 'estomago', gancho: 'Se rehace cada pocos días', dato: 'El estómago rehace su recubrimiento cada pocos días.' },
-    { slug: 'ojos', gancho: '15 parpadeos por minuto', dato: 'Parpadeas unas 15 veces por minuto sin darte cuenta.' },
-    { slug: 'sangre', gancho: 'La vuelta al cuerpo en un minuto', dato: 'Tu sangre da la vuelta al cuerpo entero en un minuto.' },
+    { slug: 'intestino', gancho: 'Tu intestino también piensa', dato: 'Tu intestino tiene unos 500 millones de neuronas propias y habla con el cerebro todo el día.' },
+    { slug: 'corazon', gancho: '100 000 latidos antes de mañana', dato: 'Tu corazón latirá unas 100 000 veces en las próximas 24 horas, y de cómo lo trates depende cuánto le cuesta cada uno.' },
+    { slug: 'cerebro', gancho: 'El 2 % de ti se lleva el 20 %', dato: 'El cerebro pesa el 2 % de tu cuerpo y consume cerca del 20 % de tu energía en reposo.' },
+    { slug: 'huesos', gancho: 'No es el esqueleto de hace diez años', dato: 'El hueso se deshace y se rehace sin parar; en torno a una década, el esqueleto es tejido nuevo.' },
+    { slug: 'piel', gancho: 'Tu piel se rehace este mes', dato: 'La capa externa de la piel se renueva por completo en unas cuatro semanas.' },
+    { slug: 'higado', gancho: 'Vuelve a crecer, pero tiene límite', dato: 'El hígado puede regenerar buena parte del tejido que pierde, mucho más que cualquier otro órgano.' },
+    { slug: 'microbiota', gancho: 'No vives solo ahí dentro', dato: 'Llevas encima aproximadamente tantas bacterias como células propias, y comen de lo que tú comes.' },
+    { slug: 'pulmones', gancho: '70 m² plegados en tu pecho', dato: 'Desplegada, la superficie de tus pulmones cubriría una sala entera.' },
+    { slug: 'musculo', gancho: 'Se va sin avisar', dato: 'A partir de cierta edad el músculo se pierde si nadie lo usa, y es el tejido que más sostiene la autonomía.' },
+    { slug: 'estomago', gancho: 'Se rehace cada pocos días', dato: 'El estómago rehace su recubrimiento cada pocos días, porque lo que contiene lo disolvería.' },
+    { slug: 'sueno', gancho: 'Un tercio de tu vida', dato: 'Vas a pasar alrededor de un tercio de tu vida durmiendo, y es cuando el cuerpo hace su mantenimiento.' },
+    { slug: 'sangre', gancho: 'La vuelta entera en un minuto', dato: 'Tu sangre recorre el cuerpo completo en aproximadamente un minuto, llevando todo lo que comiste hoy.' },
   ],
 };
 
@@ -219,10 +260,15 @@ export const LONGEVITY = {
   tituloSegundaLinea: 'con nuestros cursos en',
   logo: '/academias/logo-longevity-grande.png',
   nombre: 'Longevity 360',
+  // Esta sección es lo único de la portada que nombra lo que el alumno se
+  // lleva. El diploma existe de verdad --lo emite `apps/certificates`-- y es
+  // de Academy360: NO es un título oficial ni está avalado por ninguna
+  // autoridad educativa, así que no puede llamarse "certificación" a secas.
   texto:
-    'Nutrición, longevidad, salud cerebral y medicina preventiva, impartidos '
-    + 'por especialistas que ejercen. Empieza por los cursos gratuitos.',
-  cta: { texto: 'Entrar a Longevity 360', a: '/login' },
+    'Cursos en línea que preparan especialistas que atienden pacientes. '
+    + 'Estudias a tu ritmo y al terminar cada uno recibes tu diploma de '
+    + 'Academy360.',
+  cta: { texto: 'Entrar a Longevity 360', a: '/registro' },
 };
 
 /**
