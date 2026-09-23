@@ -13,8 +13,9 @@ aparecen solas al recargar: no hay que tocar codigo.
                  "¿Sabias esto de tu cuerpo?". Solo hace falta si se vuelve a
                  la banda de antes.
 
-  cierre.jpg     minimo 2880 x 798. Muy apaisada. Va de fondo al bloque final,
-                 con un velo claro encima, asi que no se lee bien lo que tenga.
+  cierre.jpg     minimo 2880 x 798. Era el fondo del bloque "Tu primer curso
+                 es gratis", que hoy NO se pinta: esa seccion se quito. Solo
+                 hace falta si se vuelve a poner.
 
   (Los docentes se mudaron. Ahora son video vertical y viven en
    public/docentes/ -- mira el LEEME de esa carpeta.)
