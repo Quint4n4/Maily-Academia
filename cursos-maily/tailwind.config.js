@@ -138,6 +138,14 @@ export default {
         'slide-right': 'slideRight 0.3s ease-out',
         'pulse-soft': 'pulseSoft 2s infinite',
         'bounce-soft': 'bounceSoft 1s infinite',
+        // Academy360. El `pulse` de Tailwind cambia la opacidad, no el tamano;
+        // esto es lo otro. Lento y con poco recorrido a proposito: es un logo
+        // fijo en la pagina, no un aviso, y a 3 s nadie se marea.
+        //
+        // Se usa SIEMPRE con el prefijo `motion-safe:`, que la apaga sola en
+        // cuanto el sistema pide menos movimiento. Una animacion infinita es
+        // justo lo que molesta a quien lo lleva activado.
+        latido: 'latido 3s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -159,6 +167,10 @@ export default {
         bounceSoft: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-5px)' },
+        },
+        latido: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.05)' },
         },
       },
     },

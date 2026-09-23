@@ -35,9 +35,17 @@ export const HERO = {
   ctaSecundario: { texto: 'Ver las academias', a: '#academias' },
 };
 
+/**
+ * El menú.
+ *
+ * "Áreas" apuntaba a `#areas`, que ya no existe: esa sección la sustituyó la
+ * invitación a Longevity 360. Un ancla que no lleva a ninguna parte no da
+ * error, simplemente no hace nada, y eso se descubre pulsándola.
+ */
 export const NAVEGACION = [
   { texto: 'Academias', a: '#academias' },
-  { texto: 'Áreas', a: '#areas' },
+  { texto: 'Tu cuerpo', a: '#cuerpo' },
+  { texto: 'Longevity 360', a: '#longevity' },
   { texto: 'Docentes', a: '#docentes' },
 ];
 
@@ -192,25 +200,29 @@ export const SOBRE_LOS_CURSOS = {
   foto: { src: '/landing/apoyo.jpg', min: '1440 × 1160', alt: '' },
 };
 
-export const AREAS = {
-  titulo: 'Áreas de salud',
-  subtitulo: 'Lo que puedes aprender en Academy360.',
-  /**
-   * De dónde salen las tarjetas.
-   *
-   * `academias-con-vitrina`: se leen de `GET /api/sections/` y solo aparecen
-   * las que tienen `allow_public_preview`. Corporativo CAMSA es onboarding
-   * interno de empleados y hoy NO tiene vitrina, así que no se anuncia en una
-   * página pública. Si algún día se le activa, entra sola.
-   *
-   * `fijas`: se usa la lista de abajo y no se consulta nada.
-   */
-  origen: 'academias-con-vitrina',
-  fijas: [
-    { nombre: 'Nutrición', texto: 'Qué aprende el alumno en esta área.' },
-    { nombre: 'Longevidad', texto: 'Qué aprende el alumno en esta área.' },
-    { nombre: 'Salud cerebral', texto: 'Qué aprende el alumno en esta área.' },
-  ],
+/**
+ * La invitación a Longevity 360.
+ *
+ * Sustituye a "Áreas de salud", que enumeraba las academias con vitrina y
+ * acabó diciendo lo mismo que "Nuestras academias" tres secciones más arriba.
+ *
+ * Va sobre fondo oscuro y no sobre blanco como el resto: es la cuarta sección
+ * clara seguida y, sin un corte, la portada se leía como una sola mancha. De
+ * paso el dorado del logo es lo que mejor funciona sobre la tinta.
+ *
+ * El logo tiene su propio archivo a 1600 px. El de las tarjetas de academias
+ * mide 900 y aquí se dibuja a 760, que en una pantalla de alta densidad son
+ * 1520 físicos: se vería blando justo en el elemento más grande de la página.
+ */
+export const LONGEVITY = {
+  titulo: 'Conoce más sobre tu cuerpo',
+  tituloSegundaLinea: 'con nuestros cursos en',
+  logo: '/academias/logo-longevity-grande.png',
+  nombre: 'Longevity 360',
+  texto:
+    'Nutrición, longevidad, salud cerebral y medicina preventiva, impartidos '
+    + 'por especialistas que ejercen. Empieza por los cursos gratuitos.',
+  cta: { texto: 'Entrar a Longevity 360', a: '/login' },
 };
 
 export const DOCENTES = {

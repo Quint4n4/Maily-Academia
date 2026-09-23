@@ -1,14 +1,11 @@
-import { useEffect, useState } from 'react';
-
 import Academias from './secciones/Academias';
-import AreasDeSalud from './secciones/AreasDeSalud';
 import CierreCTA from './secciones/CierreCTA';
 import Docentes from './secciones/Docentes';
 import Encabezado from './secciones/Encabezado';
 import Hero from './secciones/Hero';
+import InvitacionLongevity from './secciones/InvitacionLongevity';
 import PieDePagina from './secciones/PieDePagina';
 import SabiasDeTuCuerpo from './secciones/SabiasDeTuCuerpo';
-import api from '../../services/api';
 
 /**
  * Landing pública de Academy360.
@@ -16,49 +13,30 @@ import api from '../../services/api';
  * Sustituye al hub con tres academias y a las tres landings por academia. Es
  * pública: no asume sesión ni hace ninguna llamada que exija estar dentro.
  *
- * Las academias se piden para la sección de Áreas. Si la llamada falla, la
- * sección cae a su lista fija en vez de desaparecer: una portada a la que le
- * falta un bloque porque la API tardó se ve rota, y quien llega no sabe por
- * qué.
+ * De hecho ya no hace NINGUNA llamada. Pedía `/api/sections/` para la sección
+ * de Áreas, que era la única que dependía del backend; al sustituirla por la
+ * invitación a Longevity 360, la portada pasó a ser estática. Se nota: deja de
+ * haber una petición de red antes de poder pintar esa parte, y la portada deja
+ * de tener un estado en el que el backend está caído y ella a medias.
+ *
+ * `SobreLosCursos` sigue en el repo, ya sin usar, por si hay que volver a él.
+ * `AreasDeSalud` no: su constante del config desapareció con la sección, y un
+ * archivo que dice ser un respaldo pero ya no compila engaña a quien lo
+ * encuentre. Está en el historial, que es donde vive lo que se retira.
  */
-const Academy360Landing = () => {
-  const [academias, setAcademias] = useState([]);
-
-  useEffect(() => {
-    let vigente = true;
-
-    // Se llama a la API directamente, como hace `SectionContext`: no existe
-    // un `sectionService` y crear uno solo para esto seria un segundo sitio
-    // donde vive la misma ruta.
-    api.get('/sections/')
-      .then(({ data }) => {
-        if (!vigente) return;
-        const lista = data?.results ?? data ?? [];
-        // AMBITO>> Solo las que se anuncian en público. Corporativo CAMSA es
-        // onboarding interno y no tiene vitrina.
-        setAcademias(lista.filter((s) => s.allow_public_preview && s.is_active));
-      })
-      .catch(() => { /* la sección usa su lista fija */ });
-
-    return () => { vigente = false; };
-  }, []);
-
-  return (
-    <div className="min-h-screen bg-white font-ui text-academy-tinta">
-      <Encabezado />
-      <main>
-        <Hero />
-        <Academias />
-        {/* Ocupa el sitio de `SobreLosCursos`, que sigue en el repo por si
-            este mosaico no convence. */}
-        <SabiasDeTuCuerpo />
-        <AreasDeSalud academias={academias} />
-        <Docentes />
-        <CierreCTA />
-      </main>
-      <PieDePagina />
-    </div>
-  );
-};
+const Academy360Landing = () => (
+  <div className="min-h-screen bg-white font-ui text-academy-tinta">
+    <Encabezado />
+    <main>
+      <Hero />
+      <Academias />
+      <SabiasDeTuCuerpo />
+      <InvitacionLongevity />
+      <Docentes />
+      <CierreCTA />
+    </main>
+    <PieDePagina />
+  </div>
+);
 
 export default Academy360Landing;
