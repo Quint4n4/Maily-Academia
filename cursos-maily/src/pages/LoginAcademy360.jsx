@@ -82,9 +82,12 @@ const LoginAcademy360 = () => {
           sin tener que bajar. */}
       <div className="relative hidden bg-academy-crema-2 lg:block">
         <Foto src={FOTO.src} alt="" min={FOTO.min} etiqueta="Foto del login" className="h-full w-full" />
+        {/* La misma frase del hero, palabra por palabra. Es lo que hace que
+            entrar no se sienta como cambiar de sitio; si el titular de la
+            portada cambia, esta linea cambia con el o el hilo se rompe. */}
         <figure className="absolute bottom-[72px] left-[72px] max-w-[420px] bg-white/95 px-8 py-7">
           <p className="font-display text-a-28 leading-[1.3] text-academy-tinta">
-            Aprende salud con quienes la ejercen.
+            Aprende de tu cuerpo con quien lo trata a diario.
           </p>
         </figure>
       </div>

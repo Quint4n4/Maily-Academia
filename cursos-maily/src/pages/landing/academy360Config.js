@@ -40,8 +40,15 @@ export const HERO_FOTOS = [
  */
 export const HERO = {
   eyebrow: 'Cursos de salud en línea',
-  titulo: 'Aprende salud con',
-  tituloDestacado: 'quienes la ejercen.',
+  // "De tu cuerpo" y no "salud" a secas: engancha con la sección
+  // "¿Sabías esto de tu cuerpo?", y una portada que repite una idea se lee
+  // como una sola cosa en vez de como cinco bloques sueltos.
+  //
+  // "Quien lo trata a diario" en lugar de "profesionales de la salud" no es
+  // adorno: eso ultimo lo puede firmar cualquier plataforma, y esto dice
+  // ademas que ejercen, que es lo unico que aqui no se puede copiar.
+  titulo: 'Aprende de tu cuerpo',
+  tituloDestacado: 'con quien lo trata a diario.',
   texto:
     'Nutrición, longevidad, salud cerebral y medicina preventiva, explicados '
     + 'por especialistas que atienden pacientes. Hay cursos abiertos sin costo '
