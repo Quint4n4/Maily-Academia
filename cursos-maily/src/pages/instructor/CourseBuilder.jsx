@@ -1728,11 +1728,18 @@ const CourseBuilder = () => {
                           </select>
                         </div>
                         <Input
-                          label="URL del video"
+                          /* En Bunny lo que se guarda es el ID del video, no
+                             una URL: la URL de reproduccion la firma el
+                             servidor cada vez. El backend acepta las dos
+                             --si pegas la URL entera se queda con el ultimo
+                             segmento-- pero el campo debe pedir lo correcto. */
+                          label={lessonForm.video_provider === 'bunny' ? 'ID del video en Bunny' : 'URL del video'}
                           placeholder={
                             lessonForm.video_provider === 'youtube'
                               ? 'https://www.youtube.com/watch?v=...'
-                              : 'https://...'
+                              : lessonForm.video_provider === 'bunny'
+                                ? 'e7f8a9b0-1234-5678-9abc-def012345678'
+                                : 'https://...'
                           }
                           value={lessonForm.video_url || ''}
                           onChange={(e) => setLessonForm({ ...lessonForm, video_url: e.target.value })}
