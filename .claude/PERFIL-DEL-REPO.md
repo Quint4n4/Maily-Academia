@@ -26,7 +26,7 @@ siguiente revisión lo hereda como si alguien lo hubiera pensado.
 | Clave | Valor | Evidencia |
 |---|---|---|
 | `proyecto.nombre` | Maily Academia | — |
-| `proyecto.etapa` | `produccion` | Desplegado y en uso: `maily-academia-production-de9b.up.railway.app` sirve 26 cursos reales |
+| `proyecto.etapa` | `produccion` | Desplegado y en uso: `api.academy360.mx` sirve 26 cursos reales |
 | `proyecto.fecha_adopcion` | `2026-09-02` | Día en que se corrió el paso 5 |
 | `proyecto.raiz_backend` | `backend/` | `backend/manage.py` |
 | `proyecto.raiz_frontend` | `cursos-maily/` | `cursos-maily/package.json:1` |
