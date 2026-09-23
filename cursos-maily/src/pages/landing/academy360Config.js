@@ -60,10 +60,15 @@ const videosDe = (slug) => Array.from({ length: VIDEOS_POR_ACADEMIA }, (_, i) =>
  * Las tres academias.
  *
  * Cada una abre un panel a pantalla completa --al estilo de TikTok, video
- * vertical y texto encima-- con su video, su descripción y un botón.
+ * vertical y texto encima-- con su feed de videos, su descripción y un botón.
  *
- * `video` y `poster` viven en `public/academias/`. Mientras no existan, la
- * tarjeta usa `imagen` y el panel muestra un marcador con las medidas.
+ * Los logos viven en `public/academias/`, ya reescalados: los originales venían
+ * a 2897 y 4451 px de ancho para verse a 200, y una imagen de seis megapíxeles
+ * ocupa ~23 MB de memoria descomprimida aunque pese 100 KB en disco.
+ *
+ * Los tres tienen proporciones que no se parecen en nada --Maily es vertical,
+ * Longevity 360 es casi seis veces más ancho que alto-- así que se dibujan con
+ * `object-contain` dentro de una caja común y nunca con alto o ancho fijos.
  */
 export const ACADEMIAS = {
   titulo: 'Nuestras academias',
@@ -73,6 +78,7 @@ export const ACADEMIAS = {
       slug: 'maily-academia',
       videos: videosDe('maily'),
       nombre: 'Maily',
+      logo: '/academias/logo-maily.png',
       resumen: 'Aprende a manejar nuestro software.',
       imagen: '/academias/maily.jpg',
       video: '/academias/maily.mp4',
@@ -80,14 +86,13 @@ export const ACADEMIAS = {
         'La academia de Maily está dedicada a que domines el software: '
         + 'desde lo básico hasta lo que casi nadie usa. Cursos cortos, '
         + 'hechos por quienes lo construyeron.',
-      // PENDIENTE: Emanuel pasa la dirección de la página de Maily Soft.
-      // Hasta entonces el botón lleva al login, para no dejar un enlace muerto.
-      cta: { texto: 'Conocer más', a: null, externo: true },
+      cta: { texto: 'Conocer más', a: 'https://maily.mx/', externo: true },
     },
     {
       slug: 'longevity-360',
       videos: videosDe('longevity'),
       nombre: 'Longevity 360',
+      logo: '/academias/logo-longevity.png',
       resumen: 'Cursos de salud, abiertos a cualquiera.',
       imagen: '/academias/longevity.jpg',
       video: '/academias/longevity.mp4',
@@ -101,6 +106,7 @@ export const ACADEMIAS = {
       slug: 'corporativo-camsa',
       videos: videosDe('camsa'),
       nombre: 'Corporativo CAMSA',
+      logo: '/academias/logo-camsa.png',
       resumen: '¿Eres parte de nuestra familia?',
       imagen: '/academias/camsa.jpg',
       video: '/academias/camsa.mp4',

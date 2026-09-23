@@ -3,7 +3,7 @@ import { Play } from 'lucide-react';
 
 import { ACADEMIAS } from '../academy360Config';
 import PanelDeAcademia from './PanelDeAcademia';
-import { Foto, TituloDeSeccion } from './Piezas';
+import { TituloDeSeccion } from './Piezas';
 import { canal } from './estilos';
 
 /**
@@ -31,13 +31,21 @@ const Academias = () => {
               className="group relative block aspect-[4/3] w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-academy-oro-texto focus-visible:ring-offset-2"
               aria-label={`Ver ${academia.nombre}`}
             >
-              <Foto
-                src={academia.imagen}
-                alt=""
-                min={ACADEMIAS.medidaFoto.min}
-                etiqueta={`Portada de ${academia.nombre}`}
-                className="h-full w-full transition-transform duration-500 group-hover:scale-[1.03]"
-              />
+              {/* El logo y no una portada: son marcas con proporciones que no
+                  se parecen --Maily es vertical, Longevity 360 es una tira--
+                  así que van con `object-contain` en una caja común. Recortar
+                  un logo a 4:3 con `object-cover` lo mutilaría.
+
+                  Las medidas son porcentajes y no píxeles para que el logo
+                  crezca con la tarjeta: en móvil ocupa una columna entera. */}
+              <div className="flex h-full w-full items-center justify-center bg-academy-crema transition-transform duration-500 group-hover:scale-[1.03]">
+                <img
+                  src={academia.logo}
+                  alt=""
+                  loading="lazy"
+                  className="max-h-[48%] max-w-[78%] object-contain"
+                />
+              </div>
               <span
                 className="absolute inset-0 flex items-center justify-center bg-academy-tinta/25 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
                 aria-hidden="true"

@@ -1,33 +1,35 @@
-IMAGENES Y VIDEOS DE LAS ACADEMIAS
-==================================
+ARCHIVOS DE LAS ACADEMIAS
+=========================
 
-Cada academia tiene una portada (la tarjeta) y un video (el panel que se abre
-al pulsarla). Deja los archivos con estos nombres exactos:
-
-  maily.jpg       768 x 576 minimo   portada de la tarjeta
-  maily.mp4       720 x 1280 minimo  VERTICAL 9:16, como un video de TikTok
-
-  longevity.jpg   768 x 576 minimo
-  longevity.mp4   720 x 1280 minimo  vertical
-
-  camsa.jpg       768 x 576 minimo
-  camsa.mp4       720 x 1280 minimo  vertical
-
-NOTAS
------
-- El video arranca SIN sonido, en bucle. Hay un boton para activarlo.
-- Si falta el video, el panel muestra un marcador y el resto funciona igual.
-- Si falta la portada, la tarjeta muestra el hueco con su medida.
-- El video se ve recortado al centro: lo importante, al centro.
-- Peso: por debajo de 5 MB cada uno. Un video de 30 MB en la portada tarda
-  una eternidad con datos moviles.
+Aqui viven los logos y los videos de la seccion "Nuestras academias".
 
 
-DIEZ VIDEOS POR ACADEMIA
-========================
+LOGOS  (ya estan puestos)
+-------------------------
 
-El panel es un feed: se desliza hacia abajo y aparece el siguiente. Al pasar
-del decimo vuelve al primero, sin final.
+  logo-maily.png        325 x 491
+  logo-longevity.png    900 x 154
+  logo-camsa.png        900 x 630
+
+Vienen de los originales que paso Emanuel el 2026-09-23. Los de CAMSA y
+Longevity se reescalaron: llegaban a 2897 y 4451 px de ancho para verse a 200,
+y una imagen de seis megapixeles ocupa ~23 MB de memoria en el navegador
+aunque pese 100 KB en disco.
+
+Si se cambia alguno, que sea PNG con fondo transparente y como mucho 900 px en
+su lado mayor. No hace falta que tengan la misma forma: se dibujan con
+`object-contain`, asi que cada uno conserva su proporcion.
+
+En el panel del video el logo va sobre una pastilla blanca. Es a proposito: el
+texto de "maily" y el de "CORPORATIVO" son gris oscuro y sobre el video se
+perderian.
+
+
+VIDEOS  (faltan)
+----------------
+
+El panel es un feed tipo TikTok: se desliza hacia abajo y aparece el
+siguiente. Al pasar del decimo vuelve al primero, sin final.
 
 Los nombres van numerados del 1 al 10:
 
@@ -35,8 +37,27 @@ Los nombres van numerados del 1 al 10:
   longevity-1.mp4 ... longevity-10.mp4
   camsa-1.mp4 ... camsa-10.mp4
 
+  720 x 1280 minimo, VERTICAL 9:16, por debajo de 5 MB cada uno.
+
 No hace falta tenerlos los diez desde el principio: los que falten muestran su
 marcador y el feed sigue funcionando igual.
 
 Para cambiar cuantos son, se toca VIDEOS_POR_ACADEMIA en
 src/pages/landing/academy360Config.js. Es un solo numero.
+
+
+PORTADAS  (opcionales)
+----------------------
+
+  maily.jpg / longevity.jpg / camsa.jpg     768 x 576 minimo
+
+Ya no se usan en la tarjeta --ahi va el logo-- pero siguen siendo el primer
+fotograma que se ve mientras el video carga. Sin ellas se ve negro un instante.
+
+
+NOTAS
+-----
+- El video arranca SIN sonido, en bucle. Hay un boton para activarlo.
+- El video se ve recortado al centro: lo importante, al centro.
+- Treinta videos de 5 MB son 150 MB dentro del repositorio. Si se acercan a
+  ese peso, conviene subirlos a Cloudinary en vez de a public/.
