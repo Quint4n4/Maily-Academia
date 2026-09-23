@@ -136,27 +136,29 @@ export const CURSOS_GRATIS = {
 /**
  * El mosaico de curiosidades.
  *
- * Cada pieza es una imagen quieta que, al pasar el cursor o al tocarla, crece
- * y reproduce un video corto.
+ * Doce cuadros iguales que caben de una vez en una pantalla de escritorio. Al
+ * pasar el cursor por uno, se adelanta y enseña el video sin sonido; al
+ * pulsarlo se abre a pantalla grande, en horizontal y con sonido.
  *
- * LOS TEXTOS DE ABAJO SON DE EJEMPLO. Son datos ciertos y de manual, puestos
- * para poder ver la sección funcionando, pero esto es una plataforma de salud:
- * cada afirmación que se publique aquí debería poder respaldarse. Sustitúyelos
- * por los de los docentes.
+ * Cada pieza lleva DOS textos y no uno. En un cuadro de 180 px no cabe una
+ * frase entera sin convertirse en un párrafo diminuto, así que ahí va el
+ * `gancho` --tres o cuatro palabras que se leen de un vistazo-- y el `dato`
+ * completo espera dentro del panel, que es donde hay sitio para leerlo.
  *
- * `destacada` hace que la pieza ocupe el doble de ancho y de alto en el
- * mosaico. En móvil se ignora: ahí todas miden igual, porque una pieza doble
- * en una rejilla de dos columnas se come la pantalla entera.
+ * LOS TEXTOS SON DE EJEMPLO. Son datos ciertos y de manual, puestos para poder
+ * ver la sección funcionando, pero esto es una plataforma de salud: cada
+ * afirmación que se publique aquí debería poder respaldarse. Sustitúyelos por
+ * los de los docentes.
  */
 export const CUERPO = {
   eyebrow: 'Curiosidades',
   titulo: '¿Sabías esto de tu cuerpo?',
-  subtitulo: 'Pasa el cursor por encima y te lo contamos en un minuto.',
+  subtitulo: 'Pasa el cursor por encima y pulsa para verlo en grande.',
   subtituloTactil: 'Toca cualquiera y te lo contamos en un minuto.',
-  medidaFoto: { css: '280 × 280', min: '560 × 560' },
-  medidaVideo: { css: 'cuadrado o vertical', min: '720 × 720' },
+  medidaFoto: { css: '180 × 180', min: '1280 × 720' },
+  medidaVideo: { css: '16:9 horizontal', min: '1280 × 720' },
   /**
-   * Milisegundos que espera antes de arrancar el video.
+   * Milisegundos que espera antes de arrancar el video del cuadro.
    *
    * No es un capricho: sin esta pausa, cruzar el mosaico con el ratón lanza la
    * descarga de las doce piezas que toca de paso. Con ella solo se descarga
@@ -164,18 +166,18 @@ export const CUERPO = {
    */
   esperaAntesDeArrancar: 140,
   piezas: [
-    { slug: 'intestino', dato: 'Tu intestino tiene unos 500 millones de neuronas propias.', destacada: true },
-    { slug: 'corazon', dato: 'El corazón late unas 100 000 veces al día.' },
-    { slug: 'cerebro', dato: 'El cerebro pesa el 2 % de ti y gasta el 20 % de tu energía.' },
-    { slug: 'huesos', dato: 'El esqueleto se renueva por completo cada diez años.' },
-    { slug: 'piel', dato: 'La capa externa de la piel se renueva cada mes.' },
-    { slug: 'higado', dato: 'El hígado es el único órgano que regenera lo que le falta.', destacada: true },
-    { slug: 'microbiota', dato: 'Llevas encima tantas bacterias como células propias.' },
-    { slug: 'pulmones', dato: 'Desplegados, los pulmones cubrirían unos 70 m².' },
-    { slug: 'saliva', dato: 'Produces más de un litro de saliva al día.' },
-    { slug: 'estomago', dato: 'El estómago rehace su recubrimiento cada pocos días.' },
-    { slug: 'ojos', dato: 'Parpadeas unas 15 veces por minuto sin darte cuenta.' },
-    { slug: 'sangre', dato: 'Tu sangre da la vuelta al cuerpo entero en un minuto.' },
+    { slug: 'intestino', gancho: '500 millones de neuronas', dato: 'Tu intestino tiene unos 500 millones de neuronas propias.' },
+    { slug: 'corazon', gancho: '100 000 latidos al día', dato: 'El corazón late unas 100 000 veces al día.' },
+    { slug: 'cerebro', gancho: 'El 2 % de ti, el 20 % de tu energía', dato: 'El cerebro pesa el 2 % de ti y gasta el 20 % de tu energía.' },
+    { slug: 'huesos', gancho: 'Un esqueleto nuevo cada década', dato: 'El esqueleto se renueva por completo cada diez años.' },
+    { slug: 'piel', gancho: 'Piel nueva cada mes', dato: 'La capa externa de la piel se renueva cada mes.' },
+    { slug: 'higado', gancho: 'El órgano que se regenera', dato: 'El hígado es el único órgano que regenera lo que le falta.' },
+    { slug: 'microbiota', gancho: 'Tantas bacterias como células', dato: 'Llevas encima tantas bacterias como células propias.' },
+    { slug: 'pulmones', gancho: '70 m² plegados en el pecho', dato: 'Desplegados, los pulmones cubrirían unos 70 m².' },
+    { slug: 'saliva', gancho: 'Un litro de saliva al día', dato: 'Produces más de un litro de saliva al día.' },
+    { slug: 'estomago', gancho: 'Se rehace cada pocos días', dato: 'El estómago rehace su recubrimiento cada pocos días.' },
+    { slug: 'ojos', gancho: '15 parpadeos por minuto', dato: 'Parpadeas unas 15 veces por minuto sin darte cuenta.' },
+    { slug: 'sangre', gancho: 'La vuelta al cuerpo en un minuto', dato: 'Tu sangre da la vuelta al cuerpo entero en un minuto.' },
   ],
 };
 

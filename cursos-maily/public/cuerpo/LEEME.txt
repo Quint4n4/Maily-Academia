@@ -1,7 +1,12 @@
 MOSAICO "¿SABIAS ESTO DE TU CUERPO?"
 ====================================
 
-Doce piezas. Cada una necesita DOS archivos con el mismo nombre:
+Doce cuadros iguales que caben de una vez en una pantalla de escritorio. Al
+pasar el cursor por uno se adelanta y enseña el video sin sonido; al pulsarlo
+se abre a pantalla grande, en horizontal, con sonido y con flechas para pasar
+a la siguiente sin cerrar.
+
+Cada pieza necesita DOS archivos con el mismo nombre:
 
   intestino.jpg  +  intestino.mp4
   corazon.jpg    +  corazon.mp4
@@ -16,20 +21,21 @@ Doce piezas. Cada una necesita DOS archivos con el mismo nombre:
   ojos.jpg       +  ojos.mp4
   sangre.jpg     +  sangre.mp4
 
-La imagen es lo que se ve en reposo; el video, lo que se reproduce al pasar el
-cursor o al tocarla.
 
+MEDIDAS: TODO HORIZONTAL 16:9
+-----------------------------
 
-MEDIDAS
--------
+  .jpg   1280 x 720 minimo, horizontal
+  .mp4   1280 x 720 minimo, horizontal
 
-  .jpg   560 x 560 minimo, cuadrada
-  .mp4   720 x 720 minimo, cuadrado o vertical
+Las dos cosas en 16:9 y no en cuadrado, aunque el cuadro del mosaico SEA
+cuadrado: el panel grande es horizontal, y ahi es donde de verdad se ven. En
+el mosaico se recortan al centro, asi que lo importante va al centro y no
+pegado a los lados.
 
-Las piezas se recortan al centro: lo importante, al centro.
-
-Dos de las doce --intestino e higado-- salen al doble de tamano en el mosaico.
-Se elige con `destacada` en academy360Config.js.
+La .jpg hace dos trabajos: es lo que se ve en el cuadro en reposo y el primer
+fotograma del panel mientras el video carga. Que sea un fotograma del propio
+video es lo que mejor funciona.
 
 
 PESO: ESTO ES LO QUE MAS IMPORTA AQUI
@@ -39,7 +45,7 @@ Son doce videos en una sola seccion de la portada. A 5 MB cada uno son 60 MB
 que acaban dentro del repositorio y del despliegue.
 
   - Que duren entre 10 y 20 segundos.
-  - Por debajo de 1,5 MB cada uno. A 720 px eso se consigue de sobra.
+  - Por debajo de 1,5 MB cada uno. A 720p eso se consigue de sobra.
   - Si no bajan de ahi, hay que subirlos a Cloudinary en vez de a public/.
 
 No se descargan al abrir la pagina: cada video empieza a bajar cuando alguien
@@ -49,20 +55,27 @@ se detiene encima. Cruzar el mosaico de lado a lado no descarga nada.
 SOBRE LOS VIDEOS
 ----------------
 
-- Arrancan SIN sonido. No es una eleccion: ningun navegador deja sonar un
-  video que empieza solo. El sonido se enciende al hacer clic o al tocar.
-- Si el video lleva a alguien hablando, que se entienda tambien sin sonido:
-  la mayoria lo vera mudo. Subtitulos quemados ayudan mucho.
-- Van en bucle mientras el cursor siga encima.
+- En el mosaico se reproducen SIN sonido. No es una eleccion: ningun navegador
+  deja sonar un video que empieza solo.
+- En el panel grande SI suenan, porque abrirlo requiere un clic y eso ya es la
+  interaccion que los navegadores piden. Si aun asi lo rechazan, el panel lo
+  pone mudo y sigue reproduciendo en vez de quedarse congelado.
+- Si el video lleva a alguien hablando, que se entienda tambien sin sonido: en
+  el mosaico se va a ver mudo siempre. Subtitulos quemados ayudan mucho.
 
 
 LOS TEXTOS
 ----------
 
-Los doce datos que se leen ahora son de EJEMPLO, puestos para poder ver la
-seccion funcionando. Son ciertos y de manual, pero esto es una plataforma de
-salud: cada afirmacion que se publique deberia poder respaldarse. Cambialos
-por los de los docentes en academy360Config.js, en CUERPO.piezas.
+Cada pieza lleva dos textos en academy360Config.js, en CUERPO.piezas:
+
+  gancho  tres o cuatro palabras, lo que se lee en el cuadro pequeno
+  dato    la frase completa, lo que se lee en el panel grande
+
+Los doce de ahora son de EJEMPLO, puestos para poder ver la seccion
+funcionando. Son ciertos y de manual, pero esto es una plataforma de salud:
+cada afirmacion que se publique deberia poder respaldarse. Cambialos por los
+de los docentes.
 
 Si falta una imagen o un video, la pieza muestra su nombre y su medida, y el
 resto del mosaico sigue funcionando igual.
