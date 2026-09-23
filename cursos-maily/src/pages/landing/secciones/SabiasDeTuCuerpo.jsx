@@ -29,6 +29,22 @@ import { canal } from './estilos';
  *   un video que empieza solo. El sonido vive en el panel, que se abre con un
  *   clic y por tanto sí lo tiene permitido.
  */
+/**
+ * Cuánto se retrasa el latido de cada cuadro, para que no respiren a la vez.
+ *
+ * El retraso es NEGATIVO: así la animación empieza ya avanzada en vez de
+ * esperar. Con retrasos positivos, los primeros segundos media rejilla estaría
+ * parada, que es justo lo contrario de lo que se busca.
+ *
+ * El paso es 0,37 s y no 3/12: repartir el ciclo en doce partes iguales deja a
+ * cada cuadro a un 8 % de fase de su vecino, y eso no se distingue de que
+ * vayan todos juntos. Con 0,37 --que no divide al ciclo de 3 s-- los vecinos
+ * quedan a un 12 % y la vuelta completa no cae nunca en el mismo sitio, así
+ * que el conjunto se mueve sin dibujar un patrón reconocible.
+ */
+const CICLO_DEL_LATIDO = 3;
+const desfaseDelLatido = (indice) => -((indice * 0.37) % CICLO_DEL_LATIDO);
+
 const SabiasDeTuCuerpo = () => {
   const [sobrevolado, setSobrevolado] = useState(null);
   const [abierto, setAbierto] = useState(null);
@@ -93,6 +109,7 @@ const SabiasDeTuCuerpo = () => {
           <Cuadro
             key={pieza.slug}
             pieza={pieza}
+            desfase={desfaseDelLatido(indice)}
             adelantado={sobrevolado === indice && !sinMovimiento}
             conVideo={sobrevolado === indice && hayHover}
             onEntrar={hayHover ? () => alEntrar(indice) : undefined}
@@ -114,7 +131,7 @@ const SabiasDeTuCuerpo = () => {
   );
 };
 
-const Cuadro = ({ pieza, adelantado, conVideo, onEntrar, onSalir, onEnfocar, onAbrir }) => {
+const Cuadro = ({ pieza, desfase, adelantado, conVideo, onEntrar, onSalir, onEnfocar, onAbrir }) => {
   const video = useRef(null);
   const [sinFoto, setSinFoto] = useState(false);
   const [sinVideo, setSinVideo] = useState(false);
@@ -141,11 +158,21 @@ const Cuadro = ({ pieza, adelantado, conVideo, onEntrar, onSalir, onEnfocar, onA
       onBlur={onSalir}
       onClick={onAbrir}
       aria-label={`${pieza.dato} Ver el video.`}
+      style={{ animationDelay: `${desfase}s` }}
       className={[
         'group relative aspect-square overflow-hidden rounded-[4px] bg-academy-crema-2 text-left',
         'transition-[transform,box-shadow] duration-300 ease-out',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-academy-oro-texto focus-visible:ring-offset-2',
-        adelantado ? 'z-20 scale-[1.08] shadow-2xl' : 'z-0',
+        // El latido y el crecimiento del cursor son los dos `transform`, y una
+        // animación CSS gana siempre a una declaración normal: con las dos
+        // puestas, el cuadro seguiría latiendo y NO crecería al pasar por
+        // encima. Por eso se cambia una por otra en vez de sumarlas.
+        //
+        // Y por eso el cursor lleva a 1,12 y no al 1,05 del latido: si la
+        // diferencia fuese de dos centésimas, crecer no se notaría.
+        adelantado
+          ? 'z-20 scale-[1.12] shadow-2xl'
+          : 'z-0 motion-safe:animate-latido',
       ].join(' ')}
     >
       {/* El cartel de la foto que falta va arriba y no en el centro: el gancho
