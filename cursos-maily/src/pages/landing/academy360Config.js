@@ -40,18 +40,18 @@ export const HERO_FOTOS = [
  */
 export const HERO = {
   eyebrow: 'Cursos de salud en línea',
-  // "De tu cuerpo" y no "salud" a secas: engancha con la sección
-  // "¿Sabías esto de tu cuerpo?", y una portada que repite una idea se lee
-  // como una sola cosa en vez de como cinco bloques sueltos.
+  // Invita en vez de argumentar, y engancha con la sección "¿Sabías esto de
+  // tu cuerpo?": una portada que repite una idea se lee como una sola cosa en
+  // vez de como cinco bloques sueltos.
   //
-  // "Quien lo trata a diario" en lugar de "profesionales de la salud" no es
-  // adorno: eso ultimo lo puede firmar cualquier plataforma, y esto dice
-  // ademas que ejercen, que es lo unico que aqui no se puede copiar.
-  titulo: 'Aprende de tu cuerpo',
-  tituloDestacado: 'con quien lo trata a diario.',
+  // Lo que este titular NO dice es quién enseña, que es el activo real del
+  // proyecto. Ese peso lo llevan ahora el eyebrow y el párrafo de debajo, y
+  // por eso el párrafo abre con los especialistas y no con las áreas.
+  titulo: 'Tu cuerpo tiene mucho que contarte.',
+  tituloDestacado: 'Aprende a escucharlo.',
   texto:
-    'Nutrición, longevidad, salud cerebral y medicina preventiva, explicados '
-    + 'por especialistas que atienden pacientes. Hay cursos abiertos sin costo '
+    'Especialistas que atienden pacientes te explican nutrición, longevidad, '
+    + 'salud cerebral y medicina preventiva. Hay cursos abiertos sin costo '
     + 'para que veas cómo enseñan antes de pagar nada.',
   // A `/registro` y no a `/login`: quien pulsa "Empieza gratis" no tiene
   // cuenta, y mandarlo a un formulario que pide contraseña es perderlo.

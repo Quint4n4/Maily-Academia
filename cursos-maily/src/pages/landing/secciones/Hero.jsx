@@ -35,9 +35,14 @@ const Hero = () => {
 
   return (
     <section className="relative overflow-hidden bg-white">
-      {/* Fotos: en escritorio ocupan la mitad derecha con una máscara que las
-          difumina hacia el texto; en móvil van arriba, a lo ancho. */}
-      <div className="relative h-[280px] w-full sm:h-[360px] lg:absolute lg:inset-y-0 lg:right-0 lg:h-full lg:w-[58%]">
+      {/* Fotos: en pantallas anchas ocupan la mitad derecha con una máscara
+          que las difumina hacia el texto; hasta ahí van arriba, a lo ancho.
+          
+          El corte es `xl` (1280) y no `lg` (1024). Entre esos dos anchos la
+          foto ocupaba el 58 % y al texto le quedaban 310 px útiles: el titular
+          se metía 372 px sobre la parte opaca de la foto y se leía negro sobre
+          fotografía. Medido, no estimado. */}
+      <div className="relative h-[280px] w-full sm:h-[360px] xl:absolute xl:inset-y-0 xl:right-0 xl:h-full xl:w-[58%]">
         {fotos.map((foto, indice) => (
           <div
             key={foto.src ?? indice}
@@ -50,14 +55,16 @@ const Hero = () => {
               alt=""
               min={foto.min}
               etiqueta="Foto del hero"
-              className="h-full w-full lg:[mask-image:linear-gradient(90deg,transparent_0%,black_22%)]"
+              className="h-full w-full xl:[mask-image:linear-gradient(90deg,transparent_0%,black_22%)]"
             />
           </div>
         ))}
       </div>
 
-      <div className={`relative ${canal} py-12 lg:min-h-[720px] lg:py-0`}>
-        <div className="flex h-full max-w-[700px] flex-col justify-center lg:min-h-[720px]">
+      <div className={`relative ${canal} py-12 xl:min-h-[720px] xl:py-0`}>
+        {/* El ancho del texto se frena donde empieza la zona opaca de la foto:
+            560 px a 1280 y 680 desde 1536, que es cuando vuelve a haber sitio. */}
+        <div className="flex h-full max-w-[700px] flex-col justify-center xl:min-h-[720px] xl:max-w-[560px] 2xl:max-w-[680px]">
           {/* El logo vive aqui y no en la cabecera: puesto arriba del todo
               quedaba pequeno y lejos del mensaje. Aqui abre la columna y se
               lee como parte de lo que se esta diciendo.

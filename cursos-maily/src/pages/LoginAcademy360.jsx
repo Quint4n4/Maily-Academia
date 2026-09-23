@@ -87,7 +87,7 @@ const LoginAcademy360 = () => {
             portada cambia, esta linea cambia con el o el hilo se rompe. */}
         <figure className="absolute bottom-[72px] left-[72px] max-w-[420px] bg-white/95 px-8 py-7">
           <p className="font-display text-a-28 leading-[1.3] text-academy-tinta">
-            Aprende de tu cuerpo con quien lo trata a diario.
+            Tu cuerpo tiene mucho que contarte. Aprende a escucharlo.
           </p>
         </figure>
       </div>
