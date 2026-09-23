@@ -225,20 +225,30 @@ export const LONGEVITY = {
   cta: { texto: 'Entrar a Longevity 360', a: '/login' },
 };
 
+/**
+ * Docentes, en carrusel.
+ *
+ * Una tarjeta al frente, nítida y a tamaño completo, y las vecinas detrás,
+ * encogidas y desenfocadas. El desenfoque no es adorno: con tres videos
+ * verticales a la vista, algo tiene que decir cuál se está mirando, y
+ * encogerlas sin más no basta.
+ *
+ * Los archivos se derivan del `slug`: `/docentes/<slug>.mp4` y `.jpg`.
+ *
+ * Siguen siendo estáticos a propósito: no existe endpoint público de
+ * instructores, y `Profile` no tiene campo de especialidad. Ponerlos aquí es
+ * lo honesto hasta que el backend lo soporte.
+ */
 export const DOCENTES = {
   titulo: 'Docentes',
   subtitulo: 'Especialistas que enseñan desde su práctica.',
-  medidaFoto: { css: '276 × 345', min: '552 × 690' },
-  /**
-   * Estáticos a propósito: no existe endpoint público de instructores, y
-   * `Profile` no tiene campo de especialidad. Ponerlos aquí es lo honesto
-   * hasta que el backend lo soporte.
-   */
+  medidaVideo: { css: '9:16 vertical', min: '720 × 1280' },
+  medidaFoto: { css: '9:16 vertical', min: '720 × 1280' },
   lista: [
-    { nombre: '[Nombre del docente]', especialidad: '[Especialidad]', foto: '/landing/docente-1.jpg' },
-    { nombre: '[Nombre del docente]', especialidad: '[Especialidad]', foto: '/landing/docente-2.jpg' },
-    { nombre: '[Nombre del docente]', especialidad: '[Especialidad]', foto: '/landing/docente-3.jpg' },
-    { nombre: '[Nombre del docente]', especialidad: '[Especialidad]', foto: '/landing/docente-4.jpg' },
+    { slug: 'docente-1', nombre: '[Nombre del docente]', especialidad: '[Especialidad]' },
+    { slug: 'docente-2', nombre: '[Nombre del docente]', especialidad: '[Especialidad]' },
+    { slug: 'docente-3', nombre: '[Nombre del docente]', especialidad: '[Especialidad]' },
+    { slug: 'docente-4', nombre: '[Nombre del docente]', especialidad: '[Especialidad]' },
   ],
 };
 

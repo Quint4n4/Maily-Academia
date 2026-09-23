@@ -8,15 +8,16 @@ aparecen solas al recargar: no hay que tocar codigo.
                  Puedes poner hasta tres (hero-2.jpg, hero-3.jpg) y salen
                  flechas para pasarlas. Con una sola, no hay controles.
 
-  apoyo.jpg      minimo 1440 x 1160. La de la banda "Cursos en linea, a tu ritmo".
+  apoyo.jpg      minimo 1440 x 1160. Era la de la banda "Cursos en linea, a tu
+                 ritmo", que hoy NO se pinta: ese sitio lo ocupa el mosaico
+                 "¿Sabias esto de tu cuerpo?". Solo hace falta si se vuelve a
+                 la banda de antes.
 
   cierre.jpg     minimo 2880 x 798. Muy apaisada. Va de fondo al bloque final,
                  con un velo claro encima, asi que no se lee bien lo que tenga.
 
-  docente-1.jpg  minimo 552 x 690 cada una. Retrato vertical (4:5).
-  docente-2.jpg
-  docente-3.jpg
-  docente-4.jpg
+  (Los docentes se mudaron. Ahora son video vertical y viven en
+   public/docentes/ -- mira el LEEME de esa carpeta.)
 
   login.jpg      minimo 1440 x 1800. La columna izquierda de la pantalla de
                  entrada. Encima va una tarjeta blanca abajo a la izquierda,
