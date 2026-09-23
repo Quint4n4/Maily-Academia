@@ -20,7 +20,7 @@ const CursosGratis = ({ cursos = [], cargando = false }) => {
   const hayCursos = cursos.length > 0;
 
   return (
-    <section id="cursos" className={`bg-white py-16 lg:py-[112px] ${canal} dark:bg-academy-tinta`}>
+    <section id="cursos" className={`bg-white py-16 lg:py-[112px] ${canal}`}>
       <TituloDeSeccion titulo={CURSOS_GRATIS.titulo} subtitulo={CURSOS_GRATIS.subtitulo} />
 
       {cargando && (
@@ -31,9 +31,9 @@ const CursosGratis = ({ cursos = [], cargando = false }) => {
         >
           {Array.from({ length: CURSOS_GRATIS.cuantos }).map((_, indice) => (
             <div key={indice} className="animate-pulse">
-              <div className="aspect-[4/3] w-full bg-academy-crema-2 dark:bg-white/5" />
-              <div className="mt-5 h-6 w-4/5 bg-academy-crema-2 dark:bg-white/5" />
-              <div className="mt-3 h-4 w-2/5 bg-academy-crema-2 dark:bg-white/5" />
+              <div className="aspect-[4/3] w-full bg-academy-crema-2" />
+              <div className="mt-5 h-6 w-4/5 bg-academy-crema-2" />
+              <div className="mt-3 h-4 w-2/5 bg-academy-crema-2" />
             </div>
           ))}
         </div>
@@ -52,14 +52,14 @@ const CursosGratis = ({ cursos = [], cargando = false }) => {
                   className="h-full w-full"
                 />
               </Link>
-              <h3 className="mt-5 font-display text-a-25 text-academy-tinta lg:text-a-27 dark:text-academy-crema">
+              <h3 className="mt-5 font-display text-a-25 text-academy-tinta lg:text-a-27">
                 {/* Lleva al login y no a la ficha: el catálogo interno exige
                     sesión, y mandar a alguien a una pantalla que le va a
                     rebotar es peor que pedirle que entre primero. */}
                 <Link to="/login">{curso.title}</Link>
               </h3>
-              <p className="mt-2 font-ui text-a-15 text-academy-tinta-3 dark:text-white/60">
-                <span className="font-medium text-academy-oro-texto dark:text-academy-oro">Gratis</span>
+              <p className="mt-2 font-ui text-a-15 text-academy-tinta-3">
+                <span className="font-medium text-academy-oro-texto">Gratis</span>
                 {curso.instructor_name ? ` · ${curso.instructor_name}` : ''}
               </p>
             </article>
@@ -69,7 +69,7 @@ const CursosGratis = ({ cursos = [], cargando = false }) => {
 
       {!cargando && !hayCursos && (
         <div className="mx-auto max-w-[520px] text-center">
-          <p className="font-ui text-a-17 text-academy-tinta-2 dark:text-white/70">
+          <p className="font-ui text-a-17 text-academy-tinta-2">
             Todavía no hay cursos gratuitos abiertos. Crea tu cuenta y te avisamos
             en cuanto publiquemos el primero.
           </p>

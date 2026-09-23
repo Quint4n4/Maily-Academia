@@ -23,8 +23,16 @@ Not in the profile because it is prose, not a fact:
 - **Images go through Cloudinary and PDF certificates through ReportLab** (backend) plus
   jspdf/html2canvas (frontend). The local `.env` holds real Cloudinary credentials — check whether
   they are the same account as production before uploading anything from a dev machine.
-- **Both services deploy to Railway.** The frontend is `elegant-victory-production.up.railway.app`;
-  the backend is `maily-academia-production-de9b.up.railway.app`. They are separate services.
+- **Both services deploy to Railway**, in the project `believable-hope`. They are separate
+  services and both now answer on custom domains: the frontend (`elegant-victory`) is
+  **`academy360.mx`** and the backend (`Maily-Academia`) is **`api.academy360.mx`**. The old
+  `*.up.railway.app` addresses still resolve, but the custom ones are what the apps actually use —
+  aim health checks and CORS at those.
+- **Lesson video runs on Bunny Stream** (library `academia360`, id `760816`) with embed token
+  authentication switched on: an embed URL without a valid `token` gets a 403. The server signs
+  every URL with `BUNNY_STREAM_TOKEN_KEY`, which lives only in the environment — never in the
+  repo, never in the frontend. Direct play is off on purpose; turning it back on would make every
+  video watchable by anyone holding its id.
 
 ## Development Commands
 

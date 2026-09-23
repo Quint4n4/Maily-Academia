@@ -1,0 +1,61 @@
+CARRUSEL DE DOCENTES
+====================
+
+Una tarjeta al frente, nitida y grande, y las vecinas detras, encogidas y
+desenfocadas. Se pasa con las flechas, con los puntos o arrastrando el dedo.
+
+Cada docente necesita DOS archivos con el mismo nombre:
+
+  docente-1.jpg  +  docente-1.mp4
+  docente-2.jpg  +  docente-2.mp4
+  docente-3.jpg  +  docente-3.mp4
+  docente-4.jpg  +  docente-4.mp4
+
+
+MEDIDAS: VERTICAL 9:16
+----------------------
+
+  .jpg   720 x 1280 minimo, VERTICAL
+  .mp4   720 x 1280 minimo, VERTICAL
+
+Vertical como un video de TikTok o un Short, no apaisado. La tarjeta es alta y
+estrecha; un video horizontal se recortaria a los lados y se perderia media
+cara.
+
+La .jpg es lo que se ve mientras el video no esta al frente y el primer
+fotograma cuando llega. Lo que mejor funciona es un fotograma del propio video.
+
+
+PARA ANADIR O QUITAR DOCENTES
+-----------------------------
+
+Se tocan DOS cosas, en academy360Config.js, en DOCENTES.lista:
+
+  slug          el nombre de los archivos, sin extension
+  nombre        como se llama
+  especialidad  lo que ejerce
+
+El carrusel se adapta solo al numero que haya. Con menos de tres se ve raro:
+no hay vecinas que poner a los lados.
+
+
+SOBRE LOS VIDEOS
+----------------
+
+- Solo se reproduce el que esta al frente. Los otros dos estan pausados: tres
+  videos a la vez son tres descargas para ver uno.
+- Arranca SIN sonido. No es una eleccion: ningun navegador deja sonar un video
+  que empieza solo. Se enciende pulsando la tarjeta del frente.
+- Que se entienda tambien en silencio, porque asi es como se va a ver la
+  primera vez. Subtitulos quemados ayudan mucho.
+- Cortos y ligeros: por debajo de 2 MB cada uno.
+
+Si falta un archivo, la tarjeta muestra su nombre y su medida, y el carrusel
+sigue funcionando igual.
+
+
+LOS NOMBRES DE AHORA SON MARCADORES
+-----------------------------------
+
+En el config dicen "[Nombre del docente]" y "[Especialidad]". Hay que
+cambiarlos antes de que esto se vea en produccion.

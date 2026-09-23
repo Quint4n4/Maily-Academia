@@ -1,0 +1,81 @@
+MOSAICO "¿SABIAS ESTO DE TU CUERPO?"
+====================================
+
+Doce cuadros iguales que caben de una vez en una pantalla de escritorio. Al
+pasar el cursor por uno se adelanta y enseña el video sin sonido; al pulsarlo
+se abre a pantalla grande, en horizontal, con sonido y con flechas para pasar
+a la siguiente sin cerrar.
+
+Cada pieza necesita DOS archivos con el mismo nombre:
+
+  intestino.jpg  +  intestino.mp4
+  corazon.jpg    +  corazon.mp4
+  cerebro.jpg    +  cerebro.mp4
+  huesos.jpg     +  huesos.mp4
+  piel.jpg       +  piel.mp4
+  higado.jpg     +  higado.mp4
+  microbiota.jpg +  microbiota.mp4
+  pulmones.jpg   +  pulmones.mp4
+  sueno.jpg      +  sueno.mp4
+  estomago.jpg   +  estomago.mp4
+  musculo.jpg    +  musculo.mp4
+  sangre.jpg     +  sangre.mp4
+
+
+MEDIDAS: TODO HORIZONTAL 16:9
+-----------------------------
+
+  .jpg   1280 x 720 minimo, horizontal
+  .mp4   1280 x 720 minimo, horizontal
+
+Las dos cosas en 16:9 y no en cuadrado, aunque el cuadro del mosaico SEA
+cuadrado: el panel grande es horizontal, y ahi es donde de verdad se ven. En
+el mosaico se recortan al centro, asi que lo importante va al centro y no
+pegado a los lados.
+
+La .jpg hace dos trabajos: es lo que se ve en el cuadro en reposo y el primer
+fotograma del panel mientras el video carga. Que sea un fotograma del propio
+video es lo que mejor funciona.
+
+
+PESO: ESTO ES LO QUE MAS IMPORTA AQUI
+-------------------------------------
+
+Son doce videos en una sola seccion de la portada. A 5 MB cada uno son 60 MB
+que acaban dentro del repositorio y del despliegue.
+
+  - Que duren entre 10 y 20 segundos.
+  - Por debajo de 1,5 MB cada uno. A 720p eso se consigue de sobra.
+  - Si no bajan de ahi, hay que subirlos a Cloudinary en vez de a public/.
+
+No se descargan al abrir la pagina: cada video empieza a bajar cuando alguien
+se detiene encima. Cruzar el mosaico de lado a lado no descarga nada.
+
+
+SOBRE LOS VIDEOS
+----------------
+
+- En el mosaico se reproducen SIN sonido. No es una eleccion: ningun navegador
+  deja sonar un video que empieza solo.
+- En el panel grande SI suenan, porque abrirlo requiere un clic y eso ya es la
+  interaccion que los navegadores piden. Si aun asi lo rechazan, el panel lo
+  pone mudo y sigue reproduciendo en vez de quedarse congelado.
+- Si el video lleva a alguien hablando, que se entienda tambien sin sonido: en
+  el mosaico se va a ver mudo siempre. Subtitulos quemados ayudan mucho.
+
+
+LOS TEXTOS
+----------
+
+Cada pieza lleva dos textos en academy360Config.js, en CUERPO.piezas:
+
+  gancho  tres o cuatro palabras, lo que se lee en el cuadro pequeno
+  dato    la frase completa, lo que se lee en el panel grande
+
+Los doce de ahora son de EJEMPLO, puestos para poder ver la seccion
+funcionando. Son ciertos y de manual, pero esto es una plataforma de salud:
+cada afirmacion que se publique deberia poder respaldarse. Cambialos por los
+de los docentes.
+
+Si falta una imagen o un video, la pieza muestra su nombre y su medida, y el
+resto del mosaico sigue funcionando igual.

@@ -168,6 +168,31 @@ class Lesson(models.Model):
     duration = models.CharField('duración', max_length=20, blank=True, default='')
     order = models.PositiveIntegerField('orden', default=0)
 
+    # La muestra gratuita del curso.
+    #
+    # Va en la leccion y no en el modulo porque asi cubre los dos casos que
+    # hacen falta: marcar todas las lecciones del primer modulo es "el primer
+    # modulo gratis", y marcar tres sueltas es "estos videos gratis". Al reves
+    # no funciona: un campo en `Module` no sabria abrir una leccion sola.
+    #
+    # `default=False` y no True: una migracion que abriera el contenido
+    # existente regalaria cursos que hoy se cobran, y nadie se enteraria hasta
+    # ver la factura.
+    #
+    # AMBITO>> Esto NO salta el aislamiento por academia. Una leccion gratuita
+    # de una academia sin vitrina --Corporativo CAMSA es onboarding interno--
+    # sigue siendo invisible desde fuera. Quien decide es
+    # `puede_ver_esta_leccion()` en selectors.py, no este campo por su cuenta.
+    es_gratuita = models.BooleanField(
+        'abierta como muestra',
+        default=False,
+        help_text=(
+            'Si se marca, cualquiera con una cuenta puede verla aunque no tenga '
+            'acceso al curso. Solo surte efecto en cursos publicados de '
+            'academias con vitrina publica.'
+        ),
+    )
+
     class Meta:
         verbose_name = 'lección'
         verbose_name_plural = 'lecciones'

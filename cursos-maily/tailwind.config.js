@@ -105,7 +105,14 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         "plus-jakarta-sans": ["Plus Jakarta Sans", "sans-serif"],
         // Academy360. `display` para titulares, `ui` para todo lo demas.
-        display: ['"Cormorant Garamond"', 'Garamond', '"Times New Roman"', 'serif'],
+        // Outfit para los titulares. Geometrica como Jost, asi que las dos
+        // conviven sin que se note el salto entre titular y texto.
+        //
+        // OJO: Outfit NO tiene cursiva. Pedirle `italic` hace que el
+        // navegador la incline por su cuenta, y en una geometrica eso
+        // deforma los circulos. Lo que estaba en cursiva se distingue
+        // ahora por el color dorado.
+        display: ['Outfit', 'Jost', 'system-ui', 'sans-serif'],
         ui: ['Jost', '"Avenir Next"', '"Century Gothic"', 'sans-serif'],
       },
       fontSize: {
@@ -131,6 +138,14 @@ export default {
         'slide-right': 'slideRight 0.3s ease-out',
         'pulse-soft': 'pulseSoft 2s infinite',
         'bounce-soft': 'bounceSoft 1s infinite',
+        // Academy360. El `pulse` de Tailwind cambia la opacidad, no el tamano;
+        // esto es lo otro. Lento y con poco recorrido a proposito: es un logo
+        // fijo en la pagina, no un aviso, y a 3 s nadie se marea.
+        //
+        // Se usa SIEMPRE con el prefijo `motion-safe:`, que la apaga sola en
+        // cuanto el sistema pide menos movimiento. Una animacion infinita es
+        // justo lo que molesta a quien lo lleva activado.
+        latido: 'latido 3s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -152,6 +167,10 @@ export default {
         bounceSoft: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-5px)' },
+        },
+        latido: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.05)' },
         },
       },
     },

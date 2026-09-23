@@ -26,22 +26,22 @@ export const Foto = ({ src, alt = '', min, etiqueta, className = '', imgClassNam
   if (falla) {
     return (
       <div
-        className={`flex flex-col items-center justify-center gap-1 bg-academy-crema-2 text-center dark:bg-white/5 ${className}`}
+        className={`flex flex-col items-center justify-center gap-1 bg-academy-crema-2 text-center ${className}`}
         role="img"
         aria-label={alt || etiqueta || 'Imagen pendiente'}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             strokeWidth="1.5" className="text-academy-borde dark:text-white/40" aria-hidden="true">
+             strokeWidth="1.5" className="text-academy-borde" aria-hidden="true">
           <rect x="3" y="5" width="18" height="14" rx="1" />
           <path d="m3 15 5-4 4 3 3-2 6 4" />
         </svg>
         {etiqueta && (
-          <p className="px-2 font-ui text-[10px] uppercase tracking-[0.14em] text-academy-tinta-3 dark:text-white/50">
+          <p className="px-2 font-ui text-[10px] uppercase tracking-[0.14em] text-academy-tinta-3">
             {etiqueta}
           </p>
         )}
         {min && (
-          <p className="font-ui text-[10px] text-academy-tinta-3/80 dark:text-white/40">mín. {min}</p>
+          <p className="font-ui text-[10px] text-academy-tinta-3/80">mín. {min}</p>
         )}
       </div>
     );
@@ -62,7 +62,7 @@ export const Foto = ({ src, alt = '', min, etiqueta, className = '', imgClassNam
 export const Eyebrow = ({ children, centrado = false }) => (
   <p className={`flex items-center gap-4 ${centrado ? 'justify-center' : ''}`}>
     <span className="h-px w-8 bg-academy-oro" aria-hidden="true" />
-    <span className="font-ui text-a-13 uppercase tracking-[0.18em] text-academy-oro-texto dark:text-academy-oro">
+    <span className="font-ui text-a-13 uppercase tracking-[0.18em] text-academy-oro-texto">
       {children}
     </span>
   </p>
@@ -73,13 +73,13 @@ export const TituloDeSeccion = ({ titulo, subtitulo }) => (
   <header className="mb-12 text-center lg:mb-16">
     <div className="flex items-center justify-center gap-6">
       <span className="hidden h-px w-16 bg-academy-linea sm:block lg:w-28" aria-hidden="true" />
-      <h2 className="font-display text-a-32 text-academy-tinta dark:text-academy-crema sm:text-a-44">
+      <h2 className="font-display text-a-32 text-academy-tinta sm:text-a-44">
         {titulo}
       </h2>
       <span className="hidden h-px w-16 bg-academy-linea sm:block lg:w-28" aria-hidden="true" />
     </div>
     {subtitulo && (
-      <p className="mt-3 font-ui text-a-15 text-academy-tinta-3 dark:text-white/60">{subtitulo}</p>
+      <p className="mt-3 font-ui text-a-15 text-academy-tinta-3">{subtitulo}</p>
     )}
   </header>
 );
@@ -100,7 +100,7 @@ export const Boton = ({ a, children, variante = 'solido', className = '' }) => {
   const estilo = variante === 'solido'
     ? 'bg-academy-oro text-academy-sobre-oro hover:brightness-95'
     : 'border border-academy-oro-texto text-academy-tinta hover:bg-academy-oro/10 '
-      + 'dark:text-academy-crema dark:border-academy-oro';
+      + '';
 
   const clases = `${BASE_BOTON} ${estilo} ${className}`;
 

@@ -26,7 +26,7 @@ siguiente revisión lo hereda como si alguien lo hubiera pensado.
 | Clave | Valor | Evidencia |
 |---|---|---|
 | `proyecto.nombre` | Maily Academia | — |
-| `proyecto.etapa` | `produccion` | Desplegado y en uso: `maily-academia-production-de9b.up.railway.app` sirve 26 cursos reales |
+| `proyecto.etapa` | `produccion` | Desplegado y en uso: `api.academy360.mx` sirve 26 cursos reales |
 | `proyecto.fecha_adopcion` | `2026-09-02` | Día en que se corrió el paso 5 |
 | `proyecto.raiz_backend` | `backend/` | `backend/manage.py` |
 | `proyecto.raiz_frontend` | `cursos-maily/` | `cursos-maily/package.json:1` |
@@ -153,7 +153,7 @@ Es el mismo riesgo en otro sitio.
 | Clave | Valor | Evidencia |
 |---|---|---|
 | `verificadores.entorno` | `docker compose exec -T backend` | `docker-compose.yml` |
-| `verificadores.tests_backend` | `docker compose exec -T backend pytest` — **259 tests, todos en verde** | 12 archivos en `backend/apps/{courses,users,progress,certificates}/tests/`; fixtures comunes en `backend/conftest.py` |
+| `verificadores.tests_backend` | `docker compose exec -T backend pytest` — **281 tests, todos en verde** | 13 archivos en `backend/apps/{courses,users,progress,certificates}/tests/`; fixtures comunes en `backend/conftest.py` |
 | `verificadores.tests_frontend` | `ninguno` | No hay vitest, jest ni testing-library |
 | `verificadores.tipos` | `ninguno` | El frontend es `.jsx` sin TypeScript; el backend no tiene mypy |
 | `verificadores.lint` | `cd cursos-maily && npm run lint` (solo frontend) | `cursos-maily/package.json`; el backend no tiene lint configurado |

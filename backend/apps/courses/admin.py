@@ -38,8 +38,13 @@ class ModuleAdmin(admin.ModelAdmin):
 
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
-    list_display = ['title', 'module', 'video_provider', 'duration', 'order']
-    list_filter = ['video_provider']
+    # `es_gratuita` en la lista y editable ahi mismo: marcar las tres primeras
+    # lecciones de un curso es la operacion que se va a repetir con cada curso
+    # nuevo, y entrar a cada leccion para tocar una casilla es el camino de que
+    # nadie lo haga.
+    list_display = ['title', 'module', 'es_gratuita', 'video_provider', 'duration', 'order']
+    list_editable = ['es_gratuita']
+    list_filter = ['video_provider', 'es_gratuita']
 
 
 @admin.register(CourseMaterial)

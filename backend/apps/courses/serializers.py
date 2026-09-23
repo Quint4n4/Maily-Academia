@@ -83,7 +83,7 @@ class LessonSerializer(serializers.ModelSerializer):
         model = Lesson
         fields = [
             'id', 'module', 'title', 'description',
-            'video_url', 'video_provider', 'duration', 'order',
+            'video_url', 'video_provider', 'duration', 'order', 'es_gratuita',
         ]
         read_only_fields = ['id']
 
@@ -95,7 +95,10 @@ class LessonCreateSerializer(LimitaTextoLibreMixin, serializers.ModelSerializer)
 
     class Meta:
         model = Lesson
-        fields = ['id', 'title', 'description', 'video_url', 'video_provider', 'duration', 'order']
+        fields = [
+            'id', 'title', 'description', 'video_url', 'video_provider',
+            'duration', 'order', 'es_gratuita',
+        ]
         read_only_fields = ['id']
 
 
@@ -201,12 +204,18 @@ class LessonVitrinaSerializer(serializers.ModelSerializer):
     YouTube publicos parece inofensivo; el dia que los videos vivan en un
     proveedor de pago, repartir esa URL es repartir el curso.
 
+    Desde 2026-09-23 dice ademas CUALES son muestra gratuita (`es_gratuita`),
+    para que la ficha pueda marcarlas con un candado o sin el. Sigue sin soltar
+    `video_url` ni para esas: el video se pide siempre a
+    `GET /api/courses/lessons/{id}/video/`, que es quien decide. Dos sitios
+    decidiendo lo mismo acaban divergiendo, y gana el mas laxo.
+
     Ver docs/00-deuda.md (P0) y la seccion de vitrina del PERFIL-DEL-REPO.
     """
 
     class Meta:
         model = Lesson
-        fields = ['id', 'title', 'description', 'duration', 'order']
+        fields = ['id', 'title', 'description', 'duration', 'order', 'es_gratuita']
         read_only_fields = fields
 
 

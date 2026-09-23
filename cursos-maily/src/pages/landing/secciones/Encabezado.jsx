@@ -24,10 +24,16 @@ const Encabezado = () => {
 
   return (
     <header
-      className={`relative z-40 flex h-[72px] items-center justify-between bg-white lg:h-[104px] ${canal} dark:bg-academy-tinta`}
+      className={`relative z-40 flex h-[72px] items-center justify-between bg-white lg:h-[104px] ${canal}`}
     >
-      <Link to="/" className="flex items-center" aria-label={`${MARCA.nombre}, ir al inicio`}>
-        <img src={MARCA.logo} alt={MARCA.nombre} className="h-14 w-14 lg:h-[88px] lg:w-[88px]" />
+      {/* Sin logo: el grande vive en el hero, justo debajo. Repetirlo aqui
+          los deja a pocos pixeles uno de otro. El enlace al inicio se
+          mantiene para quien navegue con teclado. */}
+      <Link
+        to="/"
+        className="font-ui text-a-13 uppercase tracking-[0.18em] text-academy-oro-texto"
+      >
+        {MARCA.nombre}
       </Link>
 
       <nav className="hidden items-center gap-10 lg:flex" aria-label="Principal">
@@ -35,7 +41,7 @@ const Encabezado = () => {
           <a
             key={enlace.a}
             href={enlace.a}
-            className="font-ui text-a-15 tracking-[0.04em] text-academy-tinta-2 underline-offset-8 transition-colors hover:text-academy-tinta hover:underline hover:decoration-academy-oro hover:decoration-2 dark:text-white/70 dark:hover:text-white"
+            className="font-ui text-a-15 tracking-[0.04em] text-academy-tinta-2 underline-offset-8 transition-colors hover:text-academy-tinta hover:underline hover:decoration-academy-oro hover:decoration-2"
           >
             {enlace.texto}
           </a>
@@ -46,7 +52,7 @@ const Encabezado = () => {
       <button
         type="button"
         onClick={() => setAbierto((v) => !v)}
-        className="flex h-11 w-11 items-center justify-center rounded-[4px] text-academy-tinta lg:hidden dark:text-academy-crema"
+        className="flex h-11 w-11 items-center justify-center rounded-[4px] text-academy-tinta lg:hidden"
         aria-expanded={abierto}
         aria-controls="menu-landing"
         aria-label={abierto ? 'Cerrar menú' : 'Abrir menú'}
@@ -57,14 +63,14 @@ const Encabezado = () => {
       {abierto && (
         <div
           id="menu-landing"
-          className={`absolute inset-x-0 top-full flex flex-col gap-1 border-t border-academy-linea bg-white py-4 lg:hidden ${canal} dark:border-white/10 dark:bg-academy-tinta`}
+          className={`absolute inset-x-0 top-full flex flex-col gap-1 border-t border-academy-linea bg-white py-4 lg:hidden ${canal}`}
         >
           {NAVEGACION.map((enlace) => (
             <a
               key={enlace.a}
               href={enlace.a}
               onClick={() => setAbierto(false)}
-              className="flex h-12 items-center font-ui text-a-17 text-academy-tinta-2 dark:text-white/80"
+              className="flex h-12 items-center font-ui text-a-17 text-academy-tinta-2"
             >
               {enlace.texto}
             </a>
