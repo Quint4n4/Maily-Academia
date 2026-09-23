@@ -135,16 +135,33 @@ const CourseView = () => {
   }
 
   const isFree = !course.price || Number(course.price) === 0;
-  const firstModule = course.modules?.[0];
-  const firstLesson = firstModule?.lessons?.[0];
-  const isFirstLesson = (mod, les) => firstModule?.id === mod.id && firstLesson?.id === les.id;
-
+  // La primera leccion ABIERTA, no la primera a secas: el preview del
+  // encabezado lo ve quien todavia no compro, y pedirle el video a una leccion
+  // cerrada devuelve 404 y deja el hueco en negro sin explicacion.
+  const primeraMuestra = (course.modules || [])
+    .flatMap((mod) => mod.lessons || [])
+    .find((les) => les.es_gratuita);
+  /**
+   * Si esta pantalla debe dejar entrar a una leccion.
+   *
+   * Para quien no esta inscrito manda `es_gratuita`, que decide el backend
+   * (`Lesson.es_gratuita` + curso publicado + academia con vitrina). Antes
+   * aqui se abria "la primera leccion del curso" a ojo, y eso era una promesa
+   * que el servidor no respaldaba: el candado desaparecia, se pulsaba, y
+   * `/lessons/{id}/video/` respondia 404. Ahora las dos partes miran el mismo
+   * dato.
+   */
   const canAccessLesson = (mod, les) => {
-    if (!isEnrolled && !isFirstLesson(mod, les)) return false;
-    if (!isEnrolled && isFirstLesson(mod, les)) return true;
+    if (!isEnrolled) return !!les.es_gratuita;
     if (!requireSequential) return true;
     return accessibleLessonIds ? accessibleLessonIds.has(les.id) : true;
   };
+
+  /** Cuantas lecciones del curso estan abiertas como muestra. */
+  const muestrasAbiertas = (course.modules || []).reduce(
+    (total, mod) => total + (mod.lessons || []).filter((l) => l.es_gratuita).length,
+    0,
+  );
 
   const handleRequestFinalEvaluation = async () => {
     if (!course || !isEnrolled) return;
@@ -245,9 +262,9 @@ const CourseView = () => {
                 <div className="rounded-2xl overflow-hidden shadow-2xl aspect-video ring-2 ring-white/20">
                   <CourseThumbnail src={course.thumbnail} alt={course.title} aspect="h-full" />
                 </div>
-              ) : !isEnrolled && firstLesson ? (
+              ) : !isEnrolled && primeraMuestra ? (
                 <div className="rounded-2xl overflow-hidden shadow-2xl aspect-video ring-2 ring-white/20">
-                  <VideoPreview lessonId={firstLesson.id} url={firstLesson.video_url} provider={firstLesson.video_provider} />
+                  <VideoPreview lessonId={primeraMuestra.id} url={primeraMuestra.video_url} provider={primeraMuestra.video_provider} />
                 </div>
               ) : null}
             </div>
@@ -269,6 +286,30 @@ const CourseView = () => {
             <h2 className={`text-2xl font-extrabold tracking-tight mb-6 ${ isC ? 'text-[#e6c364]' : 'text-on-surface dark:text-white' }`}>
               Contenido del curso
             </h2>
+
+            {/* Cuantas clases puede ver antes de pagar, dicho una sola vez y
+                arriba. Sin esto hay que ir contando etiquetas "Gratis" por el
+                temario para saber cuanto se lleva, y eso no lo hace nadie. */}
+            {!isEnrolled && muestrasAbiertas > 0 && (
+              <div className={`mb-6 flex items-center gap-3 rounded-xl border px-4 py-3 ${
+                isC
+                  ? 'border-[#c9a84c]/30 bg-[#c9a84c]/10 text-[#e6c364]'
+                  : 'border-green-200 bg-green-50 text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-300'
+              }`}>
+                <Play size={16} className="flex-shrink-0" />
+                <p className="text-sm font-semibold">
+                  {muestrasAbiertas === 1
+                    ? 'La primera clase es gratis.'
+                    : `Las primeras ${muestrasAbiertas} clases son gratis.`}
+                  {' '}
+                  <span className="font-normal opacity-90">
+                    {isFree
+                      ? 'Inscríbete para ver el resto.'
+                      : 'Para el resto del curso, adquiérelo abajo.'}
+                  </span>
+                </p>
+              </div>
+            )}
 
             {(course.modules || []).map((mod, mi) => (
               <motion.div key={mod.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: mi * 0.05 }}>
@@ -337,6 +378,15 @@ const CourseView = () => {
                               }`}>{lesson.title}</p>
                               {lesson.duration && <p className={`text-xs mt-0.5 ${ isC ? 'text-[#d0c5b2]/60' : 'text-on-surface-variant/70 dark:text-gray-500' }`}>{lesson.duration}</p>}
                             </div>
+                            {/* La etiqueta "Gratis" solo tiene sentido para
+                                quien aun no compro: dentro del curso todas
+                                estan abiertas y marcar unas cuantas como
+                                gratuitas no diria nada. */}
+                            {!isEnrolled && lesson.es_gratuita && !lessonCompleted && (
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0 ${
+                                isC ? 'text-[#e6c364] bg-[#c9a84c]/20' : 'text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400'
+                              }`}>Gratis</span>
+                            )}
                             {lessonCompleted ? (
                               <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0 ${
                                 isC ? 'text-[#e6c364] bg-[#c9a84c]/20' : 'text-green-600 bg-green-100 dark:bg-green-900/30'

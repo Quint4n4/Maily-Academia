@@ -83,6 +83,28 @@ const LessonView = () => {
     load();
   }, [courseId, moduleId, lessonId]);
 
+  /**
+   * La URL del video cuando la ficha no la trae.
+   *
+   * Quien no tiene acceso al curso recibe la ficha de vitrina, que deja fuera
+   * `video_url` a proposito: la URL ES el contenido. Pero en una muestra
+   * gratuita SI hay derecho a verla, asi que se le pide a
+   * `/lessons/{id}/video/`, que es el unico sitio que decide eso. Sin esto la
+   * muestra se abria y mostraba "esta leccion no tiene video".
+   */
+  const [urlPedidaAlServidor, setUrlPedidaAlServidor] = useState(null);
+
+  useEffect(() => {
+    if (!currentLesson || currentLesson.video_url || !lessonId) return undefined;
+    let vigente = true;
+    courseService.urlDeVideo(lessonId)
+      .then((datos) => { if (vigente) setUrlPedidaAlServidor(datos.url); })
+      .catch(() => { /* sin acceso o sin video: queda el cartel de siempre */ });
+    return () => { vigente = false; };
+  }, [currentLesson, lessonId]);
+
+  const urlDelVideo = currentLesson?.video_url || urlPedidaAlServidor;
+
   const handleVideoEnded = useCallback(async () => {
     await completeLesson(Number(lessonId), courseId);
     setCompleted(true);
@@ -163,11 +185,11 @@ const LessonView = () => {
         seconds = Math.floor(playerRef.current.getCurrentTime());
       } catch { return; }
     }
-    if (typeof seconds !== 'number' || !currentLesson?.video_url) return;
+    if (typeof seconds !== 'number' || !urlDelVideo) return;
     try {
       await progressService.updateLessonPosition(lessonId, seconds);
     } catch { /* ignore */ }
-  }, [lessonId, currentLesson?.video_url]);
+  }, [lessonId, urlDelVideo]);
 
   const goTo = useCallback((pathOrNext) => {
     const doNav = () => {
@@ -228,12 +250,43 @@ const LessonView = () => {
     return <div className="text-center py-12 text-gray-500">Lección no encontrada</div>;
   }
 
-  const firstMod = course?.modules?.[0];
-  const firstLes = firstMod?.lessons?.[0];
-  const isPreviewLesson = !isEnrolled && firstMod?.id === Number(moduleId) && firstLes?.id === Number(lessonId);
-  if (!isEnrolled && !isPreviewLesson) {
-    navigate(`/course/${courseId}`, { replace: true });
-    return null;
+  /**
+   * Fin de la muestra.
+   *
+   * Quien no esta inscrito solo puede estar aqui si la leccion esta abierta
+   * (`es_gratuita`, que decide el backend). Antes se comparaba contra "la
+   * primera leccion del curso" a ojo, una regla que el servidor no conocia.
+   *
+   * Y antes esto hacia `navigate(...)` en pleno render: a quien pulsaba
+   * "siguiente" al acabar la muestra lo devolvia al curso sin decir nada, que
+   * es el peor momento posible para quedarse callado. Ahora se le explica
+   * donde esta y que hacer, que ademas es justo cuando decide si compra.
+   */
+  const viendoUnaMuestra = !isEnrolled && !!currentLesson?.es_gratuita;
+  const finDeLaMuestra = !isEnrolled && !currentLesson?.es_gratuita;
+  if (finDeLaMuestra) {
+    const esGratis = !course?.price || Number(course.price) === 0;
+    return (
+      <div className={`font-plus-jakarta-sans min-h-screen flex items-center justify-center p-4 ${ isC ? 'bg-[#0e0e0c]' : 'bg-surface dark:bg-gray-950' }`}>
+        <div className={`max-w-md w-full p-8 text-center rounded-2xl shadow-xl border ${ isC ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)]' : 'bg-surface-container-lowest dark:bg-gray-800 border-outline-variant/10' }`}>
+          <Lock size={48} className={`mx-auto mb-4 opacity-60 ${ isC ? 'text-[#8a8578]' : 'text-stitch-primary' }`} />
+          <h2 className={`text-xl font-extrabold mb-2 tracking-tight ${ isC ? 'text-[#e6c364]' : 'text-on-surface dark:text-white' }`}>
+            Hasta aquí llega la muestra
+          </h2>
+          <p className={`mb-6 ${ isC ? 'text-[#d0c5b2]/80' : 'text-on-surface-variant dark:text-gray-400' }`}>
+            {esGratis
+              ? 'Inscríbete en el curso para seguir con esta clase y las demás.'
+              : 'Esta clase es parte del curso completo. Consíguelo y sigue desde aquí.'}
+          </p>
+          <button
+            onClick={() => navigate(`/course/${courseId}`)}
+            className={`px-6 py-3 rounded-full font-bold text-sm border-2 transition-all ${ isC ? 'border-[#c9a84c] text-[#e6c364] hover:bg-[#c9a84c]/20' : 'border-stitch-primary text-stitch-primary hover:bg-stitch-primary hover:text-white' }`}
+          >
+            {esGratis ? 'Inscribirme' : 'Ver el curso'}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const lessonLocked = isEnrolled && requireSequential && !isLessonAccessible();
@@ -276,7 +329,7 @@ const LessonView = () => {
     if (vimeoId) { const base = `https://player.vimeo.com/video/${vimeoId}`; return start > 0 ? `${base}#t=${start}s` : base; }
     return url || '';
   };
-  const videoId = getVideoId(currentLesson?.video_url);
+  const videoId = getVideoId(urlDelVideo);
   const isYouTube = Boolean(videoId);
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -314,7 +367,7 @@ const LessonView = () => {
 
             {/* Video shell */}
             <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-2xl bg-on-background dark:bg-black">
-              {currentLesson.video_url ? (
+              {urlDelVideo ? (
                 isYouTube ? (
                   <YouTubePlayer
                     videoId={videoId}
@@ -328,7 +381,7 @@ const LessonView = () => {
                   />
                 ) : (
                   <iframe
-                    src={getVideoEmbedUrl(currentLesson.video_url, startSeconds)}
+                    src={getVideoEmbedUrl(urlDelVideo, startSeconds)}
                     title={currentLesson.title}
                     className="absolute inset-0 w-full h-full"
                     allowFullScreen
@@ -349,9 +402,9 @@ const LessonView = () => {
                 <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight ${ isC ? 'text-[#e6c364]' : 'text-on-surface dark:text-white' }`}>
                   {currentLesson.title}
                 </h1>
-                {isPreviewLesson && (
+                {viendoUnaMuestra && (
                   <p className="text-sm text-amber-600 dark:text-amber-400 mt-1.5 font-medium">
-                    Vista previa — Inscríbete para acceder al contenido completo.
+                    Clase gratuita — el resto del curso se abre al inscribirte.
                   </p>
                 )}
               </div>
@@ -382,7 +435,7 @@ const LessonView = () => {
                     className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm border-2 transition-all ${
                       isC ? 'border-[#c9a84c] text-[#e6c364] hover:bg-[#c9a84c]/20' : 'border-stitch-primary text-stitch-primary hover:bg-stitch-primary hover:text-white'
                     }`}>
-                    {isPreviewLesson ? 'Ver curso e inscribirme' : 'Volver al curso'}
+                    {viendoUnaMuestra ? 'Ver curso e inscribirme' : 'Volver al curso'}
                   </button>
                 )}
               </div>
