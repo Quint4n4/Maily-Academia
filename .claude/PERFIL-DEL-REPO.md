@@ -153,7 +153,7 @@ Es el mismo riesgo en otro sitio.
 | Clave | Valor | Evidencia |
 |---|---|---|
 | `verificadores.entorno` | `docker compose exec -T backend` | `docker-compose.yml` |
-| `verificadores.tests_backend` | `docker compose exec -T backend pytest` — **259 tests, todos en verde** | 12 archivos en `backend/apps/{courses,users,progress,certificates}/tests/`; fixtures comunes en `backend/conftest.py` |
+| `verificadores.tests_backend` | `docker compose exec -T backend pytest` — **281 tests, todos en verde** | 13 archivos en `backend/apps/{courses,users,progress,certificates}/tests/`; fixtures comunes en `backend/conftest.py` |
 | `verificadores.tests_frontend` | `ninguno` | No hay vitest, jest ni testing-library |
 | `verificadores.tipos` | `ninguno` | El frontend es `.jsx` sin TypeScript; el backend no tiene mypy |
 | `verificadores.lint` | `cd cursos-maily && npm run lint` (solo frontend) | `cursos-maily/package.json`; el backend no tiene lint configurado |

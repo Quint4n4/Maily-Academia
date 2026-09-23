@@ -159,14 +159,62 @@ def curso_inscribible_o_404(user, course_id):
     return curso
 
 
+def es_muestra_abierta(leccion):
+    """
+    AMBITO>> Si esta leccion es la muestra gratuita de un curso que se anuncia
+    en publico.
+
+    Tres condiciones, y las tres hacen falta:
+
+    - La leccion esta marcada como muestra (`es_gratuita`).
+    - El curso esta publicado. Un borrador no ensena nada a nadie, ni aunque
+      alguien marcase sus lecciones por error mientras lo prepara.
+    - La academia del curso tiene vitrina publica. ESTA es la que sostiene el
+      aislamiento: Corporativo CAMSA es onboarding interno de empleados y no
+      tiene vitrina, asi que marcar una leccion suya como muestra NO la abre a
+      nadie de fuera. Sin esta condicion, un `es_gratuita` puesto por
+      descuido en un curso interno lo publicaria al mundo.
+
+    Un curso sin academia (`section_id is None`) tampoco abre muestras: no hay
+    vitrina que consultar, y en la duda se cierra.
+    """
+    curso = leccion.module.course
+    if not leccion.es_gratuita:
+        return False
+    if curso.status != 'published':
+        return False
+    if curso.section_id is None:
+        return False
+    return bool(curso.section and curso.section.is_active and curso.section.allow_public_preview)
+
+
+def puede_ver_esta_leccion(user, leccion):
+    """
+    AMBITO>> Si este usuario puede ver ESTA leccion.
+
+    Dos caminos, y basta uno: tener acceso al curso entero, o que la leccion sea
+    una muestra abierta. El primero es el de siempre; el segundo es lo que hace
+    posible "las primeras clases gratis y el resto se paga".
+
+    La muestra exige sesion iniciada igual que el resto. No es un descuido: la
+    portada invita a "empezar gratis" creando una cuenta, y sin ese requisito la
+    muestra seria contenido anonimo y no habria a quien volver a hablarle.
+    """
+    if puede_ver_el_contenido(user, leccion.module.course):
+        return True
+    if not user or not user.is_authenticated:
+        return False
+    return es_muestra_abierta(leccion)
+
+
 def leccion_accesible_o_404(user, lesson_id):
-    """Una leccion cuyo curso este usuario puede ver por dentro, o 404."""
+    """Una leccion que este usuario puede ver, o 404."""
     leccion = (
         Lesson.objects
         .select_related('module__course__section', 'module__course__instructor')
         .filter(pk=lesson_id)
         .first()
     )
-    if leccion is None or not puede_ver_el_contenido(user, leccion.module.course):
+    if leccion is None or not puede_ver_esta_leccion(user, leccion):
         raise Http404('No existe esa leccion.')
     return leccion
