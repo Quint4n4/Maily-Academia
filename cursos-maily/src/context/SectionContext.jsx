@@ -83,7 +83,15 @@ export const SectionContextProvider = ({ children }) => {
       try {
         const { data } = await api.get('/sections/my-sections/');
         if (cancelled) return;
-        const sections = Array.isArray(data) ? data : [];
+        // El endpoint responde PAGINADO --{count, next, previous, results}--
+        // y aqui se descartaba entero por no ser un array, dejando al usuario
+        // sin ninguna academia. Eso apagaba el selector de "Cambiar academia"
+        // del menu lateral, que solo se pinta con dos o mas: la funcion estaba
+        // escrita y nunca llego a verse.
+        //
+        // Se aceptan las dos formas porque el dia que este endpoint deje de
+        // paginar, esto sigue funcionando.
+        const sections = Array.isArray(data) ? data : (data?.results ?? []);
         setUserSections(sections);
 
         setCurrentSection((prev) => {

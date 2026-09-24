@@ -71,10 +71,23 @@ export default {
         "tertiary-fixed": "#b8eaff",
         "tertiary-container": "#52d0f9",
         "on-tertiary-fixed": "#001f28",
+        // Mismo caso que `on-primary` unas lineas mas abajo, y por eso mismo
+        // vale la pena dejarlo escrito: faltaba en la paleta, asi que la clase
+        // `text-on-tertiary-container` no generaba ninguna regla y el color
+        // caia por herencia. En el tema oscuro heredaba un azul claro y el
+        // resultado era texto a 1.62:1 sobre su propia pildora azul.
+        // Este valor da 9.58:1. Medido el 2026-09-24.
+        "on-tertiary-container": "#001f28",
         "tertiary-fixed-dim": "#58d5fe",
         "primary-fixed-dim": "#ffb95a",
         "secondary-fixed-dim": "#c8c6c5",
         "primary-fixed": "#ffddb6",
+        // Tercer caso del mismo bug que `on-primary` y `on-tertiary-container`:
+        // faltaban en la paleta, la clase no generaba regla y el color caia por
+        // herencia. Cuatro usos afectados. 13.14:1 sobre el fondo del bloque
+        // "Pro Access" en modo claro. Medido el 2026-09-24.
+        "on-primary-fixed": "#3a2800",
+        "on-primary-fixed-variant": "#6b4a00",
         "surface-container-high": "#eae8e3",
         "on-secondary-fixed": "#1c1b1b",
         "surface-dim": "#dbdad5",

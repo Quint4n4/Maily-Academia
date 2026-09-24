@@ -234,17 +234,17 @@ const Dashboard = () => {
             <div key={s.label} className={`p-6 sm:p-8 rounded-2xl flex flex-col justify-between hover:-translate-y-1 transition-transform group ${
               isC
                 ? 'bg-[#1f1f1c] border border-[rgba(77,70,55,0.3)] hover:border-[rgba(230,195,100,0.3)]'
-                : 'bg-surface-container-lowest shadow-[0_40px_40px_-10px_rgba(27,28,25,0.04)] border border-outline-variant/20'
+                : 'bg-surface-container-lowest dark:bg-gray-800 shadow-[0_40px_40px_-10px_rgba(27,28,25,0.04)] border border-outline-variant/20'
             }`}>
               <div>
                 <span className={`material-symbols-outlined mb-4 p-3 rounded-2xl group-hover:scale-110 transition-transform w-[48px] h-[48px] flex items-center justify-center ${
                   isC ? 'text-[#e6c364] bg-[rgba(201,168,76,0.1)]' : 'text-stitch-primary bg-primary-fixed'
                 }`}>{s.icon}</span>
-                <p className={`font-bold uppercase tracking-widest text-[10px] sm:text-xs ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant' }`}>{s.label}</p>
+                <p className={`font-bold uppercase tracking-widest text-[10px] sm:text-xs ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant dark:text-gray-400' }`}>{s.label}</p>
               </div>
               <div className="mt-4">
                 <h3 className={`text-3xl sm:text-4xl font-black leading-none mb-1 ${ isC ? 'text-[#e6c364]' : 'text-on-background' }`}>{s.value}</h3>
-                <p className={`text-xs ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant/80' }`}>{s.sub}</p>
+                <p className={`text-xs ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant/80 dark:text-gray-400' }`}>{s.sub}</p>
               </div>
             </div>
           ))}
@@ -263,7 +263,7 @@ const Dashboard = () => {
               className={`group p-5 rounded-2xl border flex items-center gap-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${
                 isC
                   ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)] hover:border-[rgba(230,195,100,0.3)]'
-                  : 'bg-surface-container-lowest border-outline-variant/20'
+                  : 'bg-surface-container-lowest dark:bg-gray-800 border-outline-variant/20'
               }`}
             >
               <div className={`p-3 rounded-xl group-hover:scale-110 transition-transform ${
@@ -272,10 +272,10 @@ const Dashboard = () => {
                 <span className={isC ? 'text-[#e6c364]' : item.iconColor}>{item.icon}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`font-semibold text-sm ${ isC ? 'text-[#f5f0e8]' : 'text-on-surface' }`}>{item.label}</p>
-                <p className={`text-xs mt-0.5 ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant/70' }`}>{item.sub}</p>
+                <p className={`font-semibold text-sm ${ isC ? 'text-[#f5f0e8]' : 'text-on-surface dark:text-white' }`}>{item.label}</p>
+                <p className={`text-xs mt-0.5 ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant/70 dark:text-gray-400' }`}>{item.sub}</p>
               </div>
-              <ChevronRight size={16} className={`group-hover:translate-x-1 transition-transform ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant/50' }`} />
+              <ChevronRight size={16} className={`group-hover:translate-x-1 transition-transform ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant/50 dark:text-gray-400' }`} />
             </Link>
           ))}
         </section>
@@ -287,23 +287,23 @@ const Dashboard = () => {
           <div className="space-y-6 sm:space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
-                <h3 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${ isC ? 'text-[#e6c364]' : 'text-on-surface' }`}>Recomendados para ti</h3>
-                <p className={`text-sm sm:text-base opacity-80 mt-1 ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant' }`}>Sugerencias basadas en tus intereses</p>
+                <h3 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${ isC ? 'text-[#e6c364]' : 'text-on-surface dark:text-white' }`}>Recomendados para ti</h3>
+                <p className={`text-sm sm:text-base opacity-80 mt-1 ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant dark:text-gray-400' }`}>Sugerencias basadas en tus intereses</p>
               </div>
               <Link to="/cursos" className={`text-xs sm:text-sm font-bold uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all ${
                 isC ? 'text-[#c9a84c]' : 'text-stitch-primary'
-              }`}>Ver todos <span className="material-symbols-outlined text-sm">arrow_forward</span></Link>
+              }`}>Ver todos <span className="material-symbols-outlined text-sm dark:text-primary-fixed-dim">arrow_forward</span></Link>
             </div>
             
             {user?.role === 'student' && !user?.hasCompletedSurvey && (
               <div className={`p-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 border ${
-                isC ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)]' : 'bg-surface-container-lowest border-outline-variant/30'
+                isC ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)]' : 'bg-surface-container-lowest dark:bg-gray-800 border-outline-variant/30'
               }`}>
                 <div className="flex items-center gap-4">
-                  <span className={`material-symbols-outlined text-4xl ${ isC ? 'text-[#e6c364]' : 'text-stitch-primary' }`}>auto_awesome</span>
+                  <span className={`material-symbols-outlined text-4xl ${ isC ? 'text-[#e6c364]' : 'text-stitch-primary dark:text-primary-fixed-dim' }`}>auto_awesome</span>
                   <div>
-                    <h4 className={`font-bold text-lg ${ isC ? 'text-[#f5f0e8]' : 'text-on-surface' }`}>Personaliza tus recomendaciones</h4>
-                    <p className={`text-sm mt-1 ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant' }`}>Responde una encuesta rápida para descubrir contenido a tu medida.</p>
+                    <h4 className={`font-bold text-lg ${ isC ? 'text-[#f5f0e8]' : 'text-on-surface dark:text-white' }`}>Personaliza tus recomendaciones</h4>
+                    <p className={`text-sm mt-1 ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant dark:text-gray-400' }`}>Responde una encuesta rápida para descubrir contenido a tu medida.</p>
                   </div>
                 </div>
                 <Link to="/survey" className={`px-6 py-2.5 rounded-full font-bold text-sm w-full sm:w-auto text-center transition-colors ${
@@ -316,7 +316,7 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 {recommendedCourses.slice(0, 4).map((course) => (
                   <Link key={course.id} to={`/course/${course.id}`} className={`group rounded-2xl overflow-hidden border hover:shadow-xl transition-all duration-300 flex flex-col ${
-                    isC ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)] hover:border-[rgba(230,195,100,0.35)]' : 'bg-surface-container-lowest border-outline-variant/20'
+                    isC ? 'bg-[#1f1f1c] border-[rgba(77,70,55,0.3)] hover:border-[rgba(230,195,100,0.35)]' : 'bg-surface-container-lowest dark:bg-gray-800 border-outline-variant/20'
                   }`}>
                     <div className="h-40 sm:h-48 overflow-hidden relative">
                       <CourseThumbnail src={course.thumbnail} alt={course.title} aspect="h-full" className="group-hover:scale-110 transition-transform duration-500" />
@@ -331,12 +331,12 @@ const Dashboard = () => {
                     <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between">
                       <div>
                         <h4 className={`font-bold text-lg sm:text-xl leading-tight mb-2 line-clamp-2 transition-colors ${
-                          isC ? 'text-[#f5f0e8] group-hover:text-[#e6c364]' : 'text-on-surface group-hover:text-stitch-primary'
+                          isC ? 'text-[#f5f0e8] group-hover:text-[#e6c364]' : 'text-on-surface dark:text-white group-hover:text-stitch-primary'
                         }`}>{course.title}</h4>
-                        <p className={`text-xs mb-4 line-clamp-2 ${ isC ? 'text-[#d0c5b2]/80' : 'text-on-surface-variant/80' }`}>{course.description}</p>
+                        <p className={`text-xs mb-4 line-clamp-2 ${ isC ? 'text-[#d0c5b2]/80' : 'text-on-surface-variant/80 dark:text-gray-400' }`}>{course.description}</p>
                       </div>
                       <div className={`flex items-center justify-between text-xs font-bold mt-auto pt-4 border-t ${
-                        isC ? 'text-[#8a8578] border-[rgba(77,70,55,0.2)]' : 'text-on-surface-variant border-surface-container'
+                        isC ? 'text-[#8a8578] border-[rgba(77,70,55,0.2)]' : 'text-on-surface-variant dark:text-gray-400 border-surface-container'
                       }`}>
                         <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-base">schedule</span> {course.duration}</span>
                         <span className={`flex items-center gap-1.5 ${
@@ -356,9 +356,9 @@ const Dashboard = () => {
             
           {/* Overall Progress Widget */}
           <div className={`px-6 py-10 rounded-3xl flex flex-col items-center justify-center text-center space-y-6 ${
-            isC ? 'bg-[#1f1f1c] border border-[rgba(77,70,55,0.3)]' : 'bg-surface-container shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]'
+            isC ? 'bg-[#1f1f1c] border border-[rgba(77,70,55,0.3)]' : 'bg-surface-container dark:bg-gray-700 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]'
           }`}>
-            <h3 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${ isC ? 'text-[#e6c364]' : 'text-on-surface' }`}>Tu progreso general</h3>
+            <h3 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${ isC ? 'text-[#e6c364]' : 'text-on-surface dark:text-white' }`}>Tu progreso general</h3>
             {(() => {
               const pPercent = allCourses.length > 0 ? Math.round((stats.coursesCompleted / allCourses.length) * 100) : 0;
               const radius = 90;
@@ -385,33 +385,33 @@ const Dashboard = () => {
                   <div className={`absolute inset-0 flex flex-col items-center justify-center m-4 rounded-full border ${
                     isC
                       ? 'bg-[#141311] border-[rgba(230,195,100,0.15)] shadow-[inset_0_0_20px_rgba(201,168,76,0.1)]'
-                      : 'bg-surface-container-lowest shadow-sm border-outline-variant/10'
+                      : 'bg-surface-container-lowest dark:bg-gray-800 shadow-sm border-outline-variant/10'
                   }`}>
-                    <span className={`text-4xl sm:text-5xl font-black tracking-tighter ${ isC ? 'text-[#e6c364]' : 'text-on-surface' }`}>{pPercent}%</span>
-                    <span className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant/60' }`}>Completado</span>
+                    <span className={`text-4xl sm:text-5xl font-black tracking-tighter ${ isC ? 'text-[#e6c364]' : 'text-on-surface dark:text-white' }`}>{pPercent}%</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant/60 dark:text-gray-400' }`}>Completado</span>
                   </div>
                 </div>
               );
             })()}
             
             <div className="w-full max-w-[240px] space-y-4">
-              <div className={`flex items-center justify-between text-xs font-bold uppercase tracking-widest px-2 ${ isC ? 'text-[#d0c5b2]' : 'text-on-surface-variant' }`}>
+              <div className={`flex items-center justify-between text-xs font-bold uppercase tracking-widest px-2 ${ isC ? 'text-[#d0c5b2]' : 'text-on-surface-variant dark:text-gray-400' }`}>
                 <span>Completados</span>
                 <span>{stats.coursesCompleted} / {allCourses.length}</span>
               </div>
-              <div className={`w-full h-3 rounded-full overflow-hidden flex ${ isC ? 'bg-[#141311] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]' : 'bg-surface-container-highest shadow-inner' }`}>
+              <div className={`w-full h-3 rounded-full overflow-hidden flex ${ isC ? 'bg-[#141311] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]' : 'bg-surface-container-highest dark:bg-gray-700 shadow-inner' }`}>
                 <div className={`h-full rounded-full relative overflow-hidden ${ isC ? 'bg-[#c9a84c]' : 'bg-stitch-primary' }`} style={{ width: `${allCourses.length > 0 ? (stats.coursesCompleted / allCourses.length) * 100 : 0}%`, transition: 'width 1.5s ease-in-out' }}>
                   <div className="absolute top-0 left-0 right-0 bottom-0 bg-white/20"></div>
                 </div>
               </div>
-              <p className={`text-xs leading-relaxed ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant' }`}>¡Sigue explorando nuestro catálogo para seguir formándote!</p>
+              <p className={`text-xs leading-relaxed ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant dark:text-gray-400' }`}>¡Sigue explorando nuestro catálogo para seguir formándote!</p>
             </div>
           </div>
         </section>
           
         {/* Partners Logos */}
         <section className={`pt-16 pb-8 border-t ${ isC ? 'border-[rgba(77,70,55,0.2)]' : 'border-outline-variant/20' }`}>
-          <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-center mb-10 ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant/50' }`}>Con el sólido respaldo de partners académicos y médicos</p>
+          <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-center mb-10 ${ isC ? 'text-[#8a8578]' : 'text-on-surface-variant/50 dark:text-gray-400' }`}>Con el sólido respaldo de partners académicos y médicos</p>
           <div className="flex flex-wrap justify-center items-center gap-10 sm:gap-16 lg:gap-24 opacity-50 grayscale hover:grayscale-0 transition-all duration-700">
             <div className="flex items-center gap-3 font-black text-xl tracking-tighter cursor-default px-4 hover:scale-105 transition-transform">
               <img src={logoCorporativo} alt="Corporativo Camsa" className="h-10 sm:h-auto max-h-12 w-auto object-contain drop-shadow-sm" />

@@ -414,14 +414,14 @@ const Auth = () => {
             <button 
               type="button"
               onClick={() => { setIsLogin(true); setErrors({}); setGeneralError(''); }}
-              className={`px-6 sm:px-8 py-2.5 rounded-full text-sm font-bold transition-all ${isLogin ? 'bg-surface-container-lowest text-on-primary-container shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
+              className={`px-6 sm:px-8 py-2.5 rounded-full text-sm font-bold transition-all ${isLogin ? 'bg-surface-container-lowest text-on-primary-container shadow-sm' : 'text-on-surface-variant dark:text-gray-400 hover:text-on-surface dark:hover:text-white'}`}
             >
               Iniciar Sesión
             </button>
             <button 
               type="button"
               onClick={() => { setIsLogin(false); setErrors({}); setGeneralError(''); }}
-              className={`px-6 sm:px-8 py-2.5 rounded-full text-sm font-bold transition-all ${!isLogin ? 'bg-surface-container-lowest text-on-primary-container shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
+              className={`px-6 sm:px-8 py-2.5 rounded-full text-sm font-bold transition-all ${!isLogin ? 'bg-surface-container-lowest text-on-primary-container shadow-sm' : 'text-on-surface-variant dark:text-gray-400 hover:text-on-surface dark:hover:text-white'}`}
             >
               Registro
             </button>
