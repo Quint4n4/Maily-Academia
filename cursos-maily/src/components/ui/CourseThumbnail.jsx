@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BookOpen } from 'lucide-react';
+import { imagenServida } from './imagenServida';
 
 /**
  * Imagen de un curso, con dos problemas resueltos que se repetian en cada uso:
@@ -44,7 +45,7 @@ export const CourseThumbnail = ({
 
   return (
     <img
-      src={src}
+      src={imagenServida(src)}
       alt={alt}
       loading="lazy"
       onError={() => setFalloAlCargar(true)}

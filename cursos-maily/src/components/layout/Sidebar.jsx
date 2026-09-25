@@ -33,6 +33,20 @@ import logoMaily from '../../../Logos/logomaily.png';
 import logoLongevity from '../../../Logos/Longevity360-03.png';
 import logoCorporativo from '../../../Logos/logocorporativo.png';
 
+/**
+ * La marca de la plataforma, para quien no pertenece a una academia concreta:
+ * el administrador, que las ve todas, y el instructor sin academia asignada.
+ *
+ * Es una ruta y no un `import` como los otros tres porque el archivo vive en
+ * `public/`, de donde ya lo toma la portada. Tenerlo dos veces --una en
+ * `Logos/` para importar y otra en `public/`-- garantiza que un dia se cambie
+ * uno y no el otro.
+ *
+ * Antes aqui estaba el logo de Maily. Maily es UNA de las tres academias, asi
+ * que el panel de administracion se presentaba como si fuera suyo.
+ */
+const LOGO_PLATAFORMA = '/logo-academy360.png';
+
 const SECTION_DASHBOARD = {
   'maily-academia': '/maily/dashboard',
   'longevity-360': '/longevity/dashboard',
@@ -194,7 +208,7 @@ const Sidebar = ({ plegada = false, onAlternarPlegado }) => {
       'longevity-360': { src: logoLongevity, academia: 'Longevity 360', bg: false },
       'corporativo-camsa': { src: logoCorporativo, academia: 'Corporativo CAMSA', bg: true },
     };
-    const PLATAFORMA = { src: logoMaily, academia: null, bg: false };
+    const PLATAFORMA = { src: LOGO_PLATAFORMA, academia: null, bg: false };
 
     if (user?.role === 'admin') return { ...PLATAFORMA, academia: 'Administración' };
     if (user?.role === 'instructor') {
