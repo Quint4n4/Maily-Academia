@@ -366,7 +366,21 @@ const CoursesList = ({ sectionSlug }) => {
             }`}>
               <div className="flex flex-col lg:flex-row">
                 <div className="lg:w-[50%] relative h-64 sm:h-80 lg:h-auto overflow-hidden">
-                  <img src={courses[0].thumbnail} alt={courses[0].title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                  {/* Con `CourseThumbnail` y no con un `img` suelto, como el
+                      resto de las tarjetas. Era la unica que se saltaba el
+                      componente, y con el se saltaba las tres cosas que
+                      resuelve: el cartel cuando la imagen falla, la carga
+                      diferida, y el caso de `thumbnail` vacio --que en el
+                      backend tiene `default=''` y hace que el navegador pida
+                      la pagina entera como si fuera una imagen.
+
+                      Justo la tarjeta mas grande y la primera que se ve. */}
+                  <CourseThumbnail
+                    src={courses[0].thumbnail}
+                    alt={courses[0].title}
+                    aspect="h-full"
+                    className="group-hover:scale-105 transition-transform duration-700"
+                  />
                   <div className="absolute top-6 left-6 flex gap-2">
                     <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${ isC ? 'bg-[#141311] text-[#e6c364] border border-[rgba(230,195,100,0.2)]' : 'bg-[#2a1800] text-white' }`}>
                       {LEVEL_LABELS[courses[0].level] || courses[0].level}
